@@ -6,24 +6,24 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Ресэмплер стерео PCM 16 бит LE с 48000 Гц на [outRate] с состоянием между вызовами.
+ * resampling stereo PCM 16 Bit LE C 48000 Hz on [outRate] State between challenges.
  *
- * Рациональное отношение L/M (44100 = 147/160, 32000 = 2/3, 24000 = 1/2, 22050 = 147/320), полифазный FIR:
- * прототип ФНЧ рассчитан на частоте 48000·L Гц, на каждый выходной кадр берётся одна фаза из [TAPS_PER_PHASE]
- * коэффициентов, нули при вставке не считаются. ФНЧ - окно Кайзера ([KAISER_BETA]), срез ([CUTOFF_RATIO] от
- * выходной частоты, по уровню -6 дБ) ниже Найквиста выхода. Коэффициенты считаются один раз в конструкторе,
- * усиление каждой фазы нормировано на 1 (постоянная составляющая проходит без искажения уровня).
- * История фильтра и фаза живут между вызовами, поэтому границы пакетов бесшовны: результат не зависит от того,
- * как вход нарезан на куски. Вход - кадры по 4 байта; неполный хвост (размер не кратен 4) отбрасывается.
- * Для 48000 класс не нужен: AaBridge в этом случае пропускает PCM как есть.
+ * Rational ratio L/M (44100 = 147/160, 32000 = 2/3, 24000 = 1/2, 22050 = 147/320), polyphasic FIR:
+ * NLF prototype is designed for frequency 48000·L Hz, every weekend frame There is a phase of [TAPS_PER_PHASE]
+ * coefficients, zeros are not counted when inserting. NLF - Kaiser window ([KAISER_BETA]), cut ([CUTOFF_RATIO] from
+ * the output frequency, at the level -6 dB) below the output Nyquist. The coefficients are considered once in the designer,
+ * the amplification of each phase is normalized to 1 (the constant component passes without level distortion).
+ * The filter history and phase live between calls, so the packet boundaries are seamless: the result does not depend on whether
+ * as input is cut into pieces. The input is frame by 4 byte; incomplete tail (size not kraten 4) is discarded.
+ * For 48000 class is not needed: AaBridge in this case skips PCM as is.
  */
 class MusicResampler(val outRate: Int) {
     private val up: Int                       // L
     private val down: Int                     // M
-    private val coef: FloatArray              // [phase * TAPS_PER_PHASE + j]: вес кадра x[i0 - j]
-    private val hist = ShortArray(HIST * 2)   // последние HIST входных кадров (L, R) предыдущих вызовов
-    private var work = ShortArray(0)          // историю и новый вход кладём подряд; растёт по мере надобности
-    private var pos = 0                       // позиция следующего выхода на сетке 48000·L Гц относительно начала нового входа
+    private val coef: FloatArray              // [phase * TAPS_PER_PHASE + j]: weight frame x[i0 - j]
+    private val hist = ShortArray(HIST * 2)   // latest HIST input frame (L, R) previous calls
+    private var work = ShortArray(0)          // history and new entrance put in a row; grows as needed
+    private var pos = 0                       // next exit position on the grid 48000·L Hz relative to the start of a new entry
 
     init {
         require(outRate in 1 until IN_RATE) { "outRate=$outRate" }
@@ -58,9 +58,9 @@ class MusicResampler(val outRate: Int) {
         var u = pos
         var o = 0
         for (k in 0 until outFrames) {
-            val i0 = u / up                       // последний входной кадр, влияющий на выход
+            val i0 = u / up                       // last input frame affecting output
             val cb = (u - i0 * up) * TAPS_PER_PHASE
-            var base = (HIST + i0) * 2            // свёртка идёт назад по времени
+            var base = (HIST + i0) * 2            // Convolution goes back in time
             var l = 0f
             var r = 0f
             for (j in 0 until TAPS_PER_PHASE) {
@@ -96,10 +96,10 @@ class MusicResampler(val outRate: Int) {
 
         private fun gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(b, a % b)
 
-        /** Прототип ФНЧ на 48000·L Гц длиной L·TAPS_PER_PHASE, разложенный по L фазам; сумма каждой фазы = 1. */
+        /** the Prototype of NLF 48000·L Hz Long L·TAPS_PER_PHASE, decomposed by L the sum of each phase 1. */
         private fun design(up: Int, outRate: Int): FloatArray {
             val len = up * TAPS_PER_PHASE
-            val fc = CUTOFF_RATIO * outRate / (IN_RATE.toDouble() * up)    // относительно частоты дискретизации прототипа
+            val fc = CUTOFF_RATIO * outRate / (IN_RATE.toDouble() * up)    // The frequency of prototyping
             val mid = (len - 1) / 2.0
             val h = DoubleArray(len)
             for (j in 0 until len) {

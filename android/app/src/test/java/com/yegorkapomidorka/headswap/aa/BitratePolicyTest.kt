@@ -10,8 +10,8 @@ class BitratePolicyTest {
     private val ceiling = 6_000_000
 
     /**
-     * Модель очереди: queue += bitrate/8 * dt - drain * dt (не ниже 0). Возвращает историю (время мс -> битрейт)
-     * и максимум сырого бэклога. spikeAtMs/spikeBytes - разовый кусок в очередь (IDR).
+     * Queuing model: queue + = bitrate/8 * dt - drain * dt (not lower than 0). Returns history (ms time -> bitrate)
+     * and maximum raw backlog. spikeAtMs/spikeBytes is a one-time piece in line (IDR).
      */
     private class Run(
         val policy: BitratePolicy,
@@ -66,7 +66,7 @@ class BitratePolicyTest {
 
     @Test
     fun singleIdrSpikeDoesNotCutBitrate() {
-        // слив 500 КБ/с, энкодер на потолке 3.5 Мбит/с: откат возможен (0.8 * 4 Мбит/с = 3.2 Мбит/с), IDR 160 КБ даёт сырой бэклог 320 мс
+        // drain 500 KB/s, encoder on the ceiling 3.5 Mbit/s: rollback is possible (0.8 * 4 Mbit/s = 3.2 Mbit/s), IDR 160 KB gives raw backlog 320 ms
         val p = BitratePolicy(3_500_000)
         val r = Run(p, 500.0 * 1000, spikeAtMs = 5_000, spikeBytes = 160.0 * 1000)
         r.run(30_000)
@@ -77,7 +77,7 @@ class BitratePolicyTest {
 
     @Test
     fun idrSpikeOnKiaDrainDoesNotCutBitrate() {
-        // слив 210 КиБ/с, энкодер на 1.2 Мбит/с, IDR 100 КБ = 465 мс бэклога
+        // drain 210 KiB/s, encoder to 1.2 Mbit/s, IDR 100 KB = 465 ms backlog
         val p = BitratePolicy(1_200_000)
         val r = Run(p, 210.0 * 1024, spikeAtMs = 5_000, spikeBytes = 100.0 * 1000)
         r.run(20_000)
@@ -87,7 +87,7 @@ class BitratePolicyTest {
 
     @Test
     fun floorIsNotBroken() {
-        val r = Run(BitratePolicy(ceiling), 30.0 * 1024)          // слив 30 КиБ/с = 245 кбит/с, 0.8 от него ниже пола
+        val r = Run(BitratePolicy(ceiling), 30.0 * 1024)          // drain 30 KiB/s = 245 kbit/s, 0.8 from it below the floor
         r.run(120_000)
         assertTrue(r.history.all { it.second >= BitratePolicy.FLOOR_BPS })
         assertEquals(BitratePolicy.FLOOR_BPS, r.history.last().second)
@@ -98,7 +98,7 @@ class BitratePolicyTest {
         val p = BitratePolicy(ceiling)
         val drain = 210.0 * 1024
         assertNull(p.update(0, 0.0, drain))
-        // устойчивый бэклог 1 с: сглаженный перешагнёт 300 мс, откат одним шагом до 0.8 слива
+        // steady 1 backlog with: smoothed will step over 300 ms, rollback in one step to 0.8 drain
         var first: Pair<Long, Int>? = null
         var t = 0L
         while (t < 3000 && first == null) {
@@ -107,7 +107,7 @@ class BitratePolicyTest {
         }
         assertNotNull(first)
         assertEquals((drain * 8 * 0.8).toInt(), first!!.second)
-        // слив упал вдвое: следующее снижение не раньше чем через 1 с
+        // plum fell by half: the next decrease is not earlier than through 1 s
         val newDrain = drain * 0.75
         var second: Pair<Long, Int>? = null
         t = first!!.first
@@ -125,21 +125,21 @@ class BitratePolicyTest {
         val p = BitratePolicy(ceiling)
         val drain = 3.0 * 1024 * 1024
         var t = 0L
-        // принудительный откат: большой бэклог при медленном сливе
+        // forced rollback: large backlog at slow drain
         while (p.current == ceiling) {
             t += 100
             p.update(t, 2000.0, 100.0 * 1024)
         }
         val cut = t
         val low = p.current
-        // затишье: вверх не раньше 10 с после отката, потом +10% и снова 10 с
+        // calm: up not before 10 with after rollback, then +10% and again 10 with
         val ups = ArrayList<Pair<Long, Int>>()
         while (t < cut + 60_000) {
             t += 100
             p.update(t, 0.0, drain)?.let { ups.add(t to it) }
         }
         assertTrue(ups.size >= 3)
-        // сглаженный бэклог после отката ещё спадает, поэтому первая ступень не раньше 10 с
+        // smoothed backlog after rollback is still falling, so the first stage is no earlier than 10 with
         assertTrue(ups[0].first - cut >= 10_000)
         assertEquals((low * 1.1).toInt(), ups[0].second)
         for (i in 1 until ups.size) {
@@ -179,7 +179,7 @@ class BitratePolicyTest {
         assertEquals(4_000_000, p.ceilingBps)
         assertEquals(4_000_000, p.current)
         assertEquals(4_000_000, p.minBps)
-        // быстрый слив, долгое затишье: выше нового потолка не поднимается
+        // Quick drain, long lull: above the new ceiling does not rise
         for (i in 1..1000) p.update(i * 100L, 0.0, 3.0 * 1024 * 1024)
         assertEquals(4_000_000, p.current)
     }
@@ -197,7 +197,7 @@ class BitratePolicyTest {
 
     @Test
     fun lowerCeilingBelowCurrentLeavesLowerCurrent() {
-        val p = BitratePolicy(6_000_000, profile = BitrateProfile.WIFI)   // старт 4.5 Мбит/с
+        val p = BitratePolicy(6_000_000, profile = BitrateProfile.WIFI)   // Start 4.5 Mbit/s
         assertEquals(4_500_000, p.current)
         assertTrue(p.lowerCeiling(5_000_000))
         assertEquals(4_500_000, p.current)

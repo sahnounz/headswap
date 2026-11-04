@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.atomic.AtomicInteger
 
-/** Очередь кормления транскодера: порядок, переполнение с ожиданием IDR, вытеснение IDR-ом, команды без отказов. */
+/** Transcoder feeding queue: order, overflow with IDR expectation, displacement of IDR-om, command without failures. */
 class FeedQueueTest {
     private fun p(pts: Long) = FeedItem.Frame(byteArrayOf(1), pts, false, 0)
     private fun idr(pts: Long) = FeedItem.Frame(byteArrayOf(5), pts, true, 0)
@@ -43,7 +43,7 @@ class FeedQueueTest {
         assertEquals(Offer.ACCEPTED, q.offerFrame(p(2)))
         assertEquals(Offer.DROPPED_FULL, q.offerFrame(p(3)))
         assertEquals(Offer.DROPPED_GATED, q.offerFrame(p(4)))
-        // место освободилось, но P всё равно нельзя: после потери нужен IDR
+        // the place is free, but P still can not: after losing you need IDR
         assertEquals(1L, (q.take(0) as FeedItem.Frame).ptsUs)
         assertEquals(Offer.DROPPED_GATED, q.offerFrame(p(5)))
         assertEquals(Offer.ACCEPTED, q.offerFrame(idr(6)))
@@ -129,7 +129,7 @@ class FeedQueueTest {
         q.take(0)
         assertEquals(3, q.maxPendingSeen)
         assertEquals(3, q.resetMaxPending())
-        // новое окно стартует с текущей глубины (в очереди остался один кадр)
+        // new window starts from the current depth (only one frame remains in the queue)
         assertEquals(1, q.maxPendingSeen)
         q.offerFrame(p(4))
         assertEquals(2, q.resetMaxPending())
@@ -198,10 +198,10 @@ class FeedQueueTest {
         assertTrue(sawStop)
         assertEquals(2 * perProducer, accepted.get() + droppedFull.get() + droppedGated.get())
         assertEquals("команды не теряются", postedCmds.get(), consumedCmds)
-        // принятые кадры либо доехали, либо вытеснены более поздним IDR
+        // adopted frame either arrived or displaced by the later IDR
         assertTrue(consumedFrames.size <= accepted.get())
         assertTrue(consumedFrames.isNotEmpty())
-        // внутри каждого производителя порядок сохраняется
+        // Within each manufacturer, order is maintained.
         for (id in 1..2) {
             val mine = consumedFrames.filter { it / 1_000_000L == id.toLong() }
             assertEquals(mine.sorted(), mine)

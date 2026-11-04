@@ -4,9 +4,9 @@ import com.yegorkapomidorka.headswap.PbField
 import com.yegorkapomidorka.headswap.PbReader
 
 /**
- * Метаданные AA (ch9 MEDIA_PLAYBACK, ch10 NAVIGATION) -> CarLife (MEDIA_INFO, MEDIA_PROGRESS_BAR, NAVI_NEXT_TURN_INFO).
- * Чистая JVM-логика: разбор, маппинг манёвров, решение что и когда слать. Картинки (PNG -> JPEG, стрелки) делает
- * CarLife-сторона. Разведка: docs/cluster-metadata-recon.md.
+ * Metadata AA (ch9 MEDIA_PLAYBACK, ch10 NAVIGATION) -> CarLife (MEDIA_INFO, MEDIA_PROGRESS_BAR, NAVI_NEXT_TURN_INFO).
+ * Pure JVM-logic: parsing, mapping maneuvers, deciding what and when to send. Pictures (PNG -> JPEG, arrows) make
+ * CarLife-side. Exploration: docs/cluster-metadata-recon.md.
  */
 
 /** ch9 0x8001 MediaPlaybackStatus. state: 1 STOPPED, 2 PLAYING, 3 PAUSED. */
@@ -22,7 +22,7 @@ class AaMediaStatus(
     override fun toString() = "state=${AaMeta.stateName(state)} source=$source pos=${playbackSeconds}s shuffle=$shuffle repeat=$repeat repeat_one=$repeatOne"
 }
 
-/** ch9 0x8003 MediaPlaybackMetadata; art обычно PNG 256x256. */
+/** ch9 0x8003 MediaPlaybackMetadata; art usually PNG 256x256. */
 class AaMediaMetadata(
     val song: String?,
     val artist: String?,
@@ -36,36 +36,36 @@ class AaMediaMetadata(
         "song=\"$song\" artist=\"$artist\" album=\"$album\" duration=${durationSeconds}s playlist=$playlist rating=$rating art=${AaMeta.blobInfo(art)}"
 }
 
-/** Следующий манёвр: из legacy 0x8004 или из первого шага 0x8006. nextTurn уже в кодах CarLife (RouteGuideParams). */
+/** Next maneuver: legacy 0x8004 or 0x8006. nextTurn is already in CarLife (RouteGuideParams) codes. */
 class AaNavTurn(
     val nextTurn: Int,
     val road: String,
     val maneuver: String,
     val roundaboutExit: Int?,
     val image: ByteArray?,
-    /** Из legacy 0x8004 (иначе из 0x8006). */
+    /** From legacy 0x8004 (otherwise from 0x8006). */
     val legacy: Boolean = false,
-    /** Дорога для ключа манёвра: только road.name, без текста cue (он может меняться по мере приближения). */
+    /** Road for the maneuver key: only road.name, no text cue (it can change as you approach). */
     val keyRoad: String = road,
 ) {
     override fun toString() = "maneuver=$maneuver -> nextTurn=$nextTurn road=\"$road\"" +
         (if (roundaboutExit != null) " exit=$roundaboutExit" else "") + (if (image != null) " image=${AaMeta.blobInfo(image)}" else "")
 }
 
-/** Дистанция до манёвра: legacy 0x8005 или step_distance из 0x8007. */
+/** Distance to maneuver: legacy 0x8005 or step_distance from 0x8007. */
 class AaNavDistance(
     val meters: Int,
     val timeSeconds: Int?,
     val destinationMeters: Int? = null,
     val currentRoad: String? = null,
-    /** Из legacy 0x8005 (иначе из 0x8007). */
+    /** From legacy 0x8005 (otherwise from 0x8007). */
     val legacy: Boolean = false,
 ) {
     override fun toString() = "remain=${meters}m time=${timeSeconds}s" +
         (if (destinationMeters != null) " до цели=${destinationMeters}m" else "") + (if (currentRoad != null) " текущая=\"$currentRoad\"" else "")
 }
 
-/** Приёмник метаданных AA (реализует AaBridgeCore); зовётся из нити AA-сессии. */
+/** AA metadata receiver (implements AaBridgeCore); called from thread AA-session. */
 interface AaMetaSink {
     fun onMediaStatus(s: AaMediaStatus) {}
     fun onMediaMetadata(m: AaMediaMetadata) {}
@@ -79,7 +79,7 @@ interface AaMetaSink {
     fun onNavDistance(d: AaNavDistance) {}
 }
 
-/** Одно сообщение CarLife MEDIA_INFO; art - как пришло из AA (PNG), перекодирует CarLife-сторона. */
+/** One message CarLife MEDIA_INFO; art - as it came from AA (PNG), transcodes CarLife-side. */
 class CarlifeMediaInfo(
     val source: String,
     val song: String,
@@ -94,7 +94,7 @@ class CarlifeMediaInfo(
     override fun toString() = "song=\"$song\" artist=\"$artist\" album=\"$album\" duration=${durationSeconds}s source=$source art=${AaMeta.blobInfo(art)}"
 }
 
-/** Одно сообщение CarLife NAVI_NEXT_TURN_INFO (поле 6 и иконку выбирает CarLife-сторона по настройке). */
+/** One message CarLife NAVI_NEXT_TURN_INFO (6 field and icon selects CarLife-side by setting). */
 class NaviTurnInfo(
     val action: Int,
     val nextTurn: Int,
@@ -107,8 +107,8 @@ class NaviTurnInfo(
 }
 
 /**
- * Что класть в поле 6 NAVI_NEXT_TURN_INFO: в 8.6.7 это bytes turnIconData (PNG), в apollo-DuerOS/CarProjection - int32 time.
- * BOTH - оба под номером 6: парсер, ждущий другой wire-type, уносит чужое в unknown fields. Выбор - в «Для разработчиков».
+ * What to put in the field 6 NAVI_NEXT_TURN_INFO: in 8.6.7 is bytes turnIconData (PNG), in apollo-DuerOS/CarProjection - int32 time.
+ * BOTH - both under the number 6: parser waiting for another wire-type takes someone else's unknown fields. Choice - in "For Developers".
  */
 enum class NaviField6(val icon: Boolean, val time: Boolean) {
     BOTH(true, true), ICON(true, false), TIME(false, true), NONE(false, false);
@@ -166,13 +166,13 @@ object AaMeta {
     const val T_DEST = 24
     const val T_IN_FERRY = 29
 
-    /** Конец маршрута, как Baidu onNaviStateChange(false): nextTurn 24, roadName «目的地». */
+    /** End of route, matching Baidu onNaviStateChange(false): nextTurn 24, roadName “目的地” (destination). */
     const val END_ROAD = "目的地"
 
     /**
-     * Honda: подпись манёвра, когда AA прислал пустую улицу (Google Maps на выездах со двора, legacy 0x8004 road="").
-     * Baidu в этом случае шлёт «无名路», Яндекс сам подставляет «Поверните налево». Тексты не длиннее 16 Б UTF-8,
-     * их без обрезки пропускает HondaClusterRoad.
+     * Honda: signed the maneuver when AA sent an empty street (Google Maps at departures from the yard, legacy 0x8004 road="").
+     * Baidu sends “无名路” (unnamed road); Yandex supplies “Turn left”. These texts are at most 16 UTF-8 bytes,
+     * HondaClusterRoad. passes them without trimming
      */
     fun noRoadName(nextTurn: Int): String = when (nextTurn) {
         T_FRONT, T_BRANCH_CENTER -> "Прямо"
@@ -202,7 +202,7 @@ object AaMeta {
         else -> "?$s"
     }
 
-    /** "<N Б PNG>" для лога. */
+    /** "<N B PNG>" for log. */
     fun blobInfo(b: ByteArray?): String {
         if (b == null) return "нет"
         val kind = when {
@@ -214,7 +214,7 @@ object AaMeta {
         return "<${b.size} Б $kind>"
     }
 
-    // --- разбор ---
+    // --- parsing ---
     private fun fields(p: ByteArray): List<PbField>? = PbReader.parse(p)
     private fun int(f: List<PbField>, n: Int): Int? = PbReader.int(f, n)
     private fun bool(f: List<PbField>, n: Int): Boolean? = int(f, n)?.let { it != 0 }
@@ -253,7 +253,7 @@ object AaMeta {
     }
 
     /**
-     * 0x8006 NavigationState{steps 1, destinations 2}: следующий манёвр = первый шаг.
+     * 0x8006 NavigationState{steps 1, destinations 2 = : the next maneuver is the first step.
      * NavigationStep{maneuver 1 {type 1, roundabout_exit_number 2}, road 2 {name 1}, lanes 3, cue 4 {alternate_text 1}}.
      */
     fun parseNavState(p: ByteArray): AaNavTurn? {
@@ -268,7 +268,7 @@ object AaMeta {
 
     /**
      * 0x8007 NavigationCurrentPosition{step_distance 1 {distance 1 {meters 1}, time_to_step_seconds 2},
-     * destination_distances 2 {distance 1 {meters 1}}, current_road 3 {name 1}}. null, если нет дистанции до шага.
+     * destination_distances 2 {distance 1 {meters 1}}, current_road 3 {name 1}}. nullIf there is no distance to step.
      */
     fun parseNavPosition(p: ByteArray): AaNavDistance? {
         val f = fields(p) ?: return null
@@ -281,8 +281,8 @@ object AaMeta {
     }
 
     /**
-     * Сообщение ch9/ch10 -> приёмник. Возвращает строку-итог для лога (или null, если тип не про метаданные).
-     * Ошибки разбора не роняют сессию: возвращается текст ошибки.
+     * Message ch9/ch10 -> receiver. Returns the output string for the log (or null, if the type is not about metadata).
+     * parse errors do not drop the session: the text of the error returns.
      */
     fun dispatch(chan: Int, type: Int, payload: ByteArray, sink: AaMetaSink?): String? {
         if (sink == null) return null
@@ -310,8 +310,8 @@ object AaMeta {
         }
     }
 
-    // --- маппинг манёвров AA -> CarLife nextTurn ---
-    /** NavigationManeuver.NavigationType (0x8006) -> nextTurn. Неизвестное -> 1 (прямо), как Baidu. */
+    // --- Mapping maneuvers AA -> CarLife nextTurn ---
+    /** NavigationManeuver.NavigationType (0x8006) -> nextTurn. Unknown -> 1 (directly) as Baidu. */
     fun turnFromManeuver(type: Int): Int = when (type) {
         1 -> T_START                                    // DEPART
         2 -> T_FRONT                                    // NAME_CHANGE
@@ -391,8 +391,8 @@ object AaMeta {
     }
 
     /**
-     * Как рисовать стрелку для nextTurn: вид и угол выхода в градусах (0 вверх, + вправо).
-     * Рисует Android-хелпер TurnIcons; здесь только таблица, чтобы её проверял JVM-тест.
+     * How to draw arrow for nextTurn: view and exit angle in degrees (0 up, + right).
+     * Draws Android-helper TurnIcons; here is only the table to check it JVM-test.
      */
     enum class GlyphKind { ARROW, U_TURN, RING, RING_OUT, DEST, START }
 
@@ -420,9 +420,9 @@ object AaMeta {
 }
 
 /**
- * Решает, что и когда слать в CarLife по метаданным AA. Без блокировок: зовётся под монитором AaBridgeCore.
- * ready() - CarLife START уже был и ссылка живая; navHold(on) - держать ли MODULE_STATUS NAVI ради маршрута
- * (ядро сводит его с удержанием NAVI для TTS).
+ * Decides what and when to send CarLife metadata AA. Without locks: called under the monitor AaBridgeCore.
+ * ready() - CarLife START has already been and the link is live; navHold(on) - whether to keep MODULE_STATUS NAVI for route
+ * (the kernel brings it together with the NAVI retention for the TTS).
  */
 class MetaRelay(
     private val log: (String, Boolean) -> Unit,
@@ -431,30 +431,30 @@ class MetaRelay(
     private val ready: () -> Boolean,
     private val navHold: (Boolean) -> Unit,
     private val musicState: (Boolean) -> Unit,
-    /** Перед первым SHOW и повторным после тишины: перевзвести MODULE_STATUS NAVI 0->1, если ГУ этого требует (Honda). */
+    /** Before the first SHOW and repeated after silence: retake MODULE_STATUS NAVI 0->1 if head unit requires it (Honda). */
     private val navRearm: () -> Unit = {},
-    /** Пустую улицу заменять подписью манёвра (AaMeta.noRoadName) - Honda. */
+    /** Replace the empty street with a signature maneuver (AaMeta.noRoadName) - Honda. */
     private val emptyRoadText: () -> Boolean = { false },
 ) {
-    // подписки ГУ (CARLIFE_DATA_SUBSCRIBE_START/STOP): музыка по умолчанию включена, навигация - только по START moduleID=0
+    // head unit (CARLIFE_DATA_SUBSCRIBE_START/STOP) subscriptions: music by default is enabled, navigation - only by START moduleID=0
     var musicSubscribed = true
         private set
     var navSubscribed = false
         private set
 
-    // музыка
+    // Music
     var playing = false
         private set
     private var mediaSource = ""
     private var info: CarlifeMediaInfo? = null
     private var infoKey: String? = null
-    private var infoPending = false            // MEDIA_INFO отложен, пока AA не играет
+    private var infoPending = false            // MEDIA_INFO delayed until AA plays
     private var trackSeq = 0
     private var posMs: Int? = null
     private var lastProgressMs: Int? = null
     private var lastProgressAt = NEVER
 
-    // навигация
+    // Navigation
     var routeActive = false
         private set
     private var turn: AaNavTurn? = null
@@ -467,13 +467,13 @@ class MetaRelay(
     private var lastShowAt = NEVER
     private var lastSent: String? = null
     private var routeEndedAt = NEVER
-    private var navNewSeen = false             // в этой AA-сессии были 0x8006/0x8007
+    private var navNewSeen = false             // this AA-session was 0x8006/0x8007
     private var legacySeen = false
     private var legacyIgnoredLogged = false
-    private var awaitSubAt = NEVER             // Honda: после нашего NAVI 0->1 стрелки копим до SUBSCRIBE_START от ГУ
+    private var awaitSubAt = NEVER             // Honda: after our NAVI 0->1 arrows dig up to SUBSCRIBE_START by head unit
     private var heldTurns = 0
 
-    /** Новая CarLife-сессия: подписки по умолчанию, на ГУ ещё ничего не показано. */
+    /** New CarLife-session: Default subscriptions, head unit has not shown anything yet. */
     fun onAttach() {
         musicSubscribed = true
         navSubscribed = false
@@ -484,7 +484,7 @@ class MetaRelay(
         lastProgressAt = NEVER
     }
 
-    /** CarLife START (холодный): переотправить известное, ГУ могло ещё не знать трек и манёвр. */
+    /** CarLife START (cold): Resend the known, head unit may not yet know the track and maneuver. */
     fun onCarlifeStart() {
         shown = false
         lastSent = null
@@ -496,7 +496,7 @@ class MetaRelay(
         }
     }
 
-    /** SUBSCRIBE_START/STOP от ГУ: moduleID 0 навигация, 2 музыка (номера подписки, не MODULE_STATUS). */
+    /** SUBSCRIBE_START/STOP from head unit: moduleID 0 Navigation, 2 music (subscription numbers, no MODULE_STATUS). */
     fun onSubscribe(moduleId: Int, on: Boolean) {
         when (moduleId) {
             SUB_NAVI -> {
@@ -506,11 +506,11 @@ class MetaRelay(
                     log("META ГУ подписалась через ${clockMs() - awaitSubAt} мс после NAVI=1, придержано стрелок: $heldTurns", true)
                     awaitSubAt = NEVER
                 }
-                // до CarLife START не шлём: на START всё переотправится (onCarlifeStart)
+                // up to CarLife START not send: on START everything will be resent (onCarlifeStart)
                 if (on && routeActive && ready()) {
-                    // ГУ (Honda) подписывается заново после каждого NAVI=1 и стрелку берёт только из SHOW после подписки.
-                    // Honda Breeze 2026-10-17 16:15/16:18: SHOW ушёл до SUBSCRIBE_START, дальше только UPDATE -
-                    // на HUD одна дистанция без стрелки, приборка пустая до конца маршрута.
+                    // The head unit (Honda) is re-signed after each NAVI=1 and only takes an arrow from the SHOW after subscription.
+                    // Honda Breeze 2026-10-17 16:15/16:18: SHOW has gone to SUBSCRIBE_START, then only UPDATE -
+                    // on HUD one distance without arrow, instrument cluster empty until the end of the route.
                     shown = false
                     lastSent = null
                     navHold(true)
@@ -526,7 +526,7 @@ class MetaRelay(
         }
     }
 
-    // --- музыка ---
+    // --- music ---
     fun onMediaStatus(s: AaMediaStatus) {
         s.source?.takeIf { it.isNotBlank() }?.let { mediaSource = it }
         s.playbackSeconds?.let { posMs = it * PROGRESS_UNIT }
@@ -545,7 +545,7 @@ class MetaRelay(
     fun onMediaMetadata(m: AaMediaMetadata) {
         val key = listOf(m.song, m.artist, m.album, m.durationSeconds, m.art?.contentHashCode(), m.art?.size).joinToString("|")
         if (key == infoKey) return
-        // тот же трек с новой обложкой - источник прежний (ГУ различает треки по source), новый трек - новый ключ
+        // same track with new cover - source former (head unit distinguishes tracks by source), new track - new key
         val sameTrack = info?.let { it.song == (m.song ?: "") && it.artist == (m.artist ?: "") && it.album == (m.album ?: "") } == true
         if (!sameTrack) trackSeq++
         infoKey = key
@@ -570,7 +570,7 @@ class MetaRelay(
 
     private fun sendInfo(why: String) {
         val i = info ?: return
-        // трек на паузе не показываем: ГУ (Desay G6S, Mazda) считает CarLife-музыку активной и глушит радио
+        // track on pause do not show: head unit (Desay G6S, Mazda) considers CarLife- music active and jams radio
         if (!playing) {
             infoPending = true
             log("META MEDIA_INFO отложен ($why): AA не играет; $i", false)
@@ -592,7 +592,7 @@ class MetaRelay(
         val last = lastProgressMs
         if (!force && last != null) {
             if (p == last) return
-            // как MusicInfoSender: вперёд не чаще раза в секунду, назад (перемотка) сразу
+            // as MusicInfoSender: forward no more than once per second, back (rewind) directly
             if (p > last && now - lastProgressAt < PROGRESS_MIN_MS) return
         }
         if (link().sendMediaProgress(p)) {
@@ -602,15 +602,15 @@ class MetaRelay(
         }
     }
 
-    // --- навигация ---
+    // --- navigation ---
     fun onNavCluster(start: Boolean) {
         log("META навигация: instrument cluster ${if (start) "START" else "STOP"}", true)
         if (!start) endRoute("cluster STOP")
     }
 
     /**
-     * Honda: ядро только что подняло MODULE_STATUS NAVI=1 - ГУ ответит SUBSCRIBE_START и стрелку возьмёт только из SHOW
-     * после него. До подписки (или SUB_WAIT_MS) стрелки не шлём, копим: turn/remain держат последнее, уйдёт оно.
+     * Honda: core just raised MODULE_STATUS NAVI=1 - head unit will answer SUBSCRIBE_START and take the arrow only from SHOW
+     * After it. Before subscription (or SUB_WAIT_MS) arrows are not sent, we dig: turn/remain hold last, it will go away.
      */
     fun awaitSubscribe() {
         awaitSubAt = clockMs()
@@ -628,9 +628,9 @@ class MetaRelay(
     }
 
     /**
-     * Принимать ли событие манёвра/дистанции. Один источник на AA-сессию: как только пришли новые 0x8006/0x8007,
-     * legacy 0x8004/0x8005 игнорируются (иначе ключ манёвра скачет между двумя названиями). Без маршрута событие
-     * стартует его неявно (телефон может не слать статус), кроме хвоста в TAIL_MS после конца маршрута.
+     * Whether to accept the maneuver/distance event. One source for the AA-session: as soon as the new 0x8006/0x8007 arrived,
+     * legacy 0x8004/0x8005 is ignored (otherwise the maneuver key jumps between the two names). No event route
+     * starts it implicitly (the phone may not send the status), except for the tail in TAIL_MS after the end of the route.
      */
     private fun acceptNav(legacy: Boolean, what: String): Boolean {
         if (!legacy && !navNewSeen) {
@@ -662,9 +662,9 @@ class MetaRelay(
         turn = t
         if (changed) {
             turnKey = key
-            remain = null              // старая дистанция относится к прошлому манёвру
+            remain = null              // The old distance refers to the past maneuver
             total = 0
-            turnDirty = true           // первую дистанцию нового манёвра шлём без троттлинга
+            turnDirty = true           // the first distance of the new maneuver with a shot without trolling
             log("META манёвр: $t", true)
         }
         emitTurn(force = changed, why = if (changed) "новый манёвр" else "манёвр повторён")
@@ -672,8 +672,8 @@ class MetaRelay(
 
     fun onNavDistance(d: AaNavDistance) {
         if (!acceptNav(d.legacy, "дистанция")) return
-        // два одинаковых поворота подряд (тот же nextTurn|road|exit): ключ не меняется, новый манёвр виден только
-        // по скачку дистанции вверх (h137: 10 -> 170 м). Иначе total остаётся от прошлого поворота.
+        // two identical turns in a row (the same nextTurn|road|exit): the key does not change, the new maneuver is only visible
+        // on the jump of the distance up (h137: 10 -> 170 m). Otherwise, total remains from the last turn.
         val prev = remain
         if (prev != null && d.meters - prev.meters >= NEW_TURN_JUMP_M) {
             total = 0
@@ -681,7 +681,7 @@ class MetaRelay(
             log("META манёвр: тот же ключ, дистанция ${prev.meters} -> ${d.meters} м - новый поворот", true)
         }
         remain = d
-        // totalDistance - дистанция на момент смены манёвра (Baidu фиксирует при смене дороги)
+        // totalDistance - distance at the time of change of maneuver (Baidu fixes when changing the road)
         if (total == 0 || d.meters > total) total = d.meters
         emitTurn(force = false, why = "дистанция")
     }
@@ -692,7 +692,7 @@ class MetaRelay(
         shown = false
         lastSent = null
         log("META маршрут начат ($why)", true)
-        // NAVI=1 без подписки: VW BT 1538 (h244) шлёт SUBSCRIBE_START только после NAVI=1
+        // NAVI=1 without subscription: VW BT 1538 (h244) flight SUBSCRIBE_START only after NAVI=1
         if (ready()) navHold(true)
     }
 
@@ -715,34 +715,34 @@ class MetaRelay(
         navHold(false)
     }
 
-    /** rearm=false: SHOW в ответ на SUBSCRIBE_START - подписка и есть ответ ГУ на 0->1, иначе перевзвод зациклится. */
+    /** rearm=false: SHOW in response to SUBSCRIBE_START - subscription and there is a response head unit on 0->1, otherwise the overdrive will loop. */
     private fun emitTurn(force: Boolean, why: String, rearm: Boolean = true) {
         val t = turn ?: return
-        val d = remain ?: return                    // без дистанции не шлём: на ГУ было бы «0 м»
+        val d = remain ?: return                    // without distance we will not send: head unit would be «0 m»
         if (!ready() || !navSubscribed) return
         val now = clockMs()
         val idle = now - lastTurnAt
         if (!force && !turnDirty && idle < TURN_MIN_MS) return
-        // h137 (Honda Civic, пустой HU_INFO): после ~40 с без пакетов приборка гасит подсказку и на UPDATE не оживает
+        // h137 (Honda Civic, empty HU_INFO) after ~ 40 with no packages instrument cluster extinguishes the hint and UPDATE does not come to life
         val reshow = shown && idle >= NAVI_RESHOW_MS
-        // h243: служебное сообщение машины или смена режима табло гасят подсказку, ГУ об этом не сообщает -
-        // периодический SHOW возвращает её в пределах NAVI_SHOW_EVERY_MS
+        // h243: service message machine or change the display mode extinguish the prompt, head unit does not report it -
+        // periodic SHOW returns it within NAVI_SHOW_EVERY_MS
         val periodic = shown && now - lastShowAt >= NAVI_SHOW_EVERY_MS
         val road = if (t.road.isBlank() && emptyRoadText()) AaMeta.noRoadName(t.nextTurn) else t.road
         val info = NaviTurnInfo(
-            // h137: погасшая подсказка возвращается только по SHOW, поэтому первый пакет каждого манёвра - SHOW
+            // h137: extinguished prompt is returned only on SHOW, so the first package of each maneuver is SHOW
             if (shown && !reshow && !turnDirty && !periodic) ACTION_UPDATE else ACTION_SHOW, t.nextTurn, road, maxOf(total, d.meters), d.meters, d.timeSeconds ?: 0
         )
         val sig = "${info.action}|${info.nextTurn}|${info.roadName}|${info.totalDistance}|${info.remainDistance}|${info.timeSeconds}"
-        // на стоянке AA шлёт одно и то же: повторяем раз в NAVI_KEEPALIVE_MS, чтобы ГУ не решила, что маршрута нет
+        // the parking lot AA sends the same thing: repeat once in NAVI_KEEPALIVE_MS, so that head unit does not decide that there is no route
         val keepalive = sig == lastSent
         if (keepalive && idle < NAVI_KEEPALIVE_MS) return
         if (awaitSubAt != NEVER && now - awaitSubAt >= SUB_WAIT_MS) {
             log("META SUBSCRIBE_START от ГУ не пришёл за ${now - awaitSubAt} мс, шлю без него (придержано $heldTurns)", true)
             awaitSubAt = NEVER
         }
-        // Honda: перевзвод NAVI 0->1 только перед первым SHOW и повторным после тишины (не на SHOW манёвра и периодический)
-        if (awaitSubAt == NEVER && info.action == ACTION_SHOW && rearm && (!shown || reshow)) navRearm()   // может поставить ожидание
+        // Honda: NAVI 0->1 only before first SHOW and repeated after silence (not on SHOW maneuver and periodic)
+        if (awaitSubAt == NEVER && info.action == ACTION_SHOW && rearm && (!shown || reshow)) navRearm()   // can set the expectation
         if (awaitSubAt != NEVER) {
             if (heldTurns++ == 0) log("META стрелку придерживаю: жду SUBSCRIBE_START от ГУ ($why)", true)
             return
@@ -762,7 +762,7 @@ class MetaRelay(
         }
     }
 
-    /** AA-сессия закончилась: маршрут и плеер исчезли вместе с ней. */
+    /** AA- session ended: the route and player disappeared with it. */
     fun onAaEnded() {
         endRoute("AA-сессия закончилась")
         navNewSeen = false
@@ -774,7 +774,7 @@ class MetaRelay(
             musicState(false)
         }
         posMs = null
-        // трек умер вместе с AA: после рестарта не показывать протухший
+        // track died along with AA: after restart not showing extinct
         info = null
         infoKey = null
         infoPending = false
@@ -789,25 +789,25 @@ class MetaRelay(
         const val ACTION_END = 3
 
         /**
-         * progressBar в мс: MusicInfoSender (обычный канал, не isSecondVehi) шлёт curTime в мс и троттлит по разнице < 1000.
-         * duration в MEDIA_INFO - в секундах. Если ГУ покажет прогресс в 1000 раз больше - поставить 1.
+         * progressBar in ms: MusicInfoSender (normal channel, not isSecondVehi) sends curTime in ms and trottles by difference < 1000.
+         * duration in MEDIA_INFO - in seconds. If head unit shows progress in 1000 times more - put 1.
          */
         @Volatile @JvmStatic var PROGRESS_UNIT = 1000
 
         const val PROGRESS_MIN_MS = 1000L
         const val TURN_MIN_MS = 1000L
-        /** Повтор неизменного манёвра, пока маршрут активен (на стоянке AA шлёт те же данные, дедуп их глушил). */
+        /** Repeat the same maneuver while the route is active (in the parking lot AA sends the same data, the grandfather jammed them). */
         const val NAVI_KEEPALIVE_MS = 5000L
-        /** Пауза дольше этой: следующий пакет снова SHOW, ГУ могла уже убрать подсказку. */
+        /** Pause longer than this: the next package again SHOW, head unit could already remove the hint. */
         const val NAVI_RESHOW_MS = 10_000L
-        /** Honda: сколько ждём SUBSCRIBE_START после NAVI=1 (в логах 14-670 мс). Проверяется на следующем событии AA (~1 с). */
+        /** Honda: How long we wait SUBSCRIBE_START after NAVI=1 (in logs) 14-670 ms). Checked at the next event AA (~1 (c) */
         const val SUB_WAIT_MS = 1500L
-        /** Рост дистанции при том же ключе манёвра: это уже следующий такой же поворот (шаг AA - 10 м). */
+        /** Increase the distance with the same key maneuver: this is the next same turn (step AA - 10 m). */
         const val NEW_TURN_JUMP_M = 40
-        /** SHOW не реже этого, пока маршрут активен: приборка могла погасить подсказку сама (h243, h137). */
+        /** SHOW is not less than this, while the route is active: instrument cluster could pay off the hint itself (h243, h137). */
         const val NAVI_SHOW_EVERY_MS = 10_000L
 
-        /** Запоздалые манёвр/дистанция после конца маршрута не стартуют его заново в этом окне. */
+        /** Late maneuver/distance after the end of the route will not start it again in this window. */
         const val TAIL_MS = 5000L
         private const val NEVER = Long.MIN_VALUE / 4
     }

@@ -1,16 +1,16 @@
 package com.yegorkapomidorka.headswap.aa
 
 /**
- * Свой ключевой кадр в passthrough без перекодирования: IDR из декодированной на телефоне картинки AA, без потерь.
+ * Its key frame in passthrough without transcoding: IDR from the phone's decoded AA picture, no loss.
  *
- * Декодеры H.264 восстанавливают кадр бит-в-бит одинаково, поэтому картинка из декодера телефона = опорный кадр,
- * на который ссылаются следующие P-кадры AA. IDR из макроблоков I_PCM (сырые пиксели) или I16x16 без остатка
- * (блок целиком совпадает со своим предсказанием) даёт ровно эту картинку, и поток AA идёт дальше без дрейфа.
- * IDR обнуляет frame_num и POC, поэтому в P-кадрах AA до его следующего IDR эти поля сдвигаются ([IdrSplicer.process]).
- * Деблокинг такой IDR не трогает: у I_PCM qP = 0, у I16x16 QP слайса 0, alpha(0) = 0.
+ * decoder H.264 restore frame bit-by-bit the same way, so picture from decoder phone = reference frame,
+ * referenced by the following P-frame AA. IDR from I_PCM macro blocks (raw pixels) or I16x16 without remainder
+ * (the block completely coincides with its prediction) gives exactly this picture, and the flow of AA goes further without drifting.
+ * IDR resets frame_num and POC, so in P-frame AA to its next IDR these fields shift ([IdrSplicer.process]).
+ * Deblocking such IDR does not touch: I_PCM qP = 0, I16x16 QP slide 0, alpha(0) = 0.
  *
- * Проверено на потоках x264 (Baseline, POC 0 и 2, несколько слайсов): ffmpeg после склейки и при входе с нашего IDR
- * даёт те же кадры, что исходный поток. Ограничения: CAVLC, 4:2:0 8 бит, кадры (не поля), max_num_ref_frames = 1.
+ * Tested on x264 streams (Baseline, POC 0 and 2, multiple slices): ffmpeg after gluing and when entering with our IDR
+ * gives the same frame as the source stream. Limits: CAVLC, 4:2:0 8 bit, frame (not field), max_num_ref_frames = 1.
  */
 object IdrSplice {
     class Sps(
@@ -26,17 +26,17 @@ object IdrSplice {
         val initQp: Int, val dbkCtrl: Boolean, val redundant: Boolean, val chromaQpOffset: Int = 0,
     )
 
-    /** Картинка I420 кодированного размера (с полями под кроп SPS), строки без выравнивания. */
+    /** Picture I420 encoded size (with fields under crop SPS), lines without alignment. */
     class Picture(val width: Int, val height: Int, val y: ByteArray, val u: ByteArray, val v: ByteArray) {
         fun copy() = Picture(width, height, y.copyOf(), u.copyOf(), v.copyOf())
     }
 
-    /** Свой IDR: NAL-ы (Annex-B у [IdrSplicer.build], без старт-кода у buildIdr). qp = -1 - без потерь, иначе QP сжатия. */
+    /** IDR: NAL-s (Annex-B in [IdrSplicer.build], without start code in buildIdr). qp = -1 - lossless, otherwise QP compression. */
     class Result(val nal: ByteArray, val i16: Int, val pcm: Int, val qp: Int = -1)
 
     private val HIGH_PROFILES = setOf(100, 110, 122, 244, 44, 83, 86, 118, 128, 138, 139, 134, 135)
 
-    /** nal - SPS без стартового кода. */
+    /** nal - SPS without start code. */
     fun parseSps(nal: ByteArray): Sps {
         val r = Bits(SpsCrop.removeEmulationPrevention(nal))
         r.skip(8)
@@ -51,7 +51,7 @@ object IdrSplice {
             depth = 8 + r.ue()
             r.ue()
             r.skip(1)
-            if (r.u(1) == 1) {                          // seq_scaling_matrix: остатка у нас нет, матрица не важна
+            if (r.u(1) == 1) {                          // seq_scaling_matrix: balance we have no matrix is not important
                 for (k in 0 until if (chroma != 3) 8 else 12) if (r.u(1) == 1) skipScalingList(r, if (k < 6) 16 else 64)
             }
         }
@@ -75,7 +75,7 @@ object IdrSplice {
         return Sps(id, log2Fn, pocType, log2Poc, dpoZero, maxRef, w, if (frameMbsOnly) h else h * 2, chroma, depth, frameMbsOnly)
     }
 
-    /** nal - PPS без стартового кода. */
+    /** nal - PPS without start code. */
     fun parsePps(nal: ByteArray): Pps {
         val r = Bits(SpsCrop.removeEmulationPrevention(nal))
         r.skip(8)
@@ -91,12 +91,12 @@ object IdrSplice {
         r.se()                                          // pic_init_qs
         val cqp = r.se()
         val dbk = r.u(1) == 1
-        r.skip(1)                                       // constrained_intra_pred_flag: у нас все макроблоки intra
+        r.skip(1)                                       // constrained_intra_pred_flag: we have all macroblocks intra
         val redundant = r.u(1) == 1
         return Pps(id, spsId, cabac, bottomPoc, groups, initQp, dbk, redundant, cqp)
     }
 
-    /** Почему по этим SPS/PPS свой IDR не собрать; null - можно. */
+    /** Why on these SPS/PPS Yours IDR not to collect; null - Yes, you can. */
     fun unsupported(sps: Sps, pps: Pps): String? = when {
         pps.cabac -> "CABAC"
         sps.chroma != 1 -> "chroma_format_idc=${sps.chroma}"
@@ -107,8 +107,8 @@ object IdrSplice {
         else -> null
     }
 
-    /** IDR (NAL без стартового кода, с эмуляцией) с картинкой pic; idrPicId меняется от IDR к IDR. */
-    /** Сколько макроблоков IDR без потерь уйдёт в I_PCM (остальные - I16x16 без остатка, по 2-3 байта). */
+    /** IDR (NAL without start code, with emulation) with picture pic; idrPicId changes from IDR to IDR. */
+    /** How many IDR blocks without loss will go to I_PCM (the rest are I16x16 without a remainder, according to 2-3 bytes). */
     fun pcmCount(pic: Picture, sps: Sps): Int {
         var n = 0
         for (my in 0 until sps.hMbs) for (mx in 0 until sps.wMbs) {
@@ -122,7 +122,7 @@ object IdrSplice {
         val w = BitOut(sps.wMbs * sps.hMbs * 200 + 64)
         w.u(8, 0x65)                                    // nal_ref_idc 3, IDR
         w.ue(0)                                         // first_mb_in_slice
-        w.ue(7)                                         // slice_type I, все слайсы картинки
+        w.ue(7)                                         // slice_type I, all slides pictures
         w.ue(pps.id)
         w.u(sps.log2Fn, 0)                              // frame_num
         w.ue(idrPicId)
@@ -138,10 +138,10 @@ object IdrSplice {
         }
         if (pps.redundant) w.ue(0)
         w.u(2, 0)                                       // no_output_of_prior_pics_flag, long_term_reference_flag
-        w.se(-pps.initQp)                               // QP слайса 0: деблокинг I16x16 не срабатывает
+        w.se(-pps.initQp)                               // QP slime 0: unlocking I16x16 does not work
         if (pps.dbkCtrl) w.ue(1)                        // disable_deblocking_filter_idc
         val mw = sps.wMbs
-        val kind = ByteArray(mw * sps.hMbs)            // 1 = I_PCM, 2 = I16x16 без остатка
+        val kind = ByteArray(mw * sps.hMbs)            // 1 = I_PCM, 2 = I16x16 without balance
         var i16 = 0
         for (my in 0 until sps.hMbs) for (mx in 0 until mw) {
             val lm = if (useI16) Intra.luma16(pic, mx, my) else -1
@@ -152,7 +152,7 @@ object IdrSplice {
                 w.ue(1 + lm)                            // I_16x16_<lm>_0_0
                 w.ue(cm)                                // intra_chroma_pred_mode
                 w.se(0)                                 // mb_qp_delta
-                // coeff_token Intra16x16DCLevel, TotalCoeff = 0; nN соседа I_PCM = 16, I16x16 без AC = 0
+                // coeff_token Intra16x16DCLevel, TotalCoeff = 0; nN neighbor I_PCM = 16, I16x16 without AC = 0
                 val na = if (mx > 0) (if (kind[my * mw + mx - 1].toInt() == 1) 16 else 0) else -1
                 val nb = if (my > 0) (if (kind[(my - 1) * mw + mx].toInt() == 1) 16 else 0) else -1
                 val nc = if (na >= 0 && nb >= 0) (na + nb + 1) shr 1 else if (na >= 0) na else if (nb >= 0) nb else 0
@@ -186,9 +186,9 @@ object IdrSplice {
         }
     }
 
-    /** Предсказания intra 16x16 и chroma 8x8 (H.264 8.3.3, 8.3.4) по соседям из той же картинки. */
+    /** Predictions intra 16x16 and chroma 8x8 (H.264 8.3.3, 8.3.4) in neighbors from the same picture. */
     private object Intra {
-        /** Режим I16x16 (0 V, 1 H, 2 DC, 3 Plane), который даёт блок точно, или -1. */
+        /** I16x16 mode (0 V, 1 H, 2 DC, 3 Plane), which gives the unit exactly, or -1. */
         fun luma16(p: Picture, mx: Int, my: Int): Int {
             val s = p.width
             val x0 = mx * 16
@@ -202,7 +202,7 @@ object IdrSplice {
             return -1
         }
 
-        /** Режим chroma (0 DC, 1 H, 2 V, 3 Plane), который даёт оба блока Cb и Cr точно, или -1. */
+        /** chroma mode (0 DC, 1 H, 2 V, 3 Plane) which gives both Cb and Cr blocks exactly, or -1. */
         fun chroma(p: Picture, mx: Int, my: Int): Int {
             val s = p.width / 2
             val x0 = mx * 8
@@ -248,7 +248,7 @@ object IdrSplice {
             }
         }
 
-        /** Plane: n = 16 (luma) или 8 (chroma 4:2:0). При i = half - 1 разность берёт угловой сосед (x0 - 1, y0 - 1). */
+        /** Plane: n = 16 (luma) or 8 (chroma 4:2:0). At i = half - 1 The difference is taken by the corner neighbor (x0 - 1, y0 - 1). */
         private fun plane(pl: ByteArray, s: Int, x0: Int, y0: Int, n: Int): Boolean {
             val half = n / 2
             var hh = 0
@@ -301,7 +301,7 @@ object IdrSplice {
         }
     }
 
-    /** Запись битов в растущий буфер; PCM-байты на выровненной позиции копируются целиком. */
+    /** Writing bits to a growing buffer; PCM-bytes on the aligned position are copied whole. */
     internal class BitOut(cap: Int) {
         private var buf = ByteArray(cap)
         private var len = 0
@@ -353,33 +353,33 @@ object IdrSplice {
 }
 
 /**
- * Склейка потока AA со своими IDR (см. [IdrSplice]). Каждый кадр AA проходит через [process]: SPS/PPS запоминаются,
- * у P-кадров после нашего IDR сдвигаются frame_num и POC, IDR от AA сдвиг снимает. Свой IDR заменяет в потоке
- * ГУ последнюю картинку AA ([build] -> отправка -> [commit]); после него может идти только следующий кадр AA.
+ * AA flow stick with its IDR (see [IdrSplice]). Each frame AA passes through [process]: SPS/PPS is remembered,
+ * P-frame after our IDR shifts frame_num and POC, IDR from AA shift removes. Its IDR replaces in the stream
+ * head unit latest picture AA ([build] -> sending -> [commit]); only the next frame AA. can go after it
  */
 class IdrSplicer {
     private val spsMap = HashMap<Int, IdrSplice.Sps>()
     private val ppsMap = HashMap<Int, IdrSplice.Pps>()
 
-    /** Номер последней картинки AA (по первому слайсу); 0 - картинок ещё не было. */
+    /** The number of the last picture AA (according to the first slide); 0 - pictures have not yet been. */
     var seq = 0L
         private set
     private var lastPps: IdrSplice.Pps? = null
     private var lastRef = false
     private var lastFn = 0
     private var lastPoc = 0
-    private var fnOff = -1                         // -1: сдвига нет (после IDR от AA)
+    private var fnOff = -1                         // -1: no shift (after IDR from AA)
     private var pocOff = 0
     private var idrPicId = 0
     var spliced = 0L
         private set
 
-    /** SPS/PPS из CODEC_CONFIG или из кадра. */
+    /** SPS/PPS from CODEC_CONFIG or from frame. */
     fun onConfig(au: ByteArray) {
         for (nal in nals(au)) remember(nal)
     }
 
-    /** Кадр AA (Annex-B, 4-байтные старт-коды): учесть его и вернуть с переписанными под наш IDR полями. */
+    /** frame AA (Annex-B, 4-byte start codes): take it into account and return it with the fields rewritten under our IDR. */
     fun process(au: ByteArray): ByteArray {
         var changed = false
         val out = ArrayList<ByteArray>()
@@ -418,7 +418,7 @@ class IdrSplicer {
         return join(out)
     }
 
-    /** Почему последнюю картинку AA сейчас нельзя заменить своим IDR; null - можно. */
+    /** Why the latest image of AA can not be replaced with your IDR; null - you can. */
     fun blocker(): String? {
         val pps = lastPps ?: return "кадров AA ещё не было"
         val sps = spsMap[pps.spsId] ?: return "нет SPS"
@@ -426,40 +426,40 @@ class IdrSplicer {
         return IdrSplice.unsupported(sps, pps)
     }
 
-    /** Кодированный размер последней картинки (по её SPS) или null. */
+    /** Encoded size of the last image (according to its SPS) or null. */
     fun codedSize(): Pair<Int, Int>? {
         val sps = lastPps?.let { spsMap[it.spsId] } ?: return null
         return sps.codedW to sps.codedH
     }
 
-    /** Снимок для сборки своего IDR на другой нити: параметры потока у картинки seq. */
+    /** Picture to build your IDR on another thread: flow parameters of the picture seq. */
     class Job internal constructor(
         val seq: Long, internal val sps: IdrSplice.Sps, internal val pps: IdrSplice.Pps,
         internal val idrPicId: Int, internal val fn: Int, internal val poc: Int,
     )
 
-    /** Снимок для последней картинки AA; null - вставка сейчас невозможна ([blocker]). */
+    /** Picture for the latest image AA; null - insertion is currently impossible ([blocker]). */
     fun prepare(): Job? {
         if (blocker() != null) return null
         val pps = lastPps!!
         return Job(seq, spsMap[pps.spsId]!!, pps, idrPicId and 0xFFFF, lastFn, lastPoc)
     }
 
-    /** IDR без потерь с картинкой pic (декодированная последняя картинка AA), Annex-B. Только при blocker() == null. */
+    /** IDR no loss with picture pic (decoded last picture AA), Annex-B. Only with blocker() == null. */
     fun build(pic: IdrSplice.Picture): IdrSplice.Result {
         val job = prepare()!!
         val r = IdrSplice.buildIdr(pic, job.sps, job.pps, job.idrPicId)
         return IdrSplice.Result(START + r.nal, r.i16, r.pcm)
     }
 
-    /** Наш IDR ушёл на ГУ вместо последней картинки: следующие кадры AA считаются от него. */
+    /** Our IDR went to the head unit instead of the last picture: the following frame AA are considered from it. */
     fun commit() {
         commit(prepare()!!)
     }
 
     /**
-     * Наш IDR по снимку job ушёл на ГУ. Картинка job должна быть последней от AA (между ней и IDR кадров не было).
-     * job.fn/poc - исходные поля AA, поэтому повторный IDR той же картинки (статичный экран) даёт тот же сдвиг.
+     * Our IDR by image job went to head unit. The picture job should be the last from AA (there was no IDR between it and frame).
+     * job.fn/poc is the original field of AA, so repeating IDR of the same image (static screen) gives the same shift.
      */
     fun commit(job: Job) {
         check(job.seq == seq) { "свой IDR #${job.seq} устарел: последняя картинка #$seq" }
@@ -502,7 +502,7 @@ class IdrSplicer {
                 8 -> IdrSplice.parsePps(nal).let { ppsMap[it.id] = it }
             }
         } catch (e: RuntimeException) {
-            // битый SPS/PPS: слайсы с ним не разберутся, кадры уйдут как есть
+            // bit SPS/PPS: slices will not deal with it, frame will go as is
         }
     }
 
@@ -518,7 +518,7 @@ class IdrSplicer {
     companion object {
         private val START = byteArrayOf(0, 0, 0, 1)
 
-        /** NAL-ы access unit без старт-кодов (старт-коды 3 или 4 байта). */
+        /** NAL-s access unit without start codes (3 or 4 bytes start codes). */
         fun nals(au: ByteArray): List<ByteArray> {
             val starts = ArrayList<Int>()
             val bodies = ArrayList<Int>()
@@ -550,34 +550,34 @@ class IdrSplicer {
     }
 }
 
-/** Куда декодер опорных картинок отдаёт результат (ядро моста). Вызовы идут с нити декодера. */
+/** Where decoder reference pictures give the result (bridge core). Calls go with thread decoder. */
 interface RefPictureSink {
-    /** Нужна ли картинка seq: копия кадра (1,4 МБ на 720p) делается, только если она ещё последняя. */
+    /** Do you need a seq: copy of the frame (1,4 MB on 720p) is done only if it is still the last. */
     fun wantsRefPicture(seq: Long): Boolean
 
-    /** Картинка seq кодированного размера; объект переиспользуется, после возврата его содержимое меняется. */
+    /** seq image coded size; the object is re-used, after returning its content changes. */
     fun onRefPicture(seq: Long, pic: IdrSplice.Picture)
 
-    /** Картинки не будет до конца AA-сессии (вывод декодера не покрывает кодированный кадр); зовётся один раз. */
+    /** Pictures will not be available until the end of the AA-session (decoder output does not cover coded frame); called once. */
     fun onRefUnavailable(why: String)
 }
 
-/** Декодер потока AA для своего IDR в passthrough ([IdrSplice]); MediaCodec-реализация - RefDecoder. */
+/** decoder stream AA for its IDR in passthrough ([IdrSplice]); MediaCodec- implementation - RefDecoder. */
 interface RefPictureDecoder {
     /** CODEC_CONFIG AA (SPS+PPS). */
     fun feedConfig(annexB: ByteArray)
 
-    /** Кадр AA с номером картинки seq ([IdrSplicer.seq]); не блокирует. */
+    /** frame AA with picture number seq ([IdrSplicer.seq]); does not block. */
     fun feed(annexB: ByteArray, seq: Long)
 
     fun stop()
 }
 
 /**
- * Сборка своего IDR по снимку [IdrSplicer.Job] на нити сборки. Если IDR без потерь (I_PCM / I16x16 без остатка) не больше
- * [target] - он: картинка на ГУ бит-в-бит. Иначе сжатый ([IdrIntra]) на [slices] слайсах: QP от прошлого кадра,
- * не влез - QP выше (до 3 попыток), сильно меньше цели - в следующий раз QP ниже. В статичных местах ГУ показывает
- * картинку этого IDR до следующего IDR, поэтому QP держится низким, насколько позволяет размер.
+ * Build your IDR by image [IdrSplicer.Job] on thread build. If IDR lossless (I_PCM / I16x16 without remainder) no more
+ * [target] - he: picture on head unit bit-in-bit. Otherwise compressed ([IdrIntra]the ) River [slices] Slysah: QP from the past frame,
+ * not included - QP above (up to 3 attempts), much less target - next time QP below. In static locations head unit shows
+ * picture of this IDR until the next IDR, so QP is kept low as far as size allows.
  */
 class IdrBuilder(
     private val pool: java.util.concurrent.ExecutorService?,
@@ -604,7 +604,7 @@ class IdrBuilder(
             val c = IdrIntra.encode(pic, sps, job.pps, job.idrPicId, q, slices, pool)
             nal = IdrSplicer.join(c.slices)
             if (nal.size <= target || ++attempt >= 3 || q >= MAX_QP) break
-            // размер падает примерно вдвое на +6 QP
+            // size drops by about half on +6 QP
             val step = Math.ceil(6 * Math.log(nal.size.toDouble() / target) / Math.log(2.0)).toInt().coerceIn(2, 12)
             q = (q + step).coerceAtMost(MAX_QP)
         }
@@ -613,7 +613,7 @@ class IdrBuilder(
     }
 
     companion object {
-        const val TARGET_BYTES = 300_000        // с запасом до буфера ГУ (SPLICE_MAX_BYTES в мосте)
+        const val TARGET_BYTES = 300_000        // with stock to buffer head unit (SPLICE_MAX_BYTES in bridge)
         const val START_QP = 22
         const val MIN_QP = 18
         const val MAX_QP = 40

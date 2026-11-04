@@ -1,32 +1,32 @@
-# 0016. Диагностика только по логу приложения; формат лога — контракт
+# 0016. Diagnose from application logs; log format is a contract
 
-- Статус: принято
-- Дата: 2026-10-22 (PR #99, #102), начало 2026-10-14 (PR #7)
-- Источники: PR #7, #99, #102, #65 (внешний, закрыт), `tools/logdiag.py`, `tools/logdiag_rules.json`, `tools/logdigest.py`, `diag/LogDiag.kt`, `android/app/build.gradle.kts:77-96`
+- Status: accepted
+- Date: 2026-10-22 (PR #99, #102), started 2026-10-14 (PR #7)
+- Sources: PR #7, #99, #102, #65 (external, closed), `tools/logdiag.py`, `tools/logdiag_rules.json`, `tools/logdigest.py`, `diag/LogDiag.kt`, `android/app/build.gradle.kts:77-96`
 
-## Контекст
+## Context
 
-Обращений по подключению сотни, пользователи не могут снять `adb logcat`. Единственный источник — лог, который пишет
-само приложение и который пользователь присылает архивом.
+There are hundreds of connection support requests, and users cannot capture `adb logcat`. The practical source
+is the log written by the app and exported by the user as an archive.
 
-## Решение
+## Decision
 
-- `tools/logdiag.py` по правилам из `tools/logdiag_rules.json` выдаёт 1–3 причины с доказательством, советом и
-  уточняющим вопросом; `logdigest.py` даёт сводку поездки.
-- Kotlin-порт `diag/LogDiag.kt` читает тот же файл правил; в сборку он копируется в `assets/logdiag_rules.json`
-  (`build.gradle.kts:77-96`), в git дубля нет. Диагностика работает офлайн, лог не уходит с телефона (PR #102).
-- Сверка Python и Kotlin на 340 логах даёт одинаковый top-3; правило `fixed_in` сверяет версию приложения.
-- Формат строк лога — контракт: правила держатся на маркерах. Строки, на которые опираются правила, не переименовывать
-  и не сворачивать без правки `logdiag_rules.json` и тестов.
+- `tools/logdiag.py` applies `tools/logdiag_rules.json` and returns one to three causes, evidence, advice, and
+  a follow-up question. `logdigest.py` summarizes the trip.
+- Kotlin's `diag/LogDiag.kt` reads the same rules. The build copies them to `assets/logdiag_rules.json`
+  (`build.gradle.kts:77-96`); no duplicate is tracked. Analysis runs offline and logs stay on the phone (PR #102).
+- Python and Kotlin produced identical top-three results across 340 logs. `fixed_in` checks the app version.
+- Log lines are a contract: rules depend on their markers. Do not rename or collapse those lines without updating
+  `logdiag_rules.json` and the tests.
 
-## Альтернативы
+## Alternatives
 
-- Просить `adb logcat` у пользователей — не работает на практике, отвергнуто.
-- `LogThrottle` из внешнего PR #65: не берём, пока `logdigest.py`/`logdiag.py` считают строки медиа поштучно —
-  схлопывание строк ломает подсчёт.
+- Asking users for `adb logcat`: rejected because it does not work in practice.
+- `LogThrottle` from external PR #65: do not adopt it while the analyzers count individual media lines;
+  collapsing lines changes those counts.
 
-## Последствия
+## Consequences
 
-- Любая правка текста логов (особенно строк сессии, EIO, PAUSE, проб) должна пройти `tools/test_logdiag.py` и сверку.
-- Строки пробы сервера ГУ не должны совпадать с маркерами LogDiag (учтено в коммите 7e8e44c, 0003).
-- Пересмотреть, если `logdigest.py`/`logdiag.py` перестанут считать строки медиа поштучно: тогда править оба разборщика сразу.
+- Changes to log text, especially session, EIO, PAUSE, and probe lines, must pass `tools/test_logdiag.py` and parity checks.
+- Head unit server probe messages must not match LogDiag session markers (addressed in commit 7e8e44c; 0003).
+- Reconsider line collapsing only if both analyzers stop counting media lines individually; update both together.

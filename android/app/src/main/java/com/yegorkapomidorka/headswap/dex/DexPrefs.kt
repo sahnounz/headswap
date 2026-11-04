@@ -27,7 +27,7 @@ class DexPrefs(context: Context) {
             if (it == 0) 0 else it.coerceIn(DesktopGeometryPolicy.MIN_DENSITY, DesktopGeometryPolicy.MAX_DENSITY)
         }
         set(value) { if (value != 0) DesktopGeometryPolicy.requireDensity(value); prefs.edit().putInt("desktop_density", value).apply() }
-    /** Сторонний лаунчер «пакет/класс» в дочернем окне над нашей панелью навигации (LauncherActivity всегда на ГУ); null - Headswap. */
+    /** Third-party launcher "package/class" in the child window above our navigation bar (LauncherActivity always on head unit); null - Headswap. */
     var desktopComponent: String?
         get() = prefs.getString("desktop_component", null)?.takeIf(DesktopPick::isComponent)
         set(value) { prefs.edit().putString("desktop_component", value?.takeIf(DesktopPick::isComponent)).apply() }
@@ -42,6 +42,6 @@ object DexState {
     @Volatile var error: String? = null
     @Volatile var running: Boolean = false
     @Volatile var displayId: Int = -1
-    /** Сервис моста сейчас работает в режиме Headswap Desktop: уведомление показывает статус рабочего стола, а не AA. */
+    /** The bridge service is now running in Headswap Desktop: notification mode showing desktop status, not AA. */
     @Volatile var desktopSession: Boolean = false
 }

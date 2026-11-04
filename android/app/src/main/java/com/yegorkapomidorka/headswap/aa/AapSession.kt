@@ -13,30 +13,30 @@ import java.util.concurrent.atomic.AtomicLong
 import com.yegorkapomidorka.headswap.aa.AapFraming as F
 import com.yegorkapomidorka.headswap.aa.AapMessages as M
 
-/** Куда падает видео от AA: чистый Annex-B без заголовков AAP. */
+/** Where does the video from AA: fall clean Annex-B without header AAP. */
 interface AaVideoSink {
     /** CODEC_CONFIG: SPS+PPS. */
     fun onCodecConfig(annexB: ByteArray)
 
-    /** DATA: один кадр (8-байтный timestamp AAP снят), ptsUs из этого timestamp. */
+    /** DATA: one frame (8-byte timestamp AAP removed), ptsUs of this timestamp. */
     fun onFrame(annexB: ByteArray, ptsUs: Long)
 
-    /** Телефон просит VIDEO_FOCUS NATIVE (плитка «Выйти» в AA). Ответ AA отправляет вызывающий позже (AaPeer.sendVideoFocusNative). */
+    /** The phone asks for VIDEO_FOCUS NATIVE (the "Get Out" plate in AA). The answer to AA sends caller later (AaPeer.sendVideoFocusNative). */
     fun onAaNativeFocusRequest() {}
 }
 
 class AapOptions(
     val host: String = "127.0.0.1",
     val port: Int = 5277,
-    /** Сторож тишины только до первого VIDEO MEDIA_START; после него сессия молчать может (статичный экран, нет Ping). */
+    /** The guard of silence is only until the first VIDEO MEDIA_START; after it, the session can be silent (static screen, no Ping). */
     val preVideoTimeoutMs: Long = 30_000,
-    val maxUnackedVideo: Int = 12,         // AapControl.kt maxUnackedFor(): 12 для сокета
+    val maxUnackedVideo: Int = 12,         // AapControl.kt maxUnackedFor(): 12 for socket
     val maxUnackedAudio: Int = 30,
     val sd: AapSdOptions = AapSdOptions(),
-    /** Если задан, SDR строится в момент запроса телефона (мост: звук зависит от FEATURE_CONFIG ГУ). */
+    /** If set, SDR is built at the time of the phone's request (bridge: sound depends on FEATURE_CONFIG head unit). */
     val sdProvider: (() -> AapSdOptions)? = null,
     val tls12Only: Boolean = false,
-    /** false = на VIDEO MEDIA_SETUP отвечаем фокусом NATIVE: видео не идёт (проба сервера AaSessionProbe). */
+    /** false = on VIDEO MEDIA_SETUP we answer with the focus of NATIVE: video is not going (AaSessionProbe server test). */
     val videoFocus: Boolean = true,
 )
 
@@ -50,38 +50,38 @@ class AapStats {
 }
 
 /**
- * Одна сессия Android Auto head unit: TCP-клиент к серверу ГУ в AA (127.0.0.1:5277). Порт
- * pc-headunit/aap/session.py: Version -> TLS в plain-кадрах -> AuthComplete -> шифрованный обмен ->
- * ByeBye / shutdownOutput / дочитать до EOF / close (сервер 5277 одноразовый, грязный обрыв его глушит).
+ * Single session Android Auto head unit: TCP-client to server head unit in AA (127.0.0.1:5277). Port
+ * pc-headunit/aap/session.py: Version -> TLS in plain-frame -> AuthComplete -> encrypted exchange ->
+ * ByeBye/shutdownOutput/read to EOF/close (5277 server is disposable, dirty break it jams).
  *
- * Своя нить; sendTouch/requestStop можно звать из любой. log(line, ui): ui=false для потока видео-кадров.
+ * Its thread; sendTouch/requestStop can be called from any. log(line, ui): ui=false for video stream-frame.
  */
-/** Что мост требует от AA-сессии. */
-/** Палец AA-тача: pointer_id и координаты кадра AA. */
+/** What the bridge requires from the AA-session. */
+/** Finger AA-touch: pointer_id and coordinates frame AA. */
 data class TouchPoint(val id: Int, val x: Int, val y: Int)
 
 interface AaPeer {
-    /** Тач со всеми активными пальцами; action_index - позиция в [points] пальца, вызвавшего POINTER_DOWN/UP. */
+    /** touch with all active fingers; action_index - position in [points] finger causing POINTER_DOWN/UP. */
     fun sendTouch(action: Int, actionIndex: Int, points: List<TouchPoint>)
 
-    /** Один палец с id 0. */
+    /** One finger with id 0. */
     fun sendTouch(action: Int, x: Int, y: Int) = sendTouch(action, 0, listOf(TouchPoint(0, x, y)))
 
     fun requestKeyFrame()
 
-    /** Нажатие кнопки (Android KeyEvent keycode): down, затем up. По умолчанию игнорируется. */
+    /** Pressing the button (Android KeyEvent keycode): down, then up. is ignored by default. */
     fun sendKey(keycode: Int) {}
 
-    /** Поворот шайбы на delta щелчков (> 0 по часовой). По умолчанию игнорируется. */
+    /** Rotate the washer by delta clicks (> 0 clockwise). Default ignored. */
     fun sendRotary(delta: Int) {}
 
-    /** PCM16 mono 16 кГц микрофона -> телефону, пока открыта микрофонная сессия AA. По умолчанию игнорируется. */
+    /** PCM16 mono 16 kHz microphone -> phone while open microphone session AA. Default ignored. */
     fun sendMicPcm(pcm: ByteArray, capturedAtUs: Long) {}
 
-    /** VideoFocusNotification NATIVE (unsolicited = false): ГУ ушёл с проекции. По умолчанию игнорируется. */
+    /** VideoFocusNotification NATIVE (unsolicited = false): head unit is gone from the projection. Default ignored. */
     fun sendVideoFocusNative() {}
 
-    /** Ночной режим AA (сенсор NIGHT): запоминается и уходит, как только телефон запустил сенсор. По умолчанию игнорируется. */
+    /** Night mode AA (NIGHT sensor): Remembered and left as soon as the phone started the sensor. By default ignored. */
     fun sendNightMode(night: Boolean) {}
 }
 
@@ -104,11 +104,11 @@ class AapSession(
     @Volatile var established = false
         private set
 
-    /** TCP к серверу ГУ установлен (false в конце сессии = connection refused / недоступен). */
+    /** TCP to server head unit installed (false at the end of session = connection refused / not available). */
     @Volatile var connected = false
         private set
 
-    /** Телефон открыл видеоканал (VIDEO MEDIA_START). */
+    /** The phone opened a video channel (VIDEO MEDIA_START). */
     @Volatile var videoStarted = false
         private set
     private var establishedAtNs = 0L
@@ -151,7 +151,7 @@ class AapSession(
         thread?.join(timeoutMs)
     }
 
-    /** Корректное завершение: нить сама отправит ByeBye и закроет сокет. */
+    /** Correct completion: thread itself will send ByeBye and close socket. */
     fun requestStop(reason: String) {
         userStop = true
         stop(reason)
@@ -161,14 +161,14 @@ class AapSession(
         if (stopReason == null) stopReason = reason
     }
 
-    /** action 0 DOWN, 1 UP, 2 MOVE, 5 POINTER_DOWN, 6 POINTER_UP; координаты в пикселях кадра AA. Игнорируется до готовности сессии. */
+    /** action 0 DOWN, 1 UP, 2 MOVE, 5 POINTER_DOWN, 6 POINTER_UP; coordinates in pixels frame AA. Ignored until session ready. */
     override fun sendTouch(action: Int, actionIndex: Int, points: List<TouchPoint>) {
         if (!established || stopReason != null) {
             log("AA touch($action,$actionIndex,$points) пропущен: сессия ${if (established) "завершается" else "ещё не готова"}", true)
             return
         }
         try {
-            // uint64 нс, строго > 0 и монотонно; System.nanoTime() сам по себе может быть отрицательным/произвольным
+            // uint64 ns, strictly > 0 and monotonous; System.nanoTime() itself can be negative/arbitrary
             val ts = System.nanoTime() - clockBaseNs + 1_000_000_000L
             outQueue.offer(MsgJob(M.touchEvent(action, actionIndex, points, ts), false, "touch ts=${ts}ns"))
         } catch (e: Throwable) {
@@ -176,7 +176,7 @@ class AapSession(
         }
     }
 
-    /** Нажатие кнопки: down, затем up (Android KeyEvent keycode). Игнорируется до готовности сессии. */
+    /** Pressing the button: down, then up (Android KeyEvent keycode). Ignored until session ready. */
     override fun sendKey(keycode: Int) {
         if (!established || stopReason != null) {
             log("AA key($keycode) пропущен: сессия ${if (established) "завершается" else "ещё не готова"}", true)
@@ -191,7 +191,7 @@ class AapSession(
         }
     }
 
-    /** Поворот шайбы: relative_event KEYCODE_ROTARY_CONTROLLER. Игнорируется до готовности сессии. */
+    /** Puck rotation: relative_event KEYCODE_ROTARY_CONTROLLER. Ignored until session ready. */
     override fun sendRotary(delta: Int) {
         if (!established || stopReason != null) {
             log("AA rotary($delta) пропущен: сессия ${if (established) "завершается" else "ещё не готова"}", true)
@@ -206,7 +206,7 @@ class AapSession(
     }
 
     /**
-     * Просит у телефона ключевой кадр циклом VideoFocus NATIVE -> (пауза) -> PROJECTED unsolicited
+     * Asks for phone key frame cycle VideoFocus NATIVE -> (pause) -> PROJECTED unsolicited
      * (headunit-revived AapTransport.sendKeyframeCycleRelease + focusCycleGainRunnable).
      */
     override fun requestKeyFrame() {
@@ -229,7 +229,7 @@ class AapSession(
         t.start()
     }
 
-    /** VideoFocus NATIVE одним сообщением (без возврата в PROJECTED): ГУ покинул CarLife после «Выйти». */
+    /** VideoFocus NATIVE with one message (no return in PROJECTED): head unit left CarLife after "Exit". */
     override fun sendVideoFocusNative() {
         if (!established || stopReason != null || !writerActive) {
             log("AA VideoFocus NATIVE пропущен: сессия ${if (!established) "не готова" else "завершается"}", true)
@@ -257,13 +257,13 @@ class AapSession(
         outQueue.offer(MsgJob(M.nightModeEvent(night), false, "night=$night"))
     }
 
-    /** PCM микрофона: нарезается на кадры по 128 мс и уходит в окно maxUnacked; без открытой микрофонной сессии игнорируется. */
+    /** PCM microphone: cuts into frame by 128 ms and exits the maxUnacked window; without an open microphone session, it is ignored. */
     override fun sendMicPcm(pcm: ByteArray, capturedAtUs: Long) {
         if (stopReason != null || !writerActive) return
         if (uplink.feed(pcm, capturedAtUs) == AaMicUplink.Feed.OVERFLOW) micAbort("телефон не подтверждает кадры микрофона (очередь переполнена)")
     }
 
-    /** Закрыть микрофонную сессию по инициативе HU: телефону уходит ошибка, источнику звука - close. */
+    /** Close microphone session on the initiative of HU: phone leaves an error, the source of sound - close. */
     private fun micAbort(why: String) {
         val sum = uplink.close() ?: return
         log("AA MIC прервана: $why; $sum", true)
@@ -277,10 +277,10 @@ class AapSession(
         val ms = micSink
         if (open) {
             if (ms == null) {
-                send(M.micResponse(success = false))                    // захвата нет: открытие отклоняем
+                send(M.micResponse(success = false))                    // No capture: opening rejected
                 return
             }
-            if (uplink.isOpen) {                                         // повторный Open: та же сессия
+            if (uplink.isOpen) {                                         // repeat Open: same session
                 send(M.micResponse(success = true, sessionId = micSid))
                 return
             }
@@ -300,14 +300,14 @@ class AapSession(
             if (!accepted) {
                 uplink.close()
                 log("AA MIC open отклонён (нет источника звука)", true)
-                send(M.micResponse(success = false))                    // как раньше: отказ с session_id 0
+                send(M.micResponse(success = false))                    // as before: failure with session_id 0
                 return
             }
             micSeq = sid
             micSid = sid
             log("AA MIC open принят: session=$sid, окно maxUnacked=$window, кадры по ${AaMicFormat.CHUNK_BYTES} Б", true)
             send(M.micResponse(success = true, sessionId = sid))
-            uplink.activate()                                            // DATA только после ответа в очереди
+            uplink.activate()                                            // DATA only after reply in line
         } else {
             val sid = micSid
             val sum = uplink.close()
@@ -338,7 +338,7 @@ class AapSession(
                     Socket().also { it.connect(InetSocketAddress(opts.host, opts.port), 5000) }
                 }).invoke()
             } catch (e: IOException) {
-                // сервер ГУ не слушает: тихий выход без ByeBye и итогов, мост сам повторит
+                // server head unit does not listen: quiet output without ByeBye and the results, the bridge will repeat itself
                 log("AA сервер ${opts.host}:${opts.port} недоступен: ${e.javaClass.simpleName}: ${e.message}", false)
                 stopReason = "$UNAVAILABLE_REASON${e.javaClass.simpleName}"
                 return
@@ -395,7 +395,7 @@ class AapSession(
         }
     }
 
-    // --- сокет / кадры ---
+    // --- socket / frame ---
     private fun sendRaw(data: ByteArray) {
         stats.txFrames++
         sock.getOutputStream().write(data)
@@ -429,10 +429,10 @@ class AapSession(
         return frames.removeFirst()
     }
 
-    // --- исходящая очередь ---
-    // После handshake ВСЕ исходящие кадры (сообщения, touch, ответы TLS-слоя) идут через одну очередь и
-    // одну нить: wrap и write строго атомарно, иначе запись TLS с номером N может уйти после N+1
-    // (или не уйти вовсе), и телефон рвёт TLS. До handshake пишет сама нить сессии напрямую.
+    // --- outgoing queue ---
+    // After handshake ALL outgoing frame (messages, touch, answers of TLS-layer) go through one queue and
+    // one thread: wrap and write is strictly atomic, otherwise the recording of TLS with the number N can go after N+1
+    // (or not leave at all), and the phone rips TLS. to handshake writes the thread session itself directly.
     private sealed interface Job
     private class MsgJob(val out: AapOut, val media: Boolean, val note: String) : Job
     private object TlsFlushJob : Job
@@ -471,7 +471,7 @@ class AapSession(
                     }
                 }
             } catch (e: Throwable) {
-                // wrap мог пройти, а запись нет: поток TLS рассинхронизирован, продолжать нельзя
+                // wrap could pass, but the record is not: stream TLS desynchronized, you can not continue
                 fatal = true
                 peerClosed = true
                 if (stopReason == null) stopReason = "сбой исходящей записи: ${e.javaClass.simpleName}: ${e.message}"
@@ -484,10 +484,10 @@ class AapSession(
         }
     }
 
-    /** Ставит сообщение в исходящую очередь (никогда не пишет в сокет из вызывающей нити). */
+    /** Puts the message in the outgoing queue (never writes to socket from caller thread). */
     private fun send(out: AapOut, media: Boolean = false, note: String = "") {
         if (!writerActive) {
-            if (fatal) return                       // writer умер: сессия уже закрывается
+            if (fatal) return                       // writer has died: session is already closed
             throw IllegalStateException("writer не запущен")
         }
         outQueue.offer(MsgJob(out, media, note))
@@ -497,7 +497,7 @@ class AapSession(
         if (tls.wantsWrap()) outQueue.offer(TlsFlushJob)
     }
 
-    /** Дождаться, пока writer отправит всё накопленное (или сдохнет). */
+    /** Wait until writer sends everything accumulated (or dies). */
     private fun flushWriter(timeoutMs: Long) {
         if (!writerActive) return
         val latch = CountDownLatch(1)
@@ -583,7 +583,7 @@ class AapSession(
         sendRaw(F.buildPlain(F.CHANNEL_CONTROL, M.AUTH_COMPLETE, M.AUTH_COMPLETE_DATA))
     }
 
-    // --- основной цикл ---
+    // --- main cycle ---
     private fun serve() {
         while (stopReason == null) {
             readMore(POLL_MS)
@@ -625,8 +625,8 @@ class AapSession(
         }
         val type = u16(fr.body, 0)
         if (type == M.ENCAPSULATED_SSL) {
-            // Пост-handshake записи TLS (тикеты TLS 1.3) могут прийти plain-кадрами; они обязаны пройти
-            // через TLS-слой: он считает записи, пропуск сломал бы расшифровку всех следующих.
+            // Post-handshake records TLS (tickets TLS 1.3) can come plain-frame; they are required to pass
+            // through TLS-layer: he counts the records, the pass would break the decryption of all the following.
             tls.decrypt(fr.body.copyOfRange(2, fr.body.size), drain = false)
             log("AA RX CONTROL(0) ENCAPSULATED_SSL len=${fr.body.size - 2} post-handshake TLS (plain frame)", false)
             flushTls()
@@ -641,7 +641,7 @@ class AapSession(
             onMediaData(chan, type, payload)
             return
         }
-        // ack микрофона идёт 8 раз в секунду, статус плеера и дистанция навигации - раз в секунду: в файл, не в UI
+        // ack microphone goes 8 once per second, player status and navigation distance - once per second: in a file, not in UI
         logMsg("RX", chan, type, payload, media = (chan == M.CH_MIC && type == M.MEDIA_ACK) || M.isPeriodicMeta(chan, type))
 
         if (type == M.CHANNEL_OPEN_REQUEST) {
@@ -654,7 +654,7 @@ class AapSession(
             chan == M.CH_SENSOR -> onSensor(type, payload)
             chan == M.CH_INPUT -> if (type == M.INPUT_BINDING_REQUEST) send(M.bindingResponse(chan))
             chan == M.CH_VIDEO || chan in M.AUDIO_CHANNELS || chan == M.CH_MIC -> onMediaControl(chan, type, payload)
-            // MEDIA_PLAYBACK / NAVIGATION: телефон только присылает статус, отвечать нечего; метаданные -> мост
+            // MEDIA_PLAYBACK/NAVIGATION: phone only sends status, no reply; metadata -> bridge
             chan == M.CH_MEDIA_PLAYBACK || chan == M.CH_NAVIGATION -> AaMeta.dispatch(chan, type, payload, metaSink)?.let {
                 log("AA META ${M.channelName(chan)} ${M.messageName(chan, type)}: $it", !M.isPeriodicMeta(chan, type))
             }
@@ -683,7 +683,7 @@ class AapSession(
                 exitOk = true
             }
             M.VOICE_SESSION_NOTIFICATION -> audioSink?.onVoiceSession((firstVarint(payload, 1) ?: 0L).toInt())
-            // CHANNEL_CLOSE_NOTIFICATION и прочее: только лог
+            // CHANNEL_CLOSE_NOTIFICATION and more: log only
         }
     }
 
@@ -692,7 +692,7 @@ class AapSession(
         val sensorType = firstVarint(payload, 1)?.toInt()
         send(M.sensorStartResponse())
         if (sensorType == 10) {                                            // NIGHT
-            nightSensorStarted = true                                      // до send: смена темы в этот момент уйдёт следом
+            nightSensorStarted = true                                      // up to send: change of theme at this point will follow
             send(M.nightModeEvent(nightMode))
             log("AA SENSOR NIGHT запущен, night=$nightMode", true)
         }
@@ -717,12 +717,12 @@ class AapSession(
                 if (mode == 1) send(M.videoFocusNotification(projected = opts.videoFocus, unsolicited = false))
                 else if (mode == 2) {
                     log("AA VIDEO_FOCUS_REQUEST NATIVE («Выйти»)", true)
-                    sink.onAaNativeFocusRequest()      // не отвечаем: NATIVE уйдёт, когда ГУ реально выйдет из CarLife
+                    sink.onAaNativeFocusRequest()      // Do not reply: NATIVE will be sent when the head unit actually exits CarLife.
                 }
             }
             type == M.MEDIA_MIC_REQUEST && chan == M.CH_MIC -> onMicRequest(payload)
             type == M.MEDIA_ACK && chan == M.CH_MIC -> onMicAck(payload)
-            // MEDIA_STOP, MEDIA_ACK остальных каналов, UPDATE_UI_CONFIG_*: только лог
+            // MEDIA_STOP, MEDIA_ACK other channels, UPDATE_UI_CONFIG_*: log only
         }
     }
 
@@ -760,15 +760,15 @@ class AapSession(
         }
 
         logMsg("RX", chan, type, body, media = true, note = note, text = "")
-        // Видео подтверждает и DATA, и CODEC_CONFIG (AapTransport.kt dispatchVideo), аудио только DATA.
+        // Video confirms both DATA and CODEC_CONFIG (AapTransport.kt dispatchVideo), audio only DATA.
         if (chan == M.CH_VIDEO || isData) send(M.mediaAck(chan, sessionIds[chan] ?: 0), media = true)
     }
 
-    // --- завершение ---
+    // --- ending ---
     /**
-     * ByeBye, ждём ответ, закрываем так, чтобы сервер увидел чистый конец: ByeByeRequest (если телефон
-     * не закончил сам), ждём ByeByeResponse или EOF до 2 с, shutdownOutput, дочитываем до EOF до 1.5 с
-     * (закрытие с непрочитанными данными шлёт RST), и только потом close.
+     * ByeBye, wait for the answer, close so that the server sees a clean end: ByeByeRequest (if phone
+     * not finished myself), wait ByeByeResponse or EOF to 2 with, shutdownOutput, add to read to EOF to 1.5 with
+     * (closing with unread data sends RST), and only then close.
      */
     private fun shutdown() {
         log("AA завершаю: ${stopReason ?: "конец"}", true)
@@ -784,7 +784,7 @@ class AapSession(
         } catch (e: Exception) {
             log("AA при отправке ByeBye: ${e.javaClass.simpleName}: ${e.message}", true)
         }
-        stopWriter()                                               // всё накопленное уходит до shutdownOutput
+        stopWriter()                                               // all accumulated goes to shutdownOutput
         try {
             try {
                 sock.shutdownOutput()
@@ -800,7 +800,7 @@ class AapSession(
         }
     }
 
-    /** Читаем (и отвечаем на bye телефона) до ByeByeResponse, EOF или таймаута. */
+    /** Read (and reply to bye phone) to ByeByeResponse, EOF or timeout. */
     private fun waitBye(timeoutMs: Long) {
         val deadline = System.nanoTime() + timeoutMs * 1_000_000
         try {
@@ -843,10 +843,10 @@ class AapSession(
     private fun u16(b: ByteArray, i: Int) = ((b[i].toInt() and 0xFF) shl 8) or (b[i + 1].toInt() and 0xFF)
 
     companion object {
-        /** Начало причины конца сессии, когда TCP к серверу ГУ не установился (дальше имя исключения; ConnectException = отказ). */
+        /** The beginning of the reason for the end of the session, when TCP server head unit is not installed (hereinafter the exception name; ConnectException = failure). */
         const val UNAVAILABLE_REASON = "сервер недоступен: "
 
-        /** Начало причины конца сессии, когда TCP принят, но VERSION_RESPONSE не пришёл. */
+        /** The beginning of the reason for the end of the session when TCP was accepted, but VERSION_RESPONSE did not come. */
         const val NO_VERSION_RESPONSE_REASON = "нет VERSION_RESPONSE"
 
         private const val VERSION_TIMEOUT_MS = 10_000L      // AapTransport.kt HANDSHAKE_TIMEOUT_MS

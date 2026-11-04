@@ -16,8 +16,8 @@ import com.yegorkapomidorka.headswap.MainActivity
 import com.yegorkapomidorka.headswap.R
 
 /**
- * Одноразовое окно «Прямой проброс видео» для тех, кто обновился до 3.0: прямой проброс и частота «Авто» теперь по умолчанию.
- * Новички увидят режим в онбординге и настройках, им окно не нужно. Когда показывать - см. [UpgradeNotice.onLaunch].
+ * A one-time “Direct passthrough Video” window for those who have upgraded to 3.0: direct passthrough and the “Auto” frequency is now default.
+ * Beginners will see the mode in onboarding and settings, they do not need a window. When to show - see [UpgradeNotice.onLaunch].
  */
 object Upgrade30Notice {
     fun show(act: MainActivity) {
@@ -32,7 +32,7 @@ object Upgrade30Notice {
         dialog.show()
     }
 
-    /** Поля вокруг панели: по бокам 16 dp, сверху и снизу 24 dp, чтобы на коротком экране панель не липла к краям. */
+    /** Fields around the panel: on the sides of the 16 dp, at the top and bottom of the 24 dp, so that on the short screen the panel does not stick to the edges. */
     private fun content(act: MainActivity, dialog: Dialog): View {
         val c: Context = act
         val panel = object : LinearLayout(c) {
@@ -70,7 +70,7 @@ object Upgrade30Notice {
         )
         body.addView(warnSection(c), lp(MATCH, WRAP))
 
-        // Прокручивается всё содержимое, кнопки остаются внизу панели, вне прокрутки.
+        // Scrolls all the content, the buttons remain at the bottom of the panel, out of scrolling.
         val scroll = ScrollView(c).apply {
             isVerticalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
@@ -98,7 +98,7 @@ object Upgrade30Notice {
         }
     }
 
-    /** Плашка «3.0» и заголовок. */
+    /** Cover «3.0» and header. */
     private fun titleRow(c: Context): View = c.hbox(12).apply {
         addView(
             FrameLayout(c).apply {
@@ -119,7 +119,7 @@ object Upgrade30Notice {
         )
     }
 
-    /** Блок с заголовком секции и пунктами в кружках с иконкой. */
+    /** Block with header section and items in circles with an icon. */
     private fun section(c: Context, head: Int, fg: Int, bg: Int, icon: Int, items: List<Int>, headColor: Int): View {
         val box = c.vbox(6)
         box.addView(heading(c, head, headColor), lp(MATCH, WRAP))
@@ -143,7 +143,7 @@ object Upgrade30Notice {
         addView(c.text(text, 14f).apply { lineHeight = c.dp(19) }, lp(0, WRAP, 1f))
     }
 
-    /** «Если что-то не так»: текст, путь в настройках и картинка переключателя режима. */
+    /** “If something is wrong”: text, path in settings and a picture of the mode switch. */
     private fun warnSection(c: Context): View {
         val box = c.vbox(6)
         box.addView(heading(c, R.string.u30_warn, R.color.warn), lp(MATCH, WRAP))
@@ -156,7 +156,7 @@ object Upgrade30Notice {
         return box
     }
 
-    /** Картинка: переключатель «Режим» из настроек (Segmented) с выбранным перекодированием. Только для вида, нажатий нет. */
+    /** Picture: Switch "Mode" from settings (Segmented) with selected transcoding. Only for view, no presses. */
     private fun modeSwitchPicture(c: Context): View = c.hbox().apply {
         background = c.shape(0, 22, c.clr(R.color.line), 1.5f)
         clipToOutline = true

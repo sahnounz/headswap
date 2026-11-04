@@ -1,32 +1,32 @@
-# 0012. Приложение обновляется само из GitHub Releases
+# 0012. The application updates itself from GitHub Releases
 
-- Статус: принято
-- Дата: 2026-10-14 (1.1.11)
-- Источники: PR #16, #49, #53, кейс h85, `update/UpdateLogic.kt`, `update/Updater.kt`, CLAUDE.md («Релиз…»)
+- Status: adopted
+- Date: 2026-10-14 (1.1.11)
+- Sources: PR #16, #49, #53, case h85, `update/UpdateLogic.kt`, `update/Updater.kt`, CLAUDE.md (Release...)
 
-## Контекст
+## Context
 
-Запрос h85: обновляться без ручного скачивания APK. Приложение распространяется APK-файлом (сайт и GitHub),
-Headswap обновляет себя сам.
+h85: request to update without manual download APK. Application is distributed by APK-file (site and GitHub),
+The Headswap updates itself.
 
-## Решение
+## Decision
 
-Раз в 6 часов (`CHECK_INTERVAL_MS`, `UpdateLogic.kt:14`) приложение запрашивает `releases/latest`: GitHub не отдаёт туда
-черновики и пре-релизы. При не-200 (лимит 60 запросов/ч на IP) запасной путь — тег из редиректа `/releases/latest`
-(`tagFromLocation`, `assetUrl`). Перед установкой проверяются: размер, SHA-256 из поля `digest` файла релиза, имя пакета и
-`versionCode`. Установка через `PackageInstaller` (`update/Updater.kt`), подпись проверяет система. Описание релиза
-показывается пользователю перед установкой. Тег `vX.Y.Z`, файл `headswap-X.Y.Z.apk` (имя как на сайте).
-Тестовые сборки на GitHub выкладываются только с `--prerelease`: `releases/latest` их не возвращает, поэтому приложение
-их не предложит.
+Once per 6 hours (`CHECK_INTERVAL_MS`, `UpdateLogic.kt:14`) the application requests `releases/latest`: GitHub does not give there
+drafts and pre-releases. When not-200 (limit 60 requests/h on IP) spare way - tag from redirect `/releases/latest`
+(`tagFromLocation`, `assetUrl`). Before installation check: size, SHA-256 from the field `digest` release file, package name and
+`versionCode`. Installation via `PackageInstaller` (`update/Updater.kt`), signature is checked by the system. Release description
+is shown to the user before installation. The `vX.Y.Z` tag, the `headswap-X.Y.Z.apk` file (the name as on the site).
+Test builds on GitHub are laid out only with `--prerelease`: `releases/latest` does not return them, so the application
+They will not offer.
 
-## Альтернативы
+## Alternatives
 
-- Google Play: не пропустит приложение, которое работает через режим разработчика Android Auto.
-- Тег из редиректа как основной путь: не использован; он остаётся запасным, в нём нет размера и SHA-256 (`size = -1`, `sha256 = null`).
+- Google Play: will not miss an application that works through the developer mode Android Auto.
+- The redirect tag as the main path: not used; it remains spare, there is no size and SHA-256 (`size = -1`, `sha256 = null`).
 
-## Последствия
+## Consequences
 
-- Пре-релиз нельзя сделать «последним»: тестовую сборку никогда не выкладывать без `--prerelease`.
-- Имя файла и тег жёстко заданы в `UpdateLogic.pickApk`/`assetUrl`; менять формат имени нельзя без правки приложения.
-- Перед созданием релиза проверять черновики (`gh release list`): если черновик есть, публиковать его (CLAUDE.md).
-- В legacy-APK (0013) проверка обновлений выключена.
+- Pre-release can’t be done “last”: test build never put out without `--prerelease`.
+- The filename and tag are hard-set in `UpdateLogic.pickApk`/`assetUrl`; you can't change the name format without editing the application.
+- Before creating a release, check the drafts (`gh release list`): if there is a draft, publish it (CLAUDE.md).
+- In legacy-APK (0013), the update check is disabled.

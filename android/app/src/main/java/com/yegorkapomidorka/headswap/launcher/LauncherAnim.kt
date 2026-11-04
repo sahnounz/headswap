@@ -27,21 +27,21 @@ import androidx.compose.ui.graphics.vector.toPath
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-/** Кривые анимаций нажатия из макета Teyes.dc.html. */
+/** Teyes.dc.html. animations click curves */
 object PressEasing {
-    /** Лого и шестерёнка: cubic-bezier(.45,0,.2,1). */
+    /** Logo and gear: cubic-bezier(.45,0,.2,1). */
     val SPIN = CubicBezierEasing(0.45f, 0f, 0.2f, 1f)
-    /** «Вид карточки»: cubic-bezier(.3,0,.2,1). */
+    /** "Card View": cubic-bezier(.3,0,.2,1). */
     val DROP = CubicBezierEasing(0.3f, 0f, 0.2f, 1f)
-    /** «Назад»: CSS ease-in-out. */
+    /** "Back": CSS ease-in-out. */
     val IN_OUT = CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
-    /** Стрелка навигации: cubic-bezier(.15,.85,.25,1). */
+    /** Navigation arrow: cubic-bezier(.15,.85,.25,1). */
     val NAV = CubicBezierEasing(0.15f, 0.85f, 0.25f, 1f)
 }
 
 /**
- * Прогресс анимации нажатия 0..1, линейный: кривую и ключевые кадры применяет иконка.
- * В покое 1 (конец анимации = исходный вид); каждый DOWN перезапускает с нуля.
+ * 0..1 animation progress, linear: curve and key frame uses icon.
+ * At rest 1 (end of animation = original view); each DOWN restarts from scratch.
  */
 class PressAnim(private val scope: CoroutineScope, private val ms: Int) {
     private val anim = Animatable(1f)
@@ -61,7 +61,7 @@ fun rememberPressAnim(ms: Int): PressAnim {
     return remember(ms) { PressAnim(scope, ms) }
 }
 
-/** Стрелка навигации: rot += 720 + 45 * (1..7), 1,6 с, cubic-bezier(.15,.85,.25,1); всегда не та сторона, где стояла. */
+/** Navigation arrow: rot + = 720 + 45 * (1.7), 1,6 s, cubic-bezier(.15,.85,.25,1); always not the side where it stood. */
 class NavSpin(private val scope: CoroutineScope) {
     private val anim = Animatable(0f)
     private var target = 0f
@@ -80,13 +80,13 @@ fun rememberNavSpin(): NavSpin {
 }
 
 internal object NavSpinLogic {
-    /** Следующий угол: два оборота плюс 1..7 шагов по 45 градусов. */
+    /** Next angle: two turns plus 1..7 steps along 45 degrees. */
     fun next(rot: Float, steps: Int): Float = rot + 720f + 45f * steps.coerceIn(1, 7)
 }
 
-/** Значение ключевых кадров «Назад»: шеврон улетает влево и гаснет к 40%, на 41% появляется справа и возвращается. */
+/** key frame "Back": The chevron flies to the left and goes out to 40%, on 41% appears to the right and returns. */
 internal object BackKeyframes {
-    /** Сдвиг по X в единицах viewBox 24 и прозрачность. */
+    /** X shift in viewBox 24 and transparency. */
     fun at(p: Float): Pair<Float, Float> = when {
         p >= 1f -> 0f to 1f
         p <= 0.4f -> PressEasing.IN_OUT.transform(p / 0.4f).let { -14f * it to 1f - it }
@@ -100,7 +100,7 @@ private fun parse(d: String): Path = PathParser().parsePathString(d).toPath()
 private fun DrawScope.strokePath(p: Path, color: Color, width: Float) =
     drawPath(p, color, style = Stroke(width = width, cap = StrokeCap.Round, join = StrokeJoin.Round))
 
-/** Шеврон «Назад» рейки с анимацией по [progress]. */
+/** Chevron "Back" rails with animation by [progress]. */
 @Composable
 fun BackIcon(sizePx: Int, color: Color, progress: () -> Float) {
     val m = LocalMetrics.current
@@ -114,7 +114,7 @@ fun BackIcon(sizePx: Int, color: Color, progress: () -> Float) {
     }
 }
 
-/** Логотип Headswap: стрелки делают 2 оборота вокруг центра, экранчик в центре неподвижен. */
+/** The Headswap: arrow logo makes the 2 revolve around the center, the screen in the center is still. */
 @Composable
 fun LogoIcon(sizePx: Int, color: Color, progress: () -> Float) {
     val m = LocalMetrics.current
@@ -124,7 +124,7 @@ fun LogoIcon(sizePx: Int, color: Color, progress: () -> Float) {
         val deg = 720f * PressEasing.SPIN.transform(progress().coerceIn(0f, 1f))
         scale(sc, sc, pivot = Offset.Zero) {
             for ((i, vp) in VIco.LOGO.withIndex()) {
-                // последний путь - экранчик, первые четыре - стрелки
+                // The last path is the screen, the first four are arrows.
                 if (i < VIco.LOGO.size - 1) rotate(deg, pivot = Offset(24f, 24f)) { drawVPath(vp, paths[i], color) }
                 else drawVPath(vp, paths[i], color)
             }
@@ -137,7 +137,7 @@ private fun DrawScope.drawVPath(vp: VPath, p: Path, color: Color) {
     vp.strokeW?.let { strokePath(p, color, it) }
 }
 
-/** Шестерёнка: один оборот за время анимации. */
+/** Six: one turn during animation. */
 @Composable
 fun GearIcon(sizePx: Int, color: Color, progress: () -> Float) {
     SvgIcon(Ico.GEAR, sizePx, color, stroke = 2f,
@@ -145,8 +145,8 @@ fun GearIcon(sizePx: Int, color: Color, progress: () -> Float) {
 }
 
 /**
- * «Вид карточки»: сверху падает новая плитка (-7 единиц, проявляется), прежняя верхняя опускается на место нижней (-5 -> 0),
- * прежняя нижняя уезжает вниз (+6) и гаснет.
+ * “Card View”: new tile falls on top (-7 units, manifests itself), the former top drops to the bottom place (-5 -> 0),
+ * The former lower one goes down (+6) and goes out.
  */
 @Composable
 fun LayersIcon(sizePx: Int, color: Color, progress: () -> Float) {

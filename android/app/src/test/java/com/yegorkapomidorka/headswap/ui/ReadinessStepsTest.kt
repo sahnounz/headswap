@@ -16,7 +16,7 @@ class ReadinessStepsTest {
 
     @Test
     fun everyStepListedOnceAndKeysUnique() {
-        // выбор режима и шаги лаунчера лежат в EXTRA_STEPS: чеклист и путь Android Auto остаются прежними
+        // mode selection and steps of launcher lie in the EXTRA_STEPS: checklist and path of Android Auto remain the same
         val all = ids + Readiness.EXTRA_STEPS.map { it.id }
         assertEquals(StepId.values().toSet(), all.toSet())
         assertEquals(all.size, all.toSet().size)
@@ -27,7 +27,7 @@ class ReadinessStepsTest {
     fun unknownSourcesIsOptionalAndManual() {
         val s = Readiness.info(StepId.AA_UNKNOWN)
         assertEquals("aa_unknown", s.id.key)
-        // «Уже сделано» ведёт дальше и ставит ручную отметку; шаг ничего не требует и не блокирует онбординг
+        // “Already done” leads further and puts a manual mark; step requires nothing and does not block onboarding
         assertEquals(R.string.onb_already_done, s.skip)
         assertEquals(R.string.step_aa_unknown_hint, s.hint)
         assertNull(s.extra)
@@ -36,7 +36,7 @@ class ReadinessStepsTest {
 
     @Test
     fun serverStepIsManualWithoutExtra() {
-        // службы спецвозможностей нет: выполненность шага - только ручная отметка «Понятно»
+        // service special features no: step execution - only manual mark "Understood"
         val s = Readiness.info(StepId.AUTOSTART)
         assertEquals(R.string.onb_got_it, s.skip)
         assertEquals(R.string.step_autostart_primary, s.primary)
@@ -59,7 +59,7 @@ class ReadinessStepsTest {
     @Test
     fun extraOnlyOnBackgroundStep() {
         assertEquals(listOf(StepId.BACKGROUND), Readiness.STEPS.filter { it.extra != null }.map { it.id })
-        // шаги 1 и 5 без подсказки
+        // steps 1 and 5 without prompt
         assertNull(Readiness.info(StepId.AA_DEV).hint)
         assertNull(Readiness.info(StepId.BACKGROUND).hint)
     }

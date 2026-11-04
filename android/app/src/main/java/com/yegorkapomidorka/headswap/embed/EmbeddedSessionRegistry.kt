@@ -129,7 +129,7 @@ internal object EmbeddedSessionRegistry {
         if (lease.packageName != packageName) return 0 // Only the app explicitly launched into this lease is tracked.
         return activeCall(lease) { it.childTaskState(lease.token, packageName) }
     }
-    /** Пакеты задач этого окна (свежие первыми) для «Недавних»; null - Android не отдал список. */
+    /** This window's task packs (fresh first) for "Recent"; null - Android did not give a list. */
     fun taskPackages(uid: Int, handle: Int): List<String>? {
         val lease = active(uid, handle)
         return activeCall(lease) { it.childTaskPackages(lease.token)?.toList() }

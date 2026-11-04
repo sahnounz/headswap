@@ -8,28 +8,28 @@ import android.view.ViewGroup
 import android.widget.ScrollView
 import com.yegorkapomidorka.headswap.MainActivity
 
-/** Экран внутри MainActivity: сама View, обновление раз в 500 мс пока виден, реакция на «назад». */
+/** Screen inside MainActivity: itself View, update times in 500 ms while visible, reaction to "back". */
 abstract class Screen(val host: MainActivity) {
     val ctx: Context get() = host
     abstract val view: View
 
-    /** Экран стал виден (в том числе после возврата из системных настроек). */
+    /** The screen became visible (including after returning from system settings). */
     open fun onShow() {}
 
     open fun onHide() {}
 
-    /** Каждые 500 мс, пока экран виден. */
+    /** Each 500 ms, as long as the screen is visible. */
     open fun tick() {}
 
-    /** true = нажатие «назад» обработано экраном. */
+    /** true = backstroke processed by screen. */
     open fun onBack(): Boolean = false
 
     open fun onPermissionResult() {}
 
-    /** Вернулся результат стороннего activity/диалога (выбор машины через CDM). */
+    /** The result of the third-party activity/dialogue (the choice of the machine through CDM) has returned. */
     open fun onActivityResultDone() {}
 
-    /** Отладка (adb --ei scroll_y N): прокрутить экран, чтобы снять нижнюю часть. */
+    /** Debugging (adb --ei scroll_y N): Scroll the screen to remove the bottom. */
     fun scrollTo(y: Int) {
         fun find(v: View): ScrollView? {
             if (v is ScrollView) return v
@@ -43,7 +43,7 @@ abstract class Screen(val host: MainActivity) {
 val Context.isNight: Boolean
     get() = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
-/** Настройки самого UI: онбординг пройден, ручные отметки шагов, которые определить нельзя. */
+/** The UI: onboarding itself is passed, manual steps marks that cannot be determined. */
 class UiPrefs(ctx: Context) {
     private val sp: SharedPreferences = ctx.getSharedPreferences("ui", Context.MODE_PRIVATE)
 
@@ -51,22 +51,22 @@ class UiPrefs(ctx: Context) {
         get() = sp.getBoolean("onboardingDone", false)
         set(v) = sp.edit().putBoolean("onboardingDone", v).apply()
 
-    /** Окно «Отказ от спецвозможностей» (2.6.0) уже показывали или оно не нужно (новичок прошёл онбординг). */
+    /** The “Opt-out window” (2.6.0) has already been shown or it is not needed (the newcomer passed onboarding). */
     var a11yNoticeShown: Boolean
         get() = sp.getBoolean("a11yNoticeShown", false)
         set(v) = sp.edit().putBoolean("a11yNoticeShown", v).apply()
 
-    /** Окно «Прямой проброс видео» (3.0) уже показывали или оно не нужно (новичок прошёл онбординг). */
+    /** The "Direct passthrough Video" window (3.0) has already been shown or it is not needed (the newcomer has passed onboarding). */
     var v30NoticeShown: Boolean
         get() = sp.getBoolean("v30NoticeShown", false)
         set(v) = sp.edit().putBoolean("v30NoticeShown", v).apply()
 
-    /** Окно «Свой лаунчер на магнитоле» (4.0) уже показывали или оно не нужно (новичок, Android ниже 13). */
+    /** The “launcher on tape” window (4.0) has already been shown or is not needed (newer, Android below 13). */
     var v40NoticeShown: Boolean
         get() = sp.getBoolean("v40NoticeShown", false)
         set(v) = sp.edit().putBoolean("v40NoticeShown", v).apply()
 
-    /** Тема интерфейса: system / light / medium / dark (см. AppTheme). */
+    /** Interface theme: system / light / medium / dark (see AppTheme). */
     var theme: String
         get() = sp.getString("theme", "system") ?: "system"
         set(v) = sp.edit().putString("theme", v).apply()

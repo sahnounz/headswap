@@ -7,30 +7,30 @@ import com.yegorkapomidorka.headswap.AppLog
 import com.yegorkapomidorka.headswap.MainActivity
 import com.yegorkapomidorka.headswap.dex.DexState
 
-/** Действия кнопок лаунчера в одном месте: переходы между экранами, запуск приложений, назад. */
+/** launcher button actions in one place: transitions between screens, running applications, back. */
 object LauncherActions {
     private val model get() = LauncherModel
 
-    /** Логотип на рейке: на главном - «Все приложения», на любом другом экране (и в открытом приложении) - домой. */
+    /** Logo on the rail: on the main - "All applications", on any other screen (and in the open application) - home. */
     fun logo() { if (model.area == Area.Home) model.go(Area.AllApps) else home() }
 
-    /** Домой, единственная точка возврата на главный экран. */
+    /** Home is the only point of return to the main screen. */
     fun home() { if (model.foreign != null) ForeignActions.home() else model.home() }
     fun openPicker() { model.go(Area.Picker) }
-    /** Шестерёнка на рейке: настройки; повторное нажатие - назад. */
+    /** Gear on the rail: settings; re-press - back. */
     fun openSettings() {
         if (model.area == Area.Settings) { model.back(); return }
         model.settingsPage = SettingsPage.LOOK
         model.aboutLicense = null
         model.go(Area.Settings)
     }
-    /** Тап по карточке «Телефон»: экран «Вызовы»; пропущенные считаются просмотренными. */
+    /** Tap on the "Phone" card: screen "Calls"; missed ones are considered viewed. */
     fun openCalls() {
         model.markMissedSeen()
         model.go(Area.Calls)
     }
 
-    /** «Перезвонить» / «Позвонить»: звонок на номер, счётчик пропущенных сбрасывается. */
+    /** "Call back" / "Call": call to number, count missed is reset. */
     fun callBack(number: String) {
         if (!model.launchDebounce.allow(model.now())) return
         model.markMissedSeen()
@@ -38,7 +38,7 @@ object LauncherActions {
     }
     fun cycleCardView() { model.nextCardView() }
 
-    /** Карточка «Телефон» без доступа: окно Headswap на экране телефона с запросом разрешений карточки. */
+    /** Phone card without access: the Headswap window on the phone screen with a request for card permissions. */
     fun openPhoneRequest() {
         if (!model.launchDebounce.allow(model.now())) return
         val ctx = model.context
@@ -50,7 +50,7 @@ object LauncherActions {
             .onFailure { AppLog.i("LAUNCHER запрос разрешений на телефоне: ${it.javaClass.simpleName}: ${it.message}", false) }
     }
 
-    /** Выбор в Picker: приложение уходит в нижний ряд главного, туда же и возвращаемся. */
+    /** The choice in the Picker: application goes to the bottom row of the main one, and we return there. */
     fun addApp(ref: AppRef) {
         model.addApp(ref)
         home()
@@ -61,13 +61,13 @@ object LauncherActions {
         model.confirmRemove = null
     }
 
-    /** Антидребезг 400 мс и блокировка повторного тапа, пока приложение стартует (до 8 с). */
+    /** 400 ms anti-drill and re-tap lock while the application starts (up to 8 s). */
     fun openApp(ref: AppRef) {
         val now = model.now()
         if (!model.launchDebounce.allow(now) || model.launchLock.isLocked(now)) return
-        // навигатор уже живёт в своём окне: приложение из списка с тем же пакетом разворачивает его
+        // the navigator already lives in its window: an application from the list with the same package deploys it
         if (ref.pkg == model.navigatorPkg) { openNavigatorWindow(); return }
-        // тап по уже открытому приложению: экран не меняется, поэтому проверку задачи запускаем руками
+        // tap on an already open application: the screen does not change, so we start checking the task with our hands
         if (model.area == Area.App(ref)) { EmbedHost.refresh(EmbedHost.app); return }
         model.launchLock.begin(ref.key, now)
         model.starting = model.label(ref) ?: ref.pkg
@@ -75,7 +75,7 @@ object LauncherActions {
         model.go(Area.App(ref))
     }
 
-    /** Тап по телу карточки музыки: приложение плеера на весь экран справа от рейки. */
+    /** Tap on the body of the music card: full-screen player application to the right of the rail. */
     fun openMusicApp() {
         val pkg = MusicController.state.pkg ?: model.musicPlayer ?: return
         val entry = model.catalog.firstOrNull { it.packageName == pkg } ?: return
@@ -84,7 +84,7 @@ object LauncherActions {
 
     fun openPlayers() { model.go(Area.Players) }
 
-    /** Старт сессии с «Включать музыку автоматически»: играет активная сессия, иначе выбранный или свой плеер. Главный поток. */
+    /** Start the session with "Include music automatically": play active session, otherwise selected or your player. main thread. */
     fun autoplay() {
         val display = DexState.displayId
         if (!model.autoplay || display < 0 || display == model.autoplayedDisplay) return
@@ -96,25 +96,25 @@ object LauncherActions {
         if (st.hasSession) MusicController.playPause(model.context, null) else pkg?.let { MusicController.startPlayer(model.context, it) }
     }
 
-    /** «Плеер телефона» на чипе: без выбранного приложения, играет любая активная сессия. */
+    /** "Phone Player" on the chip: without the selected application, any active session plays. */
     fun choosePhonePlayer() { model.chooseMusicPlayer(null) }
 
-    /** Выбранный плеер запоминается и становится текущим: играет сразу, если у него есть сессия или MediaBrowserService. */
+    /** The selected player is remembered and becomes current: it plays immediately if it has a session or MediaBrowserService. */
     fun choosePlayer(pkg: String) {
         model.chooseMusicPlayer(pkg)
-        // свой плеер из списка всех плееров становится первым слотом чипа
+        // your player from the list of all players becomes the first chip slot
         if (pkg !in PlayerChip.ONLINE) model.chooseLocalPlayer(pkg)
-        MusicController.startPlayer(model.context, pkg) // главный поток: MediaBrowser создаёт Handler, connect асинхронный
+        MusicController.startPlayer(model.context, pkg) // main thread: MediaBrowser creates Handler, connect asynchronous
         home()
     }
 
-    /** Блок навигации рейки и тап по карточке: навигатор на всю область справа от рейки. */
+    /** Reiki navigation unit and card tap: Navigator for the entire area to the right of the rail. */
     fun openNavigator() {
         if (!model.launchDebounce.allow(model.now())) return
         if (model.navigatorPkg == null) openNavigatorChoice() else openNavigatorWindow()
     }
 
-    /** Навигатор на всю область. Повторный тап, когда он уже развёрнут, заново проверяет его задачу (после Back она могла уйти). */
+    /** The whole area navigator. Repeated tap, when it is already deployed, rechecks its task (after Back it could go away). */
     private fun openNavigatorWindow() {
         if (model.area == Area.Navigator) EmbedHost.refresh(EmbedHost.nav) else model.go(Area.Navigator)
     }
@@ -126,8 +126,8 @@ object LauncherActions {
     }
 
     /**
-     * Кнопка «Назад» рейки: Back в открытое окно (если приложение вышло из корня - на главный); с экрана лаунчера - на
-     * предыдущий экран или главный (в «О приложении» сначала шаг внутри настроек); на главном ничего.
+     * Button "Back" rails: Back in the open window (if the application has left the root - on the main); from the screen launcher - on
+     * previous screen or main (in "About the application" first step inside the settings); on the main nothing.
      */
     fun embeddedBack() {
         AppLog.i("LAUNCHER Назад на рейке: экран=${model.area}", false)
@@ -140,7 +140,7 @@ object LauncherActions {
         }
     }
 
-    /** Back вывел приложение из корня (задачи на дисплее нет): если оно ещё на экране - на главный. */
+    /** Back took the application out of the root (no problem on the display): if it is still on the screen - on the main one. */
     private fun backClosed(slot: EmbedSlot) {
         val a = model.area
         val shown = (slot === EmbedHost.app && a is Area.App) || (slot === EmbedHost.nav && a == Area.Navigator)
@@ -148,13 +148,13 @@ object LauncherActions {
         if (shown) { model.launchLock.finish(); model.starting = null; home() }
     }
 
-    /** Слот сообщил, что задачи приложения больше нет (процесс убит, Back из корня, окно потеряно): слой убираем. */
+    /** The slot reported that the application tasks are no more (process killed, Back from root, window lost): the layer is removed. */
     internal fun embedGone(slot: EmbedSlot) {
         if (model.foreign != null) { if (slot === EmbedHost.app) ForeignActions.gone(); return }
         backClosed(slot)
     }
 
-    /** Аппаратный Back ГУ - то же, что «Назад» на рейке (в режиме чужого лаунчера - ◀ панели). */
+    /** Hardware Back head unit - the same as "Back" on the rail (in the mode of someone else's launcher - ◀ panel). */
     fun hardwareBack() {
         AppLog.i("LAUNCHER аппаратный Back: экран=${model.area}", false)
         if (model.foreign != null) { ForeignActions.press(ForeignDesktop.NavKey.BACK); return }

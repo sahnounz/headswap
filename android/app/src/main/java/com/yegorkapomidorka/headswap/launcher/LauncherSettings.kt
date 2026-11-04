@@ -53,10 +53,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Раздел настроек (колонка слева). ABOUT - «О приложении», вложен в «Система»: своей кнопки нет, подсвечена «Система». */
+/** Settings section (column on the left). ABOUT - "About application", nested in "System": no button, highlighted "System". */
 enum class SettingsPage { LOOK, NAVIGATOR, MUSIC, HOME, SYSTEM, ABOUT }
 
-/** Навигаторы раздела «Навигатор», плитки 2x2 в порядке макета. */
+/** Navigators section "Navigator", tiles 2x2 in the layout order. */
 private val NAV_TILES = listOf(
     NavigatorPick.YANDEX_NAVI to R.string.l_nav_yandex_navi,
     "ru.dublgis.dgismobile" to R.string.l_nav_2gis,
@@ -65,8 +65,8 @@ private val NAV_TILES = listOf(
 )
 
 /**
- * Размеры экрана настроек: макет Settings.dc.html нарисован на 1280x720 (T 96), остальные разрешения - пропорционально T.
- * Контролы высотой T, но не выше ряда сетки (1280x480: ряд ~66 px при T 92).
+ * Settings screen sizes: Settings.dc.html layout is drawn on 1280x720 (T 96), other resolutions are proportional to T.
+ * Height Controls Tbut not above the grid (1280x480A number of ~ 66 px at T 92).
  */
 private class SettingsDims(s: LauncherSpec, rowH: Int) {
     private val k = s.t / 96.0
@@ -79,7 +79,7 @@ private class SettingsDims(s: LauncherSpec, rowH: Int) {
     val catIcon = r(34 * k)
     val catGap = r(16 * k)
     val sub = r(s.f2 * 0.8)
-    /** Пилюли, переключатель, кнопки: T, а в низком ряду - по высоте ряда. */
+    /** Pills, switch, buttons: T, and in the low row - by the height of the row. */
     val ctl = min(s.t, rowH - 2 * padV)
     private val kc = ctl / 96.0
     val pillPad = r(26 * kc)
@@ -95,7 +95,7 @@ private class SettingsDims(s: LauncherSpec, rowH: Int) {
     val playerGap = r(20 * k)
 }
 
-/** Настройки лаунчера на экране ГУ: разделы слева, карточки справа на одной сетке из 5 рядов, без прокрутки. */
+/** launcher settings on the screen head unit: sections on the left, cards on the right on one grid of 5 series, without scrolling. */
 @Composable
 fun LauncherSettingsScreen() {
     val m = LocalMetrics.current
@@ -111,7 +111,7 @@ fun LauncherSettingsScreen() {
             val gap = s.g8
             val rowH = SettingsGrid.bottom(0, h, gap) - SettingsGrid.top(0, h, gap)
             val d = SettingsDims(s, rowH)
-            // карточка на span рядов: от верха первого ряда до низа последнего - границы совпадают слева и справа
+            // card on span series: from the top of the first row to the bottom of the last - the boundaries coincide on the left and right
             fun cell(row: Int, span: Int = 1): Modifier {
                 val top = SettingsGrid.top(row, h, gap)
                 return Modifier.offset(y = m.dp(top)).height(m.dp(SettingsGrid.bottom(row + span - 1, h, gap) - top))
@@ -162,7 +162,7 @@ fun LauncherSettingsScreen() {
     }
 }
 
-/** Кнопка раздела: значок и название; выбранный - золото .32 с обводкой 2px, остальные - поверхность карточки. */
+/** Section button: icon and name; selected - gold .32 with 2px trim, the rest - card surface. */
 @Composable
 private fun CategoryButton(page: SettingsPage, selected: Boolean, d: SettingsDims, modifier: Modifier) {
     val m = LocalMetrics.current
@@ -191,7 +191,7 @@ private fun CategoryButton(page: SettingsPage, selected: Boolean, d: SettingsDim
 }
 
 /**
- * Нажимаемая подложка варианта: выбранный - золото .32 и обводка inset 2px, иначе [unselected] (кнопка или поверхность).
+ * Pressable option substrate: selected is gold .32 and rimming inset 2px, otherwise [unselected] (button or surface).
  */
 @Composable
 private fun OptionBox(
@@ -210,14 +210,14 @@ private fun OptionBox(
     }
 }
 
-/** Подложка карточки справа: поверхность, радиус R. */
+/** Card substrate on the right: surface, radius R. */
 @Composable
 private fun Card(modifier: Modifier, content: @Composable () -> Unit) {
     val m = LocalMetrics.current
     Box(modifier.clip(RoundedCornerShape(m.dp(m.spec.radius))).background(Pal.SURFACE)) { content() }
 }
 
-/** «Тема»: три пилюли строкой под названием и подпись одной строкой. 2 ряда. */
+/** "Theme": three pills with a line called and signature one line. 2 row. */
 @Composable
 private fun ThemeCard(d: SettingsDims, modifier: Modifier) {
     val m = LocalMetrics.current
@@ -248,7 +248,7 @@ private fun ThemeCard(d: SettingsDims, modifier: Modifier) {
     }
 }
 
-/** Карточка с переключателем: трек 120x64, ручка 52, тач-зона 136x96 (на 1280x720). */
+/** Switched card: track 120x64, handle 52, touch-zone 136x96 (on 1280x720). */
 @Composable
 private fun SwitchCard(label: String, on: Boolean, d: SettingsDims, modifier: Modifier, onChange: (Boolean) -> Unit) {
     val m = LocalMetrics.current
@@ -274,7 +274,7 @@ private fun SwitchCard(label: String, on: Boolean, d: SettingsDims, modifier: Mo
     }
 }
 
-/** «Навигатор»: плитки 2x2 на 2 ряда, круг-иконка и название; не установленный - приглушён и не нажимается. */
+/** "Navigator": 2x2 tiles on the 2 series, circle-icon and name; not installed - muffled and not pressed. */
 @Composable
 private fun NavigatorTiles(d: SettingsDims, rowH: Int, modifier: Modifier) {
     val m = LocalMetrics.current
@@ -303,7 +303,7 @@ private fun NavigatorTiles(d: SettingsDims, rowH: Int, modifier: Modifier) {
     }
 }
 
-/** Настоящая иконка приложения в круге; не установлено - пустой круг. */
+/** Real application icon in circle; not installed - empty circle. */
 @Composable
 private fun PackageCircle(pkg: String, sizePx: Int, installed: Boolean) {
     val m = LocalMetrics.current
@@ -314,13 +314,13 @@ private fun PackageCircle(pkg: String, sizePx: Int, installed: Boolean) {
 
 private sealed interface PlayerOpt {
     data class App(val pkg: String) : PlayerOpt
-    /** «Последний» второго слота: подменяется тем, что слушали последним. */
+    /** The “last” of the second slot: replaced by what was listened to last. */
     data object Last : PlayerOpt
 }
 
 /**
- * Слот плеера: название слева, справа иконки строкой; выбранная - двойное кольцо (цвет фона + золото), остальные .6.
- * Если не влезают все - последней идёт «…» на экран со всеми плеерами.
+ * Player slot: name on the left, right of the icon line; selected - double ring (background color + gold), the rest .6.
+ * If they don’t fit everything, the last one goes to the screen with all the players.
  */
 @Composable
 private fun PlayersCard(label: String, opts: List<PlayerOpt>, selected: PlayerOpt?, d: SettingsDims, modifier: Modifier, onPick: (PlayerOpt) -> Unit) {
@@ -353,7 +353,7 @@ private fun PlayerIcon(opt: PlayerOpt?, selected: Boolean, d: SettingsDims, onTa
         PlayerOpt.Last -> stringResource(R.string.l_s_last)
         null -> stringResource(R.string.l_s_more)
     }
-    // кольца снаружи круга: 3px цвета фона, затем 3px золота
+    // rings outside the circle: 3px background color, then 3px gold
     Pressable(Modifier.size(m.dp(d.playerIcon + 4 * d.ring)).clip(CircleShape), description = desc, onTap = onTap) { pressed ->
         Box(Modifier.matchParentSize().then(if (selected) Modifier.border(m.dp(d.ring), accent, CircleShape) else Modifier)
             .padding(m.dp(d.ring)).then(if (selected) Modifier.border(m.dp(d.ring), pal.bgSolid, CircleShape) else Modifier)
@@ -370,7 +370,7 @@ private fun PlayerIcon(opt: PlayerOpt?, selected: Boolean, d: SettingsDims, onTa
     }
 }
 
-/** «Карта на главном»: две миниатюры главного, «Справа» (по умолчанию) и «Слева». 3 ряда. */
+/** "Map on the main": two thumbnails of the main, "Right" (default) and "Left". 3 series. */
 @Composable
 private fun MapSideCard(d: SettingsDims, modifier: Modifier) {
     val m = LocalMetrics.current
@@ -399,7 +399,7 @@ private fun MapSideCard(d: SettingsDims, modifier: Modifier) {
     }
 }
 
-/** Миниатюра главного: рейка, музыка, карта (золото со стрелкой), приложения и телефон; при [left] ряды зеркальные. */
+/** Miniature of the main: rail, music, map (gold with arrow), applications and phone; with [left] series mirror. */
 @Composable
 private fun HomeMiniature(left: Boolean, gapPx: Int, modifier: Modifier) {
     val m = LocalMetrics.current
@@ -441,7 +441,7 @@ private fun HomeMiniature(left: Boolean, gapPx: Int, modifier: Modifier) {
     }
 }
 
-/** Строка «Системы»: название слева, значение справа моноширинным вторичным цветом. */
+/** Line "Systems": name on the left, value on the right with a mono-wide secondary color. */
 @Composable
 private fun InfoCard(label: String, value: String, d: SettingsDims, modifier: Modifier) {
     val m = LocalMetrics.current
@@ -449,7 +449,7 @@ private fun InfoCard(label: String, value: String, d: SettingsDims, modifier: Mo
     Card(modifier) {
         Row(Modifier.fillMaxSize().padding(horizontal = m.dp(d.padStart)), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(m.dp(s.g))) {
-            // название целиком, значение занимает остаток и прижато вправо
+            // name as a whole, value takes the remainder and is pressed to the right
             Txt(label, s.f2, ellipsis = false)
             Txt(value, s.f2, Modifier.weight(1f), color = Pal.SEC, weight = FontWeight.SemiBold, mono = true,
                 align = androidx.compose.ui.text.style.TextAlign.End, ellipsis = false)
@@ -457,11 +457,11 @@ private fun InfoCard(label: String, value: String, d: SettingsDims, modifier: Mo
     }
 }
 
-/** Сведения «Системы» из текущей сессии; ничего не меняется (режим видео - в настройках самого Headswap). Версия - карточкой [AboutLinkCard]. */
+/** System information from the current session; nothing changes (video mode - in the settings of Headswap itself). Version - by card [AboutLinkCard]. */
 @Composable
 private fun systemInfo(): List<Pair<String, String>> {
     val dash = "—"
-    // Honda Vezel шлёт пустой HU_INFO: тогда имя - канал из STATISTIC_INFO, версия CarLife - его versionName
+    // Honda Vezel send empty HU_INFO: then name - channel from STATISTIC_INFO, version of CarLife - its versionName
     val name = CarLifeState.huName ?: CarLifeState.huChannel?.let { stringResource(R.string.l_s_hu_channel, it) }
     val version = CarLifeState.huCarlifeVersion ?: CarLifeState.huStatVersion
     val hu = name?.let { n -> version?.let { "$n · CarLife $it" } ?: n } ?: dash
@@ -471,13 +471,13 @@ private fun systemInfo(): List<Pair<String, String>> {
     return listOf(
         stringResource(R.string.l_s_hu) to hu,
         stringResource(R.string.l_s_link) to link,
-        // телефон кодирует свой экран один раз и отдаёт ГУ готовый H.264 - по сути прямой проброс
+        // the phone encodes its screen once and gives head unit ready H.264 - essentially straight passthrough
         stringResource(R.string.l_s_video) to stringResource(R.string.set_direct_title),
         stringResource(R.string.l_s_res) to res,
     )
 }
 
-/** Последняя строка «Системы»: версия Headswap, тап открывает «О приложении». */
+/** The last line of "Systems": version Headswap, tap opens "About the application". */
 @Composable
 private fun AboutLinkCard(d: SettingsDims, modifier: Modifier) {
     val m = LocalMetrics.current
@@ -498,9 +498,9 @@ private fun AboutLinkCard(d: SettingsDims, modifier: Modifier) {
 }
 
 /**
- * «О приложении» без шапки (назад - «Назад» рейки и аппаратная): авторы и лицензии плитками в две колонки. Плитки
- * сжимаются, чтобы уместились все; ниже двух строк текста не сжимаются - тогда список прокручивается. Тап по лицензии
- * открывает полный текст с прокруткой.
+ * "About the application" without a cap (back - "Back" rails and hardware): authors and licenses with tiles in two columns. Tiles
+ * compressed to fit all; below two lines of text are not compressed - then the list scrolls. Tap under license
+ * opens the full text with scrolling.
  */
 @Composable
 private fun AboutPanel(d: SettingsDims, rowH: Int) {
@@ -530,7 +530,7 @@ private fun AboutPanel(d: SettingsDims, rowH: Int) {
             val licenseRows = (About.licenses.size + cols - 1) / cols
             val rows = authorRows + licenseRows
             val captionH = d.sub + s.g4
-            // две подписи («Авторы», «Открытый код») и зазоры между всеми рядами
+            // two signatures ("Authors", "Open source") and gaps between all rows
             val fitH = (constraints.maxHeight - 2 * captionH - (rows + 1) * gap) / rows
             val minH = ((s.f2 + d.sub) * 1.35).roundToInt() + 2 * s.g8
             val tileH = fitH.coerceIn(minH, rowH)
@@ -554,7 +554,7 @@ private fun AboutPanel(d: SettingsDims, rowH: Int) {
     }
 }
 
-/** Автор: имя крупно, ник моноширинным вторичным цветом. Не нажимается: браузера на ГУ нет. */
+/** Author: the name is large, nick is mono-width secondary color. Not pressed: there is no browser on head unit. */
 @Composable
 private fun AuthorCard(name: String, handle: String, d: SettingsDims, modifier: Modifier) {
     val m = LocalMetrics.current
@@ -567,7 +567,7 @@ private fun AuthorCard(name: String, handle: String, d: SettingsDims, modifier: 
     }
 }
 
-/** Лицензия плиткой: «название версия», ниже лицензия и правообладатель; адрес проекта - в полном тексте. */
+/** Tile license: "title version", below license and copyright holder; project address - in full text. */
 @Composable
 private fun LicenseCard(lic: OpenSource, d: SettingsDims, modifier: Modifier, onTap: () -> Unit) {
     val m = LocalMetrics.current

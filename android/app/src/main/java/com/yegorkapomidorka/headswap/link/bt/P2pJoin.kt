@@ -24,20 +24,20 @@ import java.net.InetAddress
 import java.net.NetworkInterface
 
 /**
- * Ветка A, шаг Wi-Fi Direct: телефон входит клиентом в P2P-группу ГУ (реквизиты из TARGET_INFO по Bluetooth).
- * Сначала напрямую по ssid и паролю (WifiP2pConfig.Builder), если не вышло - находим ГУ среди пиров по имени
- * и подключаемся PBC с groupOwnerIntent=0 (владелец группы - ГУ). Когда у интерфейса p2p* есть IPv4,
- * зовём [onJoined]: адрес телефона уходит ГУ в MD_WIFI_IP, ГУ подключает TCP-каналы.
- * Группа распалась (ГУ сняла её, например ушла в своё меню и закрыла CarLife) - сбрасываем вход целиком и зовём
- * [onLost]: следующий TARGET_INFO от ГУ (она переподключает Bluetooth) входит заново, а не теряется на «уже вхожу».
- * Вызовы из любых потоков, состояние - на главной нити.
- * Поиск пиров повторяем раз в [DISCOVER_RETRY_MS], пока не вошли: после короткой стоянки ГУ поднимает группу
- * позже, чем при холодном старте, и одного поиска не хватает (h214, Mazda G6S). ERROR/BUSY от discoverPeers тоже
- * повторяем: сначала через stopPeerDiscovery, после двух неудач подряд - на свежем канале. BUSY при поднятой точке
- * доступа - это она мешает Wi-Fi Direct (Samsung): сообщаем [onBusy] один раз за попытку.
- * Новый TARGET_INFO, пока не вошли, начинает попытку заново с новыми реквизитами (h126). Wi-Fi выключен (P2P тогда
- * тоже): зовём [onWifi] (false) и ждём WIFI_P2P_STATE_ENABLED, потом входим. Поколение [gen] отсекает колбэки и
- * отложенные шаги прошлой попытки.
+ * A branch, step Wi-Fi Direct: phone enters by customer into P2P-group head unit (details from TARGET_INFO to Bluetooth).
+ * First, directly by ssid and password (WifiP2pConfig.Builder), if not - find head unit among the peers by name
+ * and connect PBC with groupOwnerIntent=0 (group owner - head unit). When the interface p2p* has IPv4,
+ * Call Us [onJoined]The phone address is gone. head unit in MD_WIFI_IP, head unit Connects TCP-channels.
+ * The group broke up (head unit removed it, for example, went to its menu and closed CarLife) - dropping the input entirely and calling
+ * [onLost]: next TARGET_INFO from head unit (she reconnects) BluetoothEntering again, not getting lost on “I’m already entering.”
+ * Calls from any threads, status - on main thread.
+ * Search for pies repeat once in [DISCOVER_RETRY_MS], not yet included: after a short parking head unit raises the group
+ * later than cold start, and one search is missing (h214, Mazda G6S). ERROR/BUSY from discoverPeers too
+ * repeat: first through stopPeerDiscovery, after two failures in a row - on the fresh channel. BUSY at the raised point
+ * access - it interferes with Wi-Fi Direct (Samsung): inform [onBusy] once per attempt.
+ * The new TARGET_INFO, while not logged in, starts trying again with new details (h126). Wi-Fi is off (P2P then
+ * Also): call [onWifi] (false) and wait for WIFI_P2P_STATE_ENABLED, then enter. Generation [gen] cuts off the kolbeks and
+ * Delayed steps of the previous attempt.
  */
 class P2pJoin(
     private val ctx: Context,
@@ -50,28 +50,28 @@ class P2pJoin(
     private val mgr: WifiP2pManager? = ctx.getSystemService(WifiP2pManager::class.java)
     private var channel: WifiP2pManager.Channel? = null
     private var target: P2pTarget? = null
-    /** Когда началась текущая попытка: тот же TARGET_INFO в первые [JOIN_TIMEOUT_MS] её не перезапускает. */
+    /** When the current attempt began: the same TARGET_INFO in the first [JOIN_TIMEOUT_MS] does not restart it. */
     private var startedAt = 0L
     private var receiver: BroadcastReceiver? = null
-    /** Поколение попытки: колбэки и отложенные шаги прошлой (после стопа или рестарта) с ним не совпадут и ничего не сделают. */
+    /** A generation of attempts: Colbs and delayed steps of the past (after a stop or restart) will not coincide with it and will not do anything. */
     private var gen = 0
-    /** Wi-Fi был выключен на старте: входим, когда P2P включится. */
+    /** The Wi-Fi was off at launch: enter when the P2P turns on. */
     private var waitingWifi = false
-    /** Мы подключились (или подключаемся): при stop снимаем группу. */
+    /** We have connected (or are connecting): when stop we remove the group. */
     private var connecting = false
     private var peerMode = false
-    /** Когда ушёл connect по пиру: приглашение без ответа дольше [CONNECT_STALE_MS] снимаем и ищем снова. */
+    /** When connect is gone: we take off the invitation without reply longer than [CONNECT_STALE_MS] and look again. */
     private var connectAt = 0L
     private var discoverRuns = 0
     private var busyReported = false
-    /** Неудачных discoverPeers подряд: после [REINIT_AFTER_FAILS] пересоздаём канал. */
+    /** Unsuccessful discoverPeers in a row: after [REINIT_AFTER_FAILS] we re-create the channel. */
     private var discoverFails = 0
-    /** Группа собрана, ждём IPv4 по DHCP: приглашение уже не висит. */
+    /** The group is assembled, waiting for IPv4 on DHCP: invitation no longer hangs. */
     private var formed = false
     private var joinedIp: Inet4Address? = null
     @Volatile private var iface: LanIface? = null
 
-    /** Адрес из P2P-подсети, куда мы вошли (для фильтра входящих TCP). */
+    /** Address from P2P- subnet where we are logged in (for filter incoming TCP). */
     fun owns(a: InetAddress): Boolean = iface?.contains(a) == true
 
     fun hasPermission(): Boolean {
@@ -86,7 +86,7 @@ class P2pJoin(
     @SuppressLint("MissingPermission")
     private fun startMain(t: P2pTarget) {
         if (target != null && joinedIp != null && p2pIface() == null) {
-            // вошли, но интерфейса уже нет, а CONNECTION_CHANGED о распаде не пришёл
+            // entered, but the interface is no more, and CONNECTION_CHANGED about the decay did not come
             WLog.ev(WLog.P2P, "lost", "how" to "нет p2p-интерфейса при новом TARGET_INFO")
             lostMain()
         }
@@ -116,14 +116,14 @@ class P2pJoin(
         WLog.ev(WLog.P2P, "start", "bySsid" to t.canJoinBySsid, "peerName" to (t.deviceName != null), "freq" to t.freqMhz)
         AppLog.i("Wi-Fi Direct: вхожу в группу ГУ (${if (t.canJoinBySsid) "по ssid" else "по имени пира"})")
         if (!wifiEnabled()) {
-            // без Wi-Fi P2P выключен: discover/connect ответят BUSY. Таймаут и повторы не взводим, ждём включения Wi-Fi
+            // without Wi-Fi P2P is off: discover/connect will answer BUSY. Timeout and repeats are not triggered, waiting for the inclusion of Wi-Fi
             waitingWifi = true
             WLog.ev(WLog.P2P, "wifi-off")
             AppLog.i("Wi-Fi Direct: Wi-Fi на телефоне выключен, жду включения")
             onWifi(false)
             return
         }
-        onWifi(true)      // Wi-Fi включили до нового TARGET_INFO: снять просьбу, если висела
+        onWifi(true)      // Wi-Fi included in the new TARGET_INFO: remove request if hung
         begin(m, ch, t)
     }
 
@@ -141,7 +141,7 @@ class P2pJoin(
         main.postDelayed(retry, DISCOVER_RETRY_MS)
     }
 
-    /** Wi-Fi включили, пока ждали: P2P поднялся, входим в группу. */
+    /** Wi-Fi was turned on while they waited: P2P rose, we are part of the group. */
     private fun onP2pState(enabled: Boolean) {
         val m = mgr ?: return
         val ch = channel ?: return
@@ -167,7 +167,7 @@ class P2pJoin(
                     connecting = false
                 }
                 if (!connecting) when {
-                    // ERROR/BUSY без хотспота (h214, Samsung): фреймворк застрял, свежий канал помогает, как ручной перезапуск
+                    // ERROR/BUSY without hotspot (h214, Samsung): framework stuck, fresh channel helps as manual restart
                     discoverFails >= REINIT_AFTER_FAILS -> {
                         WLog.ev(WLog.P2P, "reinit", "fails" to discoverFails)
                         ch.close()
@@ -238,7 +238,7 @@ class P2pJoin(
                 discoverFails++
                 val hotspot = hotspotUp()
                 WLog.ev(WLog.P2P, "discover", "res" to "fail", "reason" to reasonName(reason), "n" to n, "hotspot" to hotspot)
-                // BUSY бывает и без хотспота (h214): тогда просто повторяем, подсказку не показываем
+                // BUSY happens without hotspot (h214): then just repeat, the hint does not show
                 if (reason == WifiP2pManager.BUSY && hotspot && !busyReported && target != null) {
                     busyReported = true
                     AppLog.i("Wi-Fi Direct занят (BUSY): включена точка доступа на телефоне")
@@ -246,7 +246,7 @@ class P2pJoin(
                 }
             }
         })
-        // первые пиры могли прийти до нового поиска: проверяем уже известный список
+        // The first feasts could come before a new search: check the already known list
         if (n > 1) onPeers()
     }
 
@@ -304,7 +304,7 @@ class P2pJoin(
         }
     }
 
-    /** IPv4 на p2p-интерфейсе появляется после DHCP, иногда через секунду-две после groupFormed. */
+    /** IPv4 on the p2p- interface appears after DHCP, sometimes a second or two after groupFormed. */
     private fun awaitIp(g: Int, attempt: Int) {
         if (g != gen || target == null || joinedIp != null) return
         val lan = p2pIface()
@@ -321,7 +321,7 @@ class P2pJoin(
         onJoined(lan.ip)
     }
 
-    /** Точка доступа телефона поднята (h420: у Xiaomi она на wlan1, имена swlan и ap не ловят). */
+    /** The phone's access point is raised (h420: at Xiaomi it on wlan1, the names swlan and ap are not caught). */
     private fun hotspotUp(): Boolean = HotspotDetect.isUp(ctx)
 
     private fun p2pIface(): LanIface? {

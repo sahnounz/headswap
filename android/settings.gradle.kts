@@ -11,7 +11,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // Kadb берёт для сопряжения SPAKE2 с JitPack
+        // Kadb takes to pair SPAKE2 with JitPack
         maven("https://jitpack.io") {
             content { includeGroup("com.github.Flyfish233") }
         }

@@ -37,7 +37,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
-/** Корень лаунчера: фон по теме, рейка слева (всегда) и область содержимого. */
+/** launcher: root background on the topic, rail on the left (always) and content area. */
 @Composable
 fun LauncherRoot(connected: Boolean) {
     val density = LocalDensity.current
@@ -45,22 +45,22 @@ fun LauncherRoot(connected: Boolean) {
     LaunchedEffect(Unit) {
         while (true) {
             model.status = withContext(Dispatchers.Default) { StatusReader.read(model.context) }
-            // режим фар от ГУ для темы «Авто»
+            // headlight mode from head unit for the theme "Auto"
             model.huTheme = CarLifeState.huTheme
             delay(1000)
         }
     }
-    // состояние звонка и журнал: на главном потоке (PhoneStateListener берёт Looper потока создания)
+    // call status and log: on main thread (PhoneStateListener takes Looper stream creation)
     LaunchedEffect(Unit) {
         while (true) {
             PhoneController.tick(model.context)
             delay(1000)
         }
     }
-    // «Включать музыку автоматически»: один раз на рабочий стол (новый дисплей = новая сессия), не на каждую рекомпозицию
+    // “Turn on music automatically”: once on your desktop (new display = new session), not for every recomposition
     LaunchedEffect(connected) {
         if (connected) {
-            delay(2000) // первый опрос сессий MusicController
+            delay(2000) // First Survey of MusicController Sessions
             LauncherActions.autoplay()
         }
     }
@@ -77,10 +77,10 @@ fun LauncherRoot(connected: Boolean) {
                         Txt(stringResource(R.string.l_connecting), spec.f1, color = Pal.SEC)
                     }
                 } else if (model.foreign != null) {
-                    // чужой лаунчер: только его окно и наша панель навигации, без рейки и оверлеев звонка
+                    // alien launcher: only its window and our navigation panel, no rail and overlay call
                     ForeignRoot()
                 } else {
-                    // рейка всегда слева; «Карта слева» переставляет только ряды главного (HomeScreen)
+                    // rail always on the left; "Map on the left" rearranges only the main rows (HomeScreen)
                     Row(Modifier.fillMaxSize()) {
                         Rail()
                         Box(Modifier.weight(1f).fillMaxHeight().onGloballyPositioned { model.areaRect = it.boundsInRoot() }) {
@@ -89,9 +89,9 @@ fun LauncherRoot(connected: Boolean) {
                     }
                     run {
                         EmbedLayers()
-                        // входящий звонок поверх чужого приложения или экрана без карточки «Телефон»
+                        // incoming call on top of someone else's application or screen without a "Phone" card
                         if (PhoneController.callState == CallState.RINGING && (model.area != Area.Home || spec.strip)) {
-                            // как нижняя полоса главного: прибита к низу, скругления только сверху
+                            // as the lower stripe of the main one: nailed to the bottom, rounding only from above
                             val r = metrics.dp(spec.radius)
                             Box(Modifier.fillMaxSize().padding(end = metrics.dp(spec.m)), contentAlignment = Alignment.BottomEnd) {
                                 PhoneCard(Modifier.width(metrics.dp(spec.phone)).height(metrics.dp(spec.bottomH)),
@@ -120,7 +120,7 @@ private fun AreaContent() {
 }
 
 
-/** Рейка на всю высоту (S-образно распределена) и под ней отдельный золотой блок навигации. Макет v2. */
+/** The railing is at full height (S-shapedly distributed) and under it a separate golden navigation unit. Model v2. */
 @Composable
 private fun Rail() {
     val m = LocalMetrics.current
@@ -138,19 +138,19 @@ private fun Rail() {
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Txt(status.time, s.f1, color = Pal.RAIL, weight = FontWeight.SemiBold, mono = true)
-            // «Назад» виден всегда: белый везде, кроме главного, где идти некуда (серый, без анимации)
+            // “Back” is always visible: white everywhere except the main one, where there is nowhere to go (gray, without animation)
             val back = rememberPressAnim(600)
             RoundButton(s.rb, stringResource(R.string.l_back), onTap = { LauncherActions.embeddedBack() }, enabled = canBack,
                 onPress = back::play) {
                 BackIcon(s.backIc, if (canBack) Pal.RAIL else LocalPalette.current.backOff) { back.progress }
             }
-            // лого: на главном - «Все приложения», на любом другом экране - домой
+            // logo: on the main - "All applications", on any other screen - home
             val logo = rememberPressAnim(1000)
             val home = model.area == Area.Home
             RoundButton(s.rb, stringResource(if (home) R.string.l_all_apps else R.string.l_home), onTap = { LauncherActions.logo() },
                 onPress = logo::play) {
                 Box(Modifier.matchParentSize().drawBehind {
-                    // как CSS circle farthest-corner: радиус 0.707 стороны, стопы 0 / 40% / 70%
+                    // as CSS circle farthest-corner: radius 0.707 sides, feet 0 / 40% / 70%
                     drawCircle(Brush.radialGradient(
                         0f to accent.copy(alpha = 0.6f), 0.4f to accent.copy(alpha = 0.25f), 0.7f to accent.copy(alpha = 0f),
                         center = center, radius = size.minDimension * 0.7071f))
@@ -158,17 +158,17 @@ private fun Rail() {
                     LogoIcon(s.logoIn, Pal.RAIL) { logo.progress }
                 }
             }
-            // на экране настроек шестерёнка подсвечена: текущий экран
+            // on the settings screen, the gear is highlighted: current screen
             val gear = rememberPressAnim(900)
             val inSettings = model.area == Area.Settings
             RoundButton(s.rb, stringResource(R.string.l_settings), onTap = { LauncherActions.openSettings() }, onPress = gear::play,
                 background = if (inSettings) accent.copy(alpha = 0.32f) else Color.Transparent) {
                 GearIcon(s.ric, if (inSettings) Pal.RAIL else Pal.SEC2) { gear.progress }
             }
-            // в ленте «Вид карточки» - стеклянная кнопка на карте
+            // in the ribbon "View card" - a glass button on the map
             if (!s.strip) CardViewButton(s.rb, s.ric, Color.Transparent, Pal.SEC2)
         }
-        // стрелка навигации: 2 оборота и стоп в случайной другой стороне света
+        // Navigation arrow: 2 turn and stop in random other side of the world
         val spin = rememberNavSpin()
         Pressable(
             Modifier.width(m.dp(s.rail)).height(m.dp(s.navH))
@@ -185,7 +185,7 @@ private fun Rail() {
     }
 }
 
-/** «Вид карточки навигации»: на рейке прозрачная, в ленте - стеклянная на карте. По DOWN падает новая плитка. */
+/** “View of the navigation card”: transparent on the rail, glass on the map in the ribbon. New tile falls on DOWN. */
 @Composable
 fun CardViewButton(sizePx: Int, iconPx: Int, background: Color, color: Color, modifier: Modifier = Modifier) {
     val anim = rememberPressAnim(700)
@@ -195,7 +195,7 @@ fun CardViewButton(sizePx: Int, iconPx: Int, background: Color, color: Color, mo
     }
 }
 
-/** Строка статуса справа сверху: дата, Bluetooth, Wi-Fi, сеть, громкость медиа. Ничего не нажимается, погоды нет. */
+/** Status bar on the right top: date, Bluetooth, Wi-Fi, network, media volume. Nothing pressed, no weather. */
 @Composable
 fun StatusBar(title: String? = null, showNet: Boolean = true) {
     val m = LocalMetrics.current
@@ -205,13 +205,13 @@ fun StatusBar(title: String? = null, showNet: Boolean = true) {
         Modifier.fillMaxWidth().height(m.dp(s.statusH)), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(m.dp(s.g), Alignment.End),
     ) {
-        // заголовок экрана слева (настройки), статус справа
+        // header screen at left (settings), status at right
         if (title != null) Txt(title, s.fs, Modifier.weight(1f), color = Pal.TEXT, weight = FontWeight.SemiBold)
         Ltr {
             Txt(st.date, s.fs, color = Pal.SEC2)
             SvgIcon(Ico.BT, s.fs, if (st.bluetooth) Pal.SEC2 else Pal.SEC2.copy(alpha = 0.3f))
             SvgIcon(Ico.WIFI, s.fs, if (st.wifi) Pal.SEC2 else Pal.SEC2.copy(alpha = 0.3f))
-            // сеть с уровнем сигнала - здесь, рядом с Wi-Fi, а не в рейке
+            // network with signal level - here, next to Wi-Fi, not in rail
             if (showNet && st.signal >= 0) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(m.dp(s.g4))) {
                 VectorIcon(VIco.signal(st.signal), 24f, s.fs, Pal.SEC2)
                 Txt(st.net, s.fs, color = Pal.SEC2)

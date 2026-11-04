@@ -5,9 +5,9 @@ import android.content.res.Configuration
 import com.yegorkapomidorka.headswap.ui.UiPrefs
 
 /**
- * Тема интерфейса: «system» (по умолчанию, следует системе), «light», «medium» (нейтральная тёмно-серая), «dark».
- * Выбор хранится в prefs "ui" (UiPrefs.theme). MainActivity оборачивает контекст через [wrap] в attachBaseContext:
- * light форсирует uiMode night=NO, medium и dark - night=YES (medium потом подменяет цвета на *_mid через [res]).
+ * The theme of the interface: "system" (by default, follows the system), "light", "medium" (neutral dark gray), "dark".
+ * The choice is stored in prefs "ui" (UiPrefs.theme). MainActivity Turns the context into [wrap] in attachBaseContext:
+ * light forces uiMode night=NO, medium and dark - night=YES (medium then replaces the colors with *_mid via [res]).
  */
 object AppTheme {
     const val SYSTEM = "system"
@@ -16,7 +16,7 @@ object AppTheme {
     const val DARK = "dark"
     val MODES = listOf(SYSTEM, LIGHT, MEDIUM, DARK)
 
-    /** Включена «средняя»: Context.clr() и ресурсные ссылки идут через [res]. Выставляется в [wrap]. */
+    /** Included "medium": Context.clr() and resource links go through [res]. Exhibited in [wrap]. */
     @Volatile
     var medium = false
         private set
@@ -27,7 +27,7 @@ object AppTheme {
         UiPrefs(ctx).theme = if (mode in MODES) mode else SYSTEM
     }
 
-    /** Контекст с форсированным night-режимом; локаль из уже обёрнутого [base] сохраняется (копия его конфигурации). */
+    /** Context with forced night- mode; locale from already wrapped [base] is saved (copy of its configuration). */
     fun wrap(base: Context): Context {
         val mode = get(base)
         medium = mode == MEDIUM
@@ -41,7 +41,7 @@ object AppTheme {
         return base.createConfigurationContext(cfg)
     }
 
-    /** Ресурс для текущей темы: в «средней» вариант *_mid, иначе тот же id. Явная карта, не getIdentifier (его вырежет shrinkResources). */
+    /** Resource for the current topic: in the "average" version *_mid, otherwise the same id. Clear map, not getIdentifier (it will cut shrinkResources). */
     fun res(id: Int): Int = if (medium) MID[id] ?: id else id
 
     private val MID: Map<Int, Int> = mapOf(

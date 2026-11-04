@@ -13,10 +13,10 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
-/** Рейка и строка статуса: время, сеть, Bluetooth, Wi-Fi и громкость медиа телефона. Ничего не нажимается. */
+/** Relay and status bar: time, network, Bluetooth, Wi-Fi and phone media volume. Nothing is pressed. */
 data class StatusInfo(
     val time: String = "--:--", val date: String = "", val net: String = NetLabel.NONE,
-    /** Уровень сотового сигнала 0..4 для столбиков в рейке; -1 - не сотовая сеть или уровень неизвестен. */
+    /** Cellular signal level 0..4 for columns in the rail; -1 - not cellular network or level unknown. */
     val signal: Int = -1,
     val bluetooth: Boolean = false, val wifi: Boolean = false, val volume: Int = 0,
 )
@@ -40,16 +40,16 @@ internal object StatusReader {
     private fun weekday(d: DayOfWeek): String =
         d.getDisplayName(TextStyle.SHORT, Locale.getDefault()).replaceFirstChar { it.uppercase() }
 
-    /** Мобильная сеть в статусе (у Wi-Fi свой значок): тип сети даже при активном Wi-Fi, как на магнитолах. */
+    /** Mobile network in status (Wi-Fi has its own icon): the type of network even with active Wi-Fi, as on tape. */
     private fun network(ctx: Context): String = NetLabel.cellular(cellularType(ctx))
 
-    /** Уровень сигнала мобильной сети 0..4; -1 - сети нет (нет SIM, авиарежим): тогда значок не рисуем. */
+    /** Signal level of the mobile network 0..4; -1 - no network (no SIM, air mode): then the icon is not drawn. */
     private fun signal(ctx: Context): Int {
         val level = runCatching { ctx.getSystemService(TelephonyManager::class.java)?.signalStrength?.level }.getOrNull()
         return level?.coerceIn(0, 4) ?: -1
     }
 
-    /** Тип сети нужен READ_PHONE_STATE; без него подпись «4G» по умолчанию. */
+    /** The network type is READ_PHONE_STATE; without it, the signature "4G" is default. */
     private fun cellularType(ctx: Context): Int? {
         if (ctx.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) return null
         return runCatching { ctx.getSystemService(TelephonyManager::class.java)?.dataNetworkType }.getOrNull()

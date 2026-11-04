@@ -12,9 +12,9 @@ import java.util.concurrent.Executor
 class LatencyLabTest {
     private fun hex(s: String) = ByteArray(s.length / 2) { s.substring(it * 2, it * 2 + 2).toInt(16).toByte() }
 
-    /** SPS AA из записи pc-headunit: Baseline 1280x720, POC 2, VUI с bitstream_restriction (reorder 0, dec_buf 1). */
+    /** SPS AA from record pc-headunit: Baseline 1280x720, POC 2, VUI with bitstream_restriction (reorder 0, dec_buf 1). */
     private val aa720 = hex("6742801fda014016e9a8283028368509a8")
-    /** Он же без VUI и с max_num_reorder_frames = 2, max_dec_frame_buffering = 3 (собраны вручную). */
+    /** It is also without VUI and with max_num_reorder_frames = 2, max_dec_frame_buffering = 3 (assembled manually). */
     private val aa720NoVui = hex("6742801fda014016e4")
     private val aa720Reorder2 = hex("6742801fda014016e9a82830283682211648")
     private val x264Baseline1080 = hex("6742c028d900780227e5c044000003000400000300f03c60c920")
@@ -52,23 +52,23 @@ class LatencyLabTest {
     fun queueModelGrowsOnlyWithExtraFrames() {
         val m = GuQueueModel(30)
         var t = 0L
-        for (k in 0 until 900) {                                // 30 с ровно 30 fps
+        for (k in 0 until 900) {                                // 30 with 30 fps
             t = k * 1000L / 30
             m.onFrame(t)
         }
         assertTrue("${m.delayMs(t)}", m.delayMs(t) <= 40)
-        for (k in 900 until 2700) {                             // ещё 60 с, лишний кадр раз в 2 с
+        for (k in 900 until 2700) {                             // more 60 s, extra frame times in 2 s
             t = k * 1000L / 30
             m.onFrame(t)
             if (k % 60 == 0) m.onFrame(t)
         }
         assertTrue("${m.delayMs(t)}", m.delayMs(t) in 900..1100)
         assertTrue(m.maxMs >= m.delayMs(t))
-        assertEquals(0, m.delayMs(t + 1500))                    // пауза в потоке: очередь ушла
+        assertEquals(0, m.delayMs(t + 1500))                    // pause in the flow: the queue is gone
     }
 }
 
-/** Свой IDR вместо кадра AA и выброс кадров перед ним на потоке x264 из IdrSpliceTest. */
+/** Its IDR instead of frame AA and the frame emission in front of it on the x264 stream from IdrSpliceTest. */
 class IdrSpliceDropTest {
     private var now = 0L
     private val link = TranscodeLink()
@@ -79,7 +79,7 @@ class IdrSpliceDropTest {
     private val core = AaBridgeCore({ l, _ -> logs.add(l) }, { now }).also {
         it.transcodeEnabled = false
         it.spliceMs = 2000
-        it.spliceDrop = 0                                       // выброс - по умолчанию, проверяется явно
+        it.spliceDrop = 0                                       // release - by default, is checked explicitly
         it.refDecoderFactory = { _ -> dec }
         it.spliceExecutor = Executor { r -> if (queueBuilds) builds.add(r) else r.run() }
         it.attach(link)
@@ -103,10 +103,10 @@ class IdrSpliceDropTest {
         for (k in 0 until frames) core.onFrame(aus[k], k.toLong())
     }
 
-    /** До первого своего IDR: кадры 1-5 ушли, кадр 6 (картинка #6) пришёл в момент, когда пора и уходит IDR вместо него. */
+    /** Before his first IDR: frame 1-5 gone, frame 6 (picture # 6) came at the moment when it is time and leaves IDR instead of him. */
     private fun runToSplice(): Int {
         startWith(4)
-        core.tick()                                             // начало окна статистики
+        core.tick()                                             // start of the statistics window
         passed(4)
         now = 1990
         core.onFrame(aus[4], 4)
@@ -114,7 +114,7 @@ class IdrSpliceDropTest {
         now = 2000
         core.onFrame(aus[5], 5)
         val before = link.sent.size
-        core.onFrame(aus[6], 6)                                 // придержан до IDR
+        core.onFrame(aus[6], 6)                                 // held up to IDR
         assertEquals(before, link.sent.size)
         decoded(6)
         return before
@@ -123,18 +123,18 @@ class IdrSpliceDropTest {
     @Test
     fun replaceSendsIdrInPlaceOfAaFrame() {
         val before = runToSplice()
-        assertEquals(5, before)                                 // кадр 6 не ушёл: его место займёт IDR
-        assertEquals(7, link.sent.size)                         // кадров в ГУ столько же, сколько от AA
+        assertEquals(5, before)                                 // frame 6 is not gone: IDR will take its place
+        assertEquals(7, link.sent.size)                         // frame in head unit is the same as from AA
         assertEquals(listOf(7, 8, 5), SpliceAssets.nalTypes(link.sent[5]))
         assertEquals(listOf(1, 1), SpliceAssets.nalTypes(link.sent[6]))
-        assertFalse(aus[6].contentEquals(link.sent[6]))         // frame_num сдвинут от IDR
+        assertFalse(aus[6].contentEquals(link.sent[6]))         // frame_num shifted from IDR
         assertTrue(logs.toString(), logs.any { it.contains("свой IDR #1") && it.contains("вместо кадра AA") })
         now = 31_000; core.tick()
         assertTrue(logs.toString(), logs.any { it.contains("своих IDR 1 (вместо кадра AA 1, лишних 0") })
         assertTrue(logs.toString(), logs.any { it.contains("BRIDGE SPS AA: profile 66") })
     }
 
-    /** IDR не успел: кадр, вместо которого его ждали, уходит первым, за ним придержанные. */
+    /** IDR did not have time: frame, instead of which he was waiting for, goes first, behind him restrained. */
     @Test
     fun replaceReleasesReplacedFrameFirstWhenIdrIsLate() {
         startWith(3)
@@ -142,8 +142,8 @@ class IdrSpliceDropTest {
         now = 1990; core.onFrame(aus[3], 3)
         passed(4)
         queueBuilds = true
-        now = 2000; core.onFrame(aus[4], 4)                     // заменяемый
-        core.onFrame(aus[5], 5)                                 // придержан
+        now = 2000; core.onFrame(aus[4], 4)                     // Substituted
+        core.onFrame(aus[5], 5)                                 // held
         assertEquals(4, link.sent.size)
         decoded(5)
         assertEquals(1, builds.size)
@@ -152,10 +152,10 @@ class IdrSpliceDropTest {
         assertArrayEquals(aus[4], link.sent[4])
         assertArrayEquals(aus[5], link.sent[5])
         builds.removeAt(0).run()
-        assertEquals(6, link.sent.size)                         // опоздавший IDR не уходит
+        assertEquals(6, link.sent.size)                         // The IDR is not going away.
     }
 
-    /** Выброс 1: кадр перед картинкой IDR не уходит, IDR встаёт вместо двух кадров AA - в ГУ на кадр меньше. */
+    /** The 1 emission: frame before the picture IDR does not go away, IDR stands instead of two frame AA - in head unit on frame less. */
     @Test
     fun dropSendsIdrInPlaceOfTwoAaFrames() {
         core.spliceDrop = 1
@@ -164,14 +164,14 @@ class IdrSpliceDropTest {
         passed(4)
         now = 1990; core.onFrame(aus[4], 4)
         passed(5)
-        now = 2000; core.onFrame(aus[5], 5)                     // выброшен
+        now = 2000; core.onFrame(aus[5], 5)                     // Ejected
         assertEquals(5, link.sent.size)
         passed(6)
-        core.onFrame(aus[6], 6)                                 // заменяемый
-        core.onFrame(aus[7], 7)                                 // придержан
+        core.onFrame(aus[6], 6)                                 // Substituted
+        core.onFrame(aus[7], 7)                                 // held
         assertEquals(5, link.sent.size)
         decoded(7)
-        assertEquals(7, link.sent.size)                         // 8 кадров AA, в ГУ 7: IDR вместо кадров 6 и 7
+        assertEquals(7, link.sent.size)                         // 8 frame AA, in head unit 7: IDR instead of frame 6 and 7
         assertEquals(listOf(7, 8, 5), SpliceAssets.nalTypes(link.sent[5]))
         assertEquals(listOf(1, 1), SpliceAssets.nalTypes(link.sent[6]))
         assertTrue(logs.toString(), logs.any { it.contains("свой IDR #1") && it.contains("вместо 2 кадров AA") })
@@ -179,7 +179,7 @@ class IdrSpliceDropTest {
         assertTrue(logs.toString(), logs.any { it.contains("выброшено кадров AA 1 (за сессию 1), выброс отменён 0") })
     }
 
-    /** Выброс начат, а AA замолчал: выброшенный кадр уходит как был. */
+    /** The emissions started, and the AA fell silent: the discarded frame goes away as it was. */
     @Test
     fun dropFlushesWhenAaStops() {
         core.spliceDrop = 1
@@ -194,7 +194,7 @@ class IdrSpliceDropTest {
         assertArrayEquals(aus[5], link.sent[5])
     }
 
-    /** Статика (кадр после паузы) - сборка в фоне, кадр уходит сразу и в режиме замены. */
+    /** Static (frame after pause) - Assembly in the background, frame goes immediately and in replacement mode. */
     @Test
     fun replaceKeepsBackgroundBuildAfterPause() {
         startWith(3)

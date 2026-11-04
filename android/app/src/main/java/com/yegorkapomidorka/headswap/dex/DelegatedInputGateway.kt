@@ -73,8 +73,8 @@ internal class DelegatedInputGateway(context: Context) : IDelegatedInputGateway.
     }
 
     /**
-     * Фактические флаги дисплея в лог (видно, принял ли Android ALWAYS_UNLOCKED); дисплей в своей DisplayGroup не должен
-     * гаснуть по таймауту экрана, кнопка питания его не усыпляет (goToSleep трогает только общую группу).
+     * Actual display flags in log (see if Android ALWAYS_UNLOCKED has accepted); display in its DisplayGroup should not
+     * turn off the screen timeout, the power button does not put it to sleep (goToSleep touches only the general group).
      */
     private fun holdAwake(displayId: Int) {
         val flags = displays.getDisplay(displayId)?.flags ?: return
@@ -125,7 +125,7 @@ internal class DelegatedInputGateway(context: Context) : IDelegatedInputGateway.
         return DelegatedDesktopPolicy.taskState(displayId, context.applicationInfo.uid / 100000, packageName, permitted, readTasks(permitted))
     }
 
-    /** Пакеты задач дочернего экрана для «Недавних»: только этот экран и этот пользователь, null - не удалось узнать. */
+    /** The child screen's "Recent" task packs: only this screen and this user, null - could not be found out. */
     @Synchronized override fun childTaskPackages(displayId: Int, token: IBinder): Array<String>? {
         requireActive()
         check(registry.requireDisplay(displayId, token).parent != null) { "Ожидался экран виджета" }
@@ -158,7 +158,7 @@ internal class DelegatedInputGateway(context: Context) : IDelegatedInputGateway.
         return tasks
     }
 
-    /** Причина, по которой состояние задач определяется плохо: в лог один раз на каждую смену причины. */
+    /** The reason why the problem state is poorly defined: once in a log for each change of cause. */
     private var lastDiag: String? = null
     private fun diag(key: String, text: String) {
         if (key == lastDiag) return

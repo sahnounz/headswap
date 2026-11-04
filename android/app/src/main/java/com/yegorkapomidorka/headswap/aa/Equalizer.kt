@@ -8,12 +8,12 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.tanh
 
-/** Настройки эквалайзера: 7 полос в дБ (EQ_FREQS) и предусиление. Неизменяемые: мост сравнивает по equals. */
+/** Equalizer settings: 7 lanes in dB (EQ_FREQS) and preamplification. Invariable: bridge compares by equals. */
 data class EqSettings(val bands: List<Int> = FLAT_BANDS, val preamp: Int = 0) {
-    /** Всё по нулям: мост пропускает PCM бит-в-бит. */
+    /** All zeros: the bridge passes PCM bit-in-bit. */
     val isFlat: Boolean get() = preamp == 0 && bands.all { it == 0 }
 
-    /** Полос ровно EQ_FREQS.size, значения в допустимых пределах. */
+    /** The band is exactly EQ_FREQS.size, values within acceptable limits. */
     fun normalized(): EqSettings = EqSettings(
         List(EQ_FREQS.size) { (bands.getOrNull(it) ?: 0).coerceIn(EQ_BAND_MIN, EQ_BAND_MAX) },
         preamp.coerceIn(EQ_PREAMP_MIN, EQ_PREAMP_MAX),
@@ -24,7 +24,7 @@ data class EqSettings(val bands: List<Int> = FLAT_BANDS, val preamp: Int = 0) {
     companion object {
         val FLAT_BANDS: List<Int> = List(7) { 0 }
 
-        /** CSV из prefs; мусор и недостающие полосы = 0. */
+        /** CSV of prefs; garbage and missing lanes = 0. */
         fun parseBands(csv: String?): List<Int> {
             val parts = csv?.split(',').orEmpty()
             return List(EQ_FREQS.size) { parts.getOrNull(it)?.trim()?.toIntOrNull() ?: 0 }
@@ -32,22 +32,22 @@ data class EqSettings(val bands: List<Int> = FLAT_BANDS, val preamp: Int = 0) {
     }
 }
 
-/** Центральные частоты полос, Гц. */
+/** Central frequency bands, Hz. */
 val EQ_FREQS = intArrayOf(63, 160, 400, 1000, 2500, 6300, 16000)
 const val EQ_BAND_MIN = -12
 const val EQ_BAND_MAX = 12
 const val EQ_PREAMP_MIN = -12
 const val EQ_PREAMP_MAX = 6
 
-/** Пресеты; у «громких» preamp отрицательный, чтобы буст не упирался в лимитер. CUSTOM — значения пользователя. */
+/** Presets; the "loud" preamp negative, so that the bust does not rest on the limiter. CUSTOM - user values. */
 enum class EqPreset(val key: String, val settings: EqSettings?) {
     FLAT("flat", EqSettings()),
     BASS("bass", EqSettings(listOf(6, 4, 1, 0, 0, 0, 0), -5)),
     VOCAL("vocal", EqSettings(listOf(-2, -1, 1, 3, 3, 1, 0), -3)),
-    /** Удар 160 Гц и гитарное присутствие 2.5k, без суббаса и «воздуха». */
+    /** 160 Hz and guitar presence 2.5k, no sub-bass and "wireless connection". */
     ROCK("rock", EqSettings(listOf(3, 4, 0, -1, 3, 2, 0), -5)),
 
-    /** Глубокая «улыбка»: суббас и верх 16k, провал середины. */
+    /** Deep "smile": subbass and top 16k, the failure of the middle. */
     ELECTRONIC("electronic", EqSettings(listOf(7, 3, -2, -3, 0, 3, 6), -7)),
     CUSTOM("custom", null);
 
@@ -56,15 +56,15 @@ enum class EqPreset(val key: String, val settings: EqSettings?) {
     }
 }
 
-/** Текущие настройки EQ для моста: UI пишет через AaPrefs, мост читает на каждом буфере (один процесс). */
+/** Current EQ settings for the bridge: UI writes via AaPrefs, the bridge reads on each buffer (one process). */
 object EqLive {
     @Volatile var settings: EqSettings = EqSettings()
 }
 
 /**
- * 7 peaking-biquad (RBJ cookbook, Q=1) + preamp + мягкий лимитер выше −1 dBFS.
- * Обрабатывает interleaved PCM16 LE на месте; состояние фильтров своё у каждого канала.
- * Чистый Kotlin, без Android API.
+ * 7 peaking-biquad (RBJ cookbook, Q=1) + preamp + soft limiter above - 1 dBFS.
+ * Handles interleaved PCM16 LE on-site; filter status is different for each channel.
+ * Pure Kotlin, without Android API.
  */
 class Equalizer(sampleRate: Int = 48000, channels: Int = 2) {
     private var rate = sampleRate
@@ -72,12 +72,12 @@ class Equalizer(sampleRate: Int = 48000, channels: Int = 2) {
     private var settings = EqSettings()
     private var preGain = 1.0
 
-    /** Фактически применённое предусиление: за буфер линейно идёт к preGain, чтобы смена пресета не щёлкала. */
+    /** In fact, preamplification applied: the buffer linearly goes to preGain to change the preset does not click. */
     private var curGain = 1.0
     private var rampStep = 0.0
     private var rampLeft = 0
 
-    /** Активные полосы (усиление ≠ 0 и ниже Найквиста): индексы и нормированные коэффициенты. */
+    /** Active bands (strengthening != 0 and below Nyquist): indices and normalized coefficients. */
     private var active = IntArray(0)
     private val b0 = DoubleArray(BANDS)
     private val b1 = DoubleArray(BANDS)
@@ -85,12 +85,12 @@ class Equalizer(sampleRate: Int = 48000, channels: Int = 2) {
     private val a1 = DoubleArray(BANDS)
     private val a2 = DoubleArray(BANDS)
 
-    /** Состояние TDF-II: [канал * BANDS + полоса]. */
+    /** Status TDF-II: [channel * BANDS + band ]. */
     private var z1 = DoubleArray(BANDS * chans)
     private var z2 = DoubleArray(BANDS * chans)
     private var bypassed = true
 
-    /** Смена формата сбрасывает состояние и пересчитывает коэффициенты. */
+    /** The format change resets the status and recalculates the coefficients. */
     fun configure(sampleRate: Int, channels: Int) {
         if (sampleRate == rate && channels == chans) return
         rate = sampleRate
@@ -100,7 +100,7 @@ class Equalizer(sampleRate: Int = 48000, channels: Int = 2) {
         recompute()
     }
 
-    /** Новые настройки: пересчёт коэффициентов без сброса состояния (без щелчка при движении слайдера). */
+    /** New settings: recalculate the coefficients without reset status (without clicking when moving the slider). */
     fun update(s: EqSettings) {
         val n = s.normalized()
         if (n == settings) return
@@ -131,7 +131,7 @@ class Equalizer(sampleRate: Int = 48000, channels: Int = 2) {
             a2[i] = (1 - alpha / a) / a0
             idx.add(i)
         }
-        // полоса, ставшая 0 дБ, выпадает из цепочки: её состояние обнуляем, чтобы при возврате не всплыл хвост
+        // The strip that became 0 dB falls out of the chain: its state is zeroed so that the tail does not appear on return
         for (i in 0 until BANDS) if (i !in idx) for (c in 0 until chans) {
             z1[c * BANDS + i] = 0.0
             z2[c * BANDS + i] = 0.0
@@ -139,7 +139,7 @@ class Equalizer(sampleRate: Int = 48000, channels: Int = 2) {
         active = idx.toIntArray()
     }
 
-    /** PCM16 LE interleaved на месте; неполный хвостовой кадр не трогается. */
+    /** PCM16 LE interleaved is in place; incomplete tail frame is not touched. */
     fun process(pcm: ByteArray, offset: Int = 0, length: Int = pcm.size - offset) {
         if (enterBypass()) return
         val frames = length / (2 * chans)
@@ -156,7 +156,7 @@ class Equalizer(sampleRate: Int = 48000, channels: Int = 2) {
         }
     }
 
-    /** То же для ShortArray (interleaved). */
+    /** Same for ShortArray (interleaved). */
     fun process(pcm: ShortArray, offset: Int = 0, length: Int = pcm.size - offset) {
         if (enterBypass()) return
         val frames = length / chans
@@ -170,14 +170,14 @@ class Equalizer(sampleRate: Int = 48000, channels: Int = 2) {
         }
     }
 
-    /** Шаг curGain к preGain на кадр, фиксированная длина ~20 мс (не зависит от нарезки буферов). */
+    /** Step curGain C preGain on frame, fixed length ~ 20 ms (does not depend on clipping buffers). */
     private fun rampFrame() {
         if (rampLeft <= 0) return
         curGain += rampStep
         if (--rampLeft == 0) curGain = preGain
     }
 
-    /** true = обработка не нужна. На выходе из bypass состояние чистое: старый хвост не всплывёт щелчком. */
+    /** true = processing is not needed. At the output of bypass, the state is clean: the old tail will not pop up with a click. */
     private fun enterBypass(): Boolean {
         if (settings.isFlat) {
             bypassed = true
@@ -210,7 +210,7 @@ class Equalizer(sampleRate: Int = 48000, channels: Int = 2) {
         const val BANDS = 7
         const val Q = 1.0
 
-        /** Колено −1 dBFS: ниже линейно, выше tanh-сжатие, асимптота 1.0 (переполнения short нет). */
+        /** Knee - 1 dBFS: Linearly, higher tanh-compression, asymptota 1.0 (Overflows short None). */
         private const val KNEE = 0.891
 
         fun softLimit(x: Double): Double {

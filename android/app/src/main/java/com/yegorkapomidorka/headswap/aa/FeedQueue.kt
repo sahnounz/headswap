@@ -1,6 +1,6 @@
 package com.yegorkapomidorka.headswap.aa
 
-/** Элемент очереди кормления транскодера: кадр AA или команда нити кормления. */
+/** Transcoder feeding queue element: frame AA or command thread feeding. */
 sealed class FeedItem {
     class Frame(val annexB: ByteArray, val ptsUs: Long, val idr: Boolean, val atNs: Long) : FeedItem()
     class Config(val annexB: ByteArray) : FeedItem()
@@ -11,11 +11,11 @@ sealed class FeedItem {
 enum class Offer { ACCEPTED, DROPPED_FULL, DROPPED_GATED }
 
 /**
- * Очередь между нитью AA и нитью кормления декодера (чистая JVM-логика). Вход никогда не блокируется.
- * Кадры ограничены [maxFrames]: при переполнении кадр теряется и очередь «закрывается» до следующего IDR
- * (P без опорного кадра декодеру не нужны). IDR самодостаточен: он вытесняет все ожидающие кадры
- * (команды остаются на местах), снимает закрытие и проходит всегда. Команды ([post]) не отказывают.
- * Один потребитель ([take]), несколько производителей.
+ * The queue between thread AA and thread feeding decoder (pure JVM-logic). Login is never blocked.
+ * frame limited [maxFrames]: in case of overflow frame Lost and the queue is closed until the next IDR
+ * (P without frame decoder support is not needed). IDR is self-sufficient: it displaces all waiting frame
+ * (command remain in place), removes the closure and passes always. command ([post]) is not denied.
+ * One User ([take]), several manufacturers.
  */
 class FeedQueue(private val maxFrames: Int = DEFAULT_MAX_FRAMES) {
     private val items = ArrayDeque<FeedItem>()
@@ -26,10 +26,10 @@ class FeedQueue(private val maxFrames: Int = DEFAULT_MAX_FRAMES) {
 
     val pendingFrames: Int get() = synchronized(mon) { frames }
 
-    /** Максимум глубины по кадрам с прошлого [resetMaxPending] (без сброса). */
+    /** Maximum depth of frame from the past [resetMaxPending] (without reset). */
     val maxPendingSeen: Int get() = synchronized(mon) { maxSeen }
 
-    /** Возвращает максимум глубины с прошлого вызова и начинает окно заново с текущей глубины. */
+    /** Returns the maximum depth from the previous call and starts the window anew from the current depth. */
     fun resetMaxPending(): Int = synchronized(mon) {
         val m = maxSeen
         maxSeen = frames
@@ -55,7 +55,7 @@ class FeedQueue(private val maxFrames: Int = DEFAULT_MAX_FRAMES) {
         Offer.ACCEPTED
     }
 
-    /** Config/Reset/Stop: кладётся в хвост всегда, независимо от заполнения. */
+    /** The Config/Reset/Stop: is always in the tail, regardless of filling. */
     fun post(cmd: FeedItem) {
         require(cmd !is FeedItem.Frame) { "кадры - через offerFrame" }
         synchronized(mon) {
@@ -64,7 +64,7 @@ class FeedQueue(private val maxFrames: Int = DEFAULT_MAX_FRAMES) {
         }
     }
 
-    /** Ждёт элемент до [timeoutMs] мс; null - таймаут (или прерывание нити). */
+    /** Waiting for the element to [timeoutMs] ms; null - timeout (or interruption of thread). */
     fun take(timeoutMs: Long): FeedItem? = synchronized(mon) {
         val deadline = System.nanoTime() + timeoutMs * 1_000_000L
         while (items.isEmpty()) {
@@ -82,7 +82,7 @@ class FeedQueue(private val maxFrames: Int = DEFAULT_MAX_FRAMES) {
         x
     }
 
-    /** Выбросить всё и снять закрытие. */
+    /** Drop everything and remove the closure. */
     fun clear() = synchronized(mon) {
         items.clear()
         frames = 0
@@ -91,9 +91,9 @@ class FeedQueue(private val maxFrames: Int = DEFAULT_MAX_FRAMES) {
 
     companion object {
         /**
-         * ~0,5 с при 30 fps. Декодер создаётся 80-300 мс (на 60 fps это до 18 кадров), и эти кадры должны дождаться
-         * его, а не выбить IDR-запрос к AA на каждом старте. На 4 кадрах пачка из 10 кадров переполняла очередь
-         * прямо во время createDecoder (transcode_test burst, 23.10.2026).
+         * About 0.5 seconds at 30 fps. Decoder creation takes 80–300 ms (up to 18 frames at 60 fps), and those frames must wait
+         * it, not knock out IDR-request to AA at every start. On 4 frame pack of 10 frame crowded queue
+         * directly during createDecoder (transcode_test burst, 23.10.2026).
          */
         const val DEFAULT_MAX_FRAMES = 16
     }

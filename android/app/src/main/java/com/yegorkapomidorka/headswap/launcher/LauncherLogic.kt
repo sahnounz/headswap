@@ -2,7 +2,7 @@ package com.yegorkapomidorka.headswap.launcher
 
 import kotlin.math.max
 
-/** Страницы вместо скролла: ни свайпов, ни прокрутки (тач по ГУ идёт с задержкой). */
+/** Pages instead of scroll: no swipes, no scrolling (touch by head unit comes with a delay). */
 object Pager {
     fun pageCount(total: Int, perPage: Int): Int =
         if (perPage <= 0 || total <= 0) 1 else (total + perPage - 1) / perPage
@@ -16,7 +16,7 @@ object Pager {
     }
 }
 
-/** Сколько колонок и строк влезает в область при минимальной ячейке. */
+/** How many columns and rows fit into the area with a minimum cell. */
 object GridPlan {
     data class Plan(val cols: Int, val rows: Int) { val perPage: Int get() = cols * rows }
 
@@ -26,7 +26,7 @@ object GridPlan {
 
 enum class Press { TAP, LONG }
 
-/** Тап или долгий тап: считаем по времени между DOWN и UP, а не по таймеру (на ГУ UP приходит с задержкой). */
+/** Tap or long tap: count by time between DOWN and UP, not by timer (on head unit UP comes with delay). */
 object PressLogic {
     const val LONG_MS = 600L
     const val DEBOUNCE_MS = 400L
@@ -36,7 +36,7 @@ object PressLogic {
         if (allowLong && upMs - downMs >= LONG_MS) Press.LONG else Press.TAP
 }
 
-/** Антидребезг кнопок запуска: второй тап ближе gapMs к первому игнорируется. */
+/** Anti-drill launch buttons: the second tap closer to gapMs to the first is ignored. */
 class Debounce(private val gapMs: Long = PressLogic.DEBOUNCE_MS) {
     private var last = Long.MIN_VALUE
 
@@ -47,7 +47,7 @@ class Debounce(private val gapMs: Long = PressLogic.DEBOUNCE_MS) {
     }
 }
 
-/** Холодный старт приложения: блокируем повторный запуск, пока оно не появилось или не прошло timeoutMs. */
+/** Cold start app: block restart until it has appeared or passed timeoutMs. */
 class LaunchLock(private val timeoutMs: Long = PressLogic.COLD_START_MS) {
     var key: String? = null
         private set
@@ -62,7 +62,7 @@ class LaunchLock(private val timeoutMs: Long = PressLogic.COLD_START_MS) {
     }
 }
 
-/** Приложение пользователя в списке лаунчера: компонент, а не пакет (в пакете может быть несколько входов). */
+/** The user application in the launcher: component list is not a package (the package can have multiple inputs). */
 data class AppRef(val pkg: String, val cls: String) {
     val key: String get() = "$pkg/$cls"
 
@@ -75,7 +75,7 @@ data class AppRef(val pkg: String, val cls: String) {
     }
 }
 
-/** Персистентный список приложений: порядок важен, дублей нет. */
+/** Persistent list of applications: order is important, no duplicates. */
 object AppList {
     fun encode(list: List<AppRef>): String = list.joinToString("\n") { it.key }
     fun decode(raw: String?): List<AppRef> =
@@ -83,20 +83,20 @@ object AppList {
 
     fun add(list: List<AppRef>, ref: AppRef): List<AppRef> = if (ref in list) list else list + ref
     fun remove(list: List<AppRef>, ref: AppRef): List<AppRef> = list - ref
-    /** Нижний ряд главного = первые n приложений списка. */
+    /** The bottom row of the main = first n applications list. */
     fun quick(list: List<AppRef>, n: Int): List<AppRef> = list.take(n)
 }
 
 /**
- * Списки экранов приложений из каталога установленных (порядок и фильтр нашего пакета уже сделал DesktopAppCatalog).
- * «Все приложения» - весь каталог, выбор для нижнего ряда - каталог без избранных.
+ * Lists of application screens from the catalog installed (order and filter of our package has already made DesktopAppCatalog).
+ * "All applications" - the entire directory, the choice for the bottom row - a directory without favorites.
  */
 object CatalogLists {
     fun all(catalog: List<AppRef>): List<AppRef> = catalog.distinct()
     fun pickable(catalog: List<AppRef>, favorites: List<AppRef>): List<AppRef> = catalog.distinct().filter { it !in favorites }
 }
 
-/** Выбор навигатора по умолчанию и проверка сохранённого. */
+/** Select the default navigator and check saved. */
 object NavigatorPick {
     const val YANDEX_NAVI = "ru.yandex.yandexnavi"
     val KNOWN = listOf(YANDEX_NAVI, "ru.yandex.yandexmaps", "ru.dublgis.dgismobile",
@@ -104,29 +104,29 @@ object NavigatorPick {
 
     fun defaultFor(installed: Set<String>): String? = KNOWN.firstOrNull { it in installed }
 
-    /** Сохранённый, пока он установлен; иначе по умолчанию. null - выбрать нечего. */
+    /** Saved while it is installed; otherwise by default. null - there is nothing to choose. */
     fun effective(saved: String?, installed: Set<String>): String? =
         saved?.takeIf { it in installed } ?: defaultFor(installed)
 }
 
-/** Ответы taskState дочернего дисплея и решения по ним (EmbedHost): что делать после Back и при повторном показе. */
+/** Answers taskState child display and solutions (EmbedHost): what to do after Back and when re-display. */
 object TaskCheck {
     const val UNKNOWN = -1
     const val NONE = 0
     const val BACKGROUND = 1
     const val TOP = 2
-    /** Приложение осталось первой задачей, но не видно: Back из корня сделал moveTaskToBack. */
+    /** The application remained the first task, but not visible: Back made of root moveTaskToBack. */
     const val MOVED_TO_BACK = 3
 
-    /** Пауза до каждой проверки задачи после Back: 300, 700, 1100, 1500 мс от Back. */
+    /** Pause before each task check after Back: 300, 700, 1100, 1500 ms from Back. */
     val BACK_CHECKS = longArrayOf(300, 400, 400, 400)
-    /** Дольше этого после Back касания не блокируются, даже если состояние неизвестно: чёрный экран без кликов хуже лишнего касания. */
+    /** Longer after Back, the touch is not blocked, even if the state is unknown: a black screen without clicks is worse than an extra touch. */
     const val BACK_BLOCK_MS = 1000L
 
-    /** UNKNOWN: все проверки без ответа (-1), считаем, что приложение ушло из корня; вызывающий закрывает слой, как при CLOSED. */
+    /** UNKNOWN: all checks unanswered (-1), believe the application has gone from root; caller covers the layer as in CLOSED. */
     enum class AfterBack { CLOSED, STAYED_MORE, STAYED, UNKNOWN_MORE, UNKNOWN }
 
-    /** Итог очередной проверки после Back; [last] - проверка была последней. */
+    /** The result of the next check after Back; [last] - the check was the last. */
     fun afterBack(state: Int, last: Boolean): AfterBack = when {
         state == NONE || state == BACKGROUND || state == MOVED_TO_BACK -> AfterBack.CLOSED
         state == TOP -> if (last) AfterBack.STAYED else AfterBack.STAYED_MORE
@@ -134,35 +134,35 @@ object TaskCheck {
         else -> AfterBack.UNKNOWN_MORE
     }
 
-    /** Касания в окно не идут первую секунду после Back ([backAt] - uptime Back, 0 - Back не было). */
+    /** The first second does not go through the window. Back ([backAt] - uptime Back, 0 - Back There was not). */
     fun blockedAfterBack(now: Long, backAt: Long): Boolean = backAt != 0L && now - backAt in 0 until BACK_BLOCK_MS
 
-    /** Окно показали снова: запускать приложение заново, если его нет сверху; -1 считается только после Back с неизвестным итогом. */
+    /** The window showed again: run the application again if it is not on top; -1 counts only after Back with an unknown result. */
     fun needsRelaunch(state: Int, stale: Boolean): Boolean =
         state == NONE || state == BACKGROUND || state == MOVED_TO_BACK || (state < 0 && stale)
 
-    /** Приложение исчезло с дисплея: «нет задачи» после того, как оно уже было сверху (до этого оно могло просто не появиться). */
+    /** The application disappeared from the display: “no problem” after it was already on top (before that, it could simply not appear). */
     fun vanished(state: Int, seenTop: Boolean): Boolean = state == NONE && seenTop
 }
 
 /**
- * «Назад» на экранах лаунчера (без кнопки «Главный»): на предыдущий экран лаунчера, если он был не главным, иначе на главный.
- * Та же кнопка рейки, что открыла экран (логотип, шестерёнка), при повторном нажатии тоже ведёт назад.
+ * "Back" on launcher screens (without the "Home" button): on the previous launcher screen, if it was not the main one, otherwise on the main one.
+ * The same navigation rail button that opened the screen (logo, gear), when you press it again, also leads back.
  */
 object BackNav {
-    /** Экраны лаунчера, куда можно вернуться Назад; встроенные приложения и главный не запоминаются. */
+    /** launcher screens where you can go back; built-in applications and the main one are not remembered. */
     fun isScreen(area: Area): Boolean =
         area == Area.AllApps || area == Area.Picker || area == Area.Settings || area == Area.Calls || area == Area.Players
 
-    /** Что запомнить как «предыдущий» при уходе с [from]. */
+    /** What to remember as "previous" when leaving with [from]. */
     fun remembered(from: Area): Area? = from.takeIf(::isScreen)
 
-    /** Куда ведёт Назад с экрана [current]; [previous] - запомненный предыдущий экран. */
+    /** Where to go Back from the screen [current]; [previous] - a memorable previous screen. */
     fun target(current: Area, previous: Area?): Area = previous?.takeIf { isScreen(it) && it != current } ?: Area.Home
 
     /**
-     * Шаг «Назад» внутри настроек: текст лицензии -> список лицензий -> «Система». Результат - страница и открыт ли текст;
-     * null - шагов внутри настроек нет, «Назад» выходит с экрана настроек.
+     * Step "Back" inside the settings: license text -> list of licenses -> "System". The result is a page and whether the text is open;
+     * null - there are no steps inside the settings, "Back" comes from the settings screen.
      */
     fun settingsStep(page: SettingsPage, licenseOpen: Boolean): Pair<SettingsPage, Boolean>? = when {
         page != SettingsPage.ABOUT -> null
@@ -170,20 +170,20 @@ object BackNav {
         else -> SettingsPage.SYSTEM to false
     }
 
-    /** Серый «Назад» - только на главном: идти некуда. */
+    /** The “back” is only on the main thing: there is nowhere to go. */
     fun enabled(current: Area): Boolean = current != Area.Home
 }
 
 /**
- * Чип плееров на карточке музыки: два слота - свой плеер телефона (любая активная сессия) и последний онлайн-плеер
- * (Я.Музыка, YouTube Music, VK Музыка - что слушали последним, иначе первый установленный). Остальные медиаприложения -
- * долгий тап по «ноте» (список плееров).
+ * Chip players on the music card: two slots - your phone player (any active session) and the latest online player
+ * (Ya.Music, YouTube Music, VK Music - that listened last, otherwise the first installed). Other media applications -
+ * long tap on "note" (player list).
  */
 object PlayerChip {
     const val YANDEX = "ru.yandex.music"
     const val YT_MUSIC = "com.google.android.apps.youtube.music"
     const val VK = "com.uma.musicvk"
-    /** Онлайн-плееры второго слота; порядок - выбор по умолчанию, пока ничего не слушали. */
+    /** Online players of the second slot; order is the default choice until they have listened to nothing. */
     val ONLINE = listOf(YANDEX, YT_MUSIC, VK)
 
     enum class Kind { PHONE, YANDEX, YT_MUSIC, VK }
@@ -196,8 +196,8 @@ object PlayerChip {
     }
 
     /**
-     * @param local первый слот из настроек (свой плеер); null - любая активная сессия
-     * @param fixedOnline второй слот из настроек; null - «Последний»
+     * @param local the first slot from the settings (its player); null - any active session
+     * @param fixedOnline the second slot from the settings; null - "The Last"
      */
     fun slots(installed: Set<String>, chosen: String?, lastOnline: String?, local: String? = null, fixedOnline: String? = null): List<Slot> =
         buildList {
@@ -206,21 +206,21 @@ object PlayerChip {
             if (online != null) add(Slot(kindOf(online), online, chosen == online))
         }
 
-    /** Пакет второго слота: закреплённый в настройках, иначе последний услышанный, иначе первый установленный. */
+    /** Second slot package: fixed in the settings, otherwise last heard, otherwise first installed. */
     fun onlineSlot(installed: Set<String>, lastOnline: String?, fixedOnline: String?): String? =
         fixedOnline?.takeIf { it in installed && it in ONLINE }
             ?: lastOnline?.takeIf { it in installed && it in ONLINE } ?: ONLINE.firstOrNull { it in installed }
 
-    /** Свои плееры для первого слота: всё найденное на телефоне, кроме онлайн-сервисов второго. */
+    /** Your players for the first slot: everything found on the phone, except for the online services of the second. */
     fun localPlayers(players: List<String>): List<String> = players.filter { it !in ONLINE }
 
-    /** Последний онлайн-плеер после того, как выбрали или услышали [pkg]: меняется, только если это онлайн-плеер. */
+    /** The last online player after choosing or hearing [pkg]: changes only if it is an online player. */
     fun lastOnline(previous: String?, pkg: String?): String? = pkg?.takeIf { it in ONLINE } ?: previous
 }
 
 /**
- * Сетка экрана настроек: 5 рядов на всю высоту, общая для колонки разделов и карточек справа - границы совпадают
- * (главное требование Егора). Карточка на span рядов занимает от top(start) до bottom(start + span - 1).
+ * Setup screen grid: 5 rows at full height, common to the section and card column on the right - borders match
+ * (Egor's main requirement). The card on the span series takes from top(start) to bottom(start + span - 1).
  */
 object SettingsGrid {
     const val ROWS = 5
@@ -228,7 +228,7 @@ object SettingsGrid {
     fun bottom(row: Int, height: Int, gap: Int): Int = top(row + 1, height, gap) - gap
 }
 
-/** Подпись типа сети в рейке. Типы - константы TelephonyManager.NETWORK_TYPE_*. */
+/** Network type signature in rail. Types - constants TelephonyManager.NETWORK_TYPE_*. */
 object NetLabel {
     const val NONE = "нет"
     private const val NR = 20
@@ -245,7 +245,7 @@ object NetLabel {
     }
 }
 
-/** Вид центральной карточки на месте навигации (иконка «слои» переключает по кругу). */
+/** View of the central card at the navigation location (the icon "layers" switches in a circle). */
 enum class CardView { NAVIGATOR, CLOCK;
     fun next(): CardView = entries[(ordinal + 1) % entries.size]
 

@@ -64,7 +64,7 @@ class PhoneActivationService : Service() {
             }
             ACTION_CODE -> {
                 val typed = RemoteInput.getResultsFromIntent(intent)?.getCharSequence(KEY_CODE)?.toString().orEmpty()
-                // ответ принят: обновить уведомление, иначе шторка держит его с крутилкой и после cancel()
+                // response accepted: update the notification, otherwise the curtain keeps it with the torso and after cancel()
                 codeReceived()
                 if (worker?.isAlive == true) codes.offer(typed.trim()) else { manager.cancel(ID_CODE); stopSelf() }
             }
@@ -303,9 +303,9 @@ class PhoneActivationService : Service() {
     }
 
     /**
-     * Код из поля ответа получен. Пока уведомление не обновлено, SystemUI крутит индикатор отправки и продлевает ему
-     * жизнь даже после cancel(): шторка показывала крутилку рядом с «Headswap Desktop активирован». Обновление без поля
-     * ответа индикатор снимает; при неверном коде showCodeNotification вернёт поле.
+     * The code from the response field is received. While the notification is not updated, SystemUI rotates the sending indicator and extends it
+     * life even after cancel(): the curtain showed a twister next to "Headswap Desktop activated". Update without field
+     * the indicator removes the answer; if the code is incorrect, showCodeNotification will return the field.
      */
     private fun codeReceived() {
         manager.notify(ID_CODE, Notification.Builder(this, CHANNEL_CODE)

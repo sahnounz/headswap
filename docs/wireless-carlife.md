@@ -1,22 +1,22 @@
-# Беспроводной CarLife на Honda Vezel 2024: проверено, не работает
+# Wireless CarLife on Honda Vezel 2024: tested, not working
 
-Итог: беспроводного CarLife у этой ГУ нет. Остаётся только USB (AOA).
+Result: Wireless CarLife this one head unit No, there's only USB (AOA).
 
-ГУ штатная: Honda Vezel 2024, Китай, CarLife 2.0, HU-приложение 1.1.0.
+head unit staff: Honda Vezel 2024, China, CarLife 2.0, HU-application 1.1.0.
 
-## Как устроен беспроводной режим у официального MD
+## How to set up wireless mode at the official MD
 
-Источник: декомпилированный Baidu CarLife MD 8.6.7, классы `com.baidu.carlife.core.connect.auto.*`.
+Source: decompiled Baidu CarLife MD 8.6.7, classes `com.baidu.carlife.core.connect.auto.*`.
 
-- Телефон держит RFCOMM-сервер, имя записи в SDP — `carlife`. Слушает два UUID:
+- Phone keeps RFCOMM-server, the entry name in SDP is `carlife`. Listening to two UUID:
   - SPP `00001101-0000-1000-8000-00805F9B34FB`;
   - CarLife `a45bc7e5-bb50-4949-9de1-f78299cf6d78`.
 
-  Подключается к нему ГУ (`BluetoothClient`).
-- Кадр BT-канала устроен как cmd-канал USB. Заголовок 8 байт: `len u16 BE`, `reserved u16`, `serviceType u32 BE`. За ним `len` байт protobuf (`BluetoothConnect.readData`).
-- Первым после accept пишет телефон: `WIRLESS_INFO_REQUEST` 0x00100001. Дальше идёт такой обмен:
+  Connects to it head unit (`BluetoothClient`).
+- frame BT-channel is arranged as cmd-channel USB. header 8 bytes: `len u16 BE`, `reserved u16`, `serviceType u32 BE`. Then `len` bytes protobuf (`BluetoothConnect.readData`).
+- The first after accept writes the phone: `WIRLESS_INFO_REQUEST` 0x00100001. Next is the following exchange:
 
-  | Сообщение | Код |
+  | Message | Code |
   |---|---|
   | `INFO_RESPONSE` | 0x00108002 |
   | `TARGETINFO_REQUEST` | 0x00100004 |
@@ -26,54 +26,54 @@
   | `MD_STATUS` | 0x00100008 |
   | `HU_STATUS` | 0x00108009 |
 
-  Поля protobuf:
-  - InfoResponse: `wirlessType=1`, `wifiFrequency=2`. Типы 2, 3, 4 означают беспроводное подключение.
+  Fields protobuf:
+  - InfoResponse: `wirlessType=1`, `wifiFrequency=2`. Types 2, 3, 4 means wireless connection.
   - TargetInfo: `wifiDeviceName=1`, `targetInfo=2`, `scanRecord=3`, `p2pNetInfo=4`.
 
-  После обмена — Wi-Fi Direct и TCP-каналы, см. [carlife-protocol.md](carlife-protocol.md).
-- UDP 7999 «CarlifeHost»: его шлёт телефон, когда сам раздаёт хотспот (`ConnectManager.sendHotspotUdp`). ГУ его слушает.
+  After the exchange - Wi-Fi Direct and TCP-Channels, see. [carlife-protocol.md](carlife-protocol.md).
+- UDP 7999 "CarlifeHost": his send phone when he hands out hotspot (`ConnectManager.sendHotspotUdp`). head unit listens to him.
 
-## Что пробовали, 2026-10-10
+## What have you tried, 2026-10-10
 
-Делали диагностическую сборку Headswap с пассивной пробой. Она ничего не отвечала ГУ, только слушала:
-- 4 RFCOMM-сервера: SPP и CarLife, каждый в secure- и insecure-варианте;
-- SDP у спаренных устройств;
-- BT-события;
-- Wi-Fi Direct (пиры и сервисы);
+We did the diagnostic assembly of Headswap with passive test. She did not answer anything head unit, only listened:
+- 4 RFCOMM-servers: SPP and CarLife, each in secure- and insecure-variant;
+- SDP for paired devices;
+- BT-events;
+- Wi-Fi Direct (peers and services);
 - Wi-Fi scan;
 - UDP 7999.
 
-Ветку с пробой после эксперимента удалили. Код восстанавливается по этому описанию.
+The breakout branch was removed after the experiment. Code is restored according to this description.
 
-Прогоны:
-1. С USB-кабелем, телефон давно спарен. От ГУ только HFP, A2DP и PBAP.
-2. Без кабеля. Пару удалили и создали заново при работающей пробе, слушали 7 минут.
-   - Ни одного входящего RFCOMM.
-   - Единственное RFCOMM от ГУ по логам BT-стека — `UUID=0x111f`, HFP.
-   - От ГУ ни P2P-пира, ни точки доступа, ни датаграмм на UDP 7999.
-3. Официальный Baidu CarLife на телефоне подключался к ГУ только по USB. Беспроводных попыток в логкате нет. Своё логирование у Baidu выключено.
+Runs:
+1. With USB-cable, the phone has long been paired. From head unit to HFP, A2DP and PBAP. only
+2. Without cable. The pair was removed and re-created with a working sample, listened to 7 minutes.
+   - No incoming RFCOMM.
+   - Single RFCOMM from head unit by logs BT-steck - `UUID=0x111f`, HFP.
+   - From head unit neither P2P-pier nor access point nor datagrams on UDP 7999.
+3. The official Baidu CarLife on the phone was connected to head unit only by USB. Wireless attempts in the logic box is not. Logging Baidu is disabled.
 
-SDP-записи ГУ («Honda HFT»): SPP, OPP, A2DP-sink, AVRCP, PANU, HFP, MAP-MNS. CarLife-UUID и AA-wireless `4de17a00-…` среди них нет.
+SDP-Entries head unit («Honda HFT»): SPP, OPP, A2DP-sink, AVRCP, PANU, HFP, MAP-MNS. CarLife-UUID and AA-wireless `4de17a00-…` Not among them.
 
-Логи прогонов: `logs/car-wprobe/`.
+Run logs: `logs/car-wprobe/`.
 
-## Что видно на самой ГУ
+## What to see on the head unit
 
-- В CarLife на ГУ: «Помощь» (справа сверху), затем Android или iPhone. В обоих разделах первым пунктом идёт тип подключения, и там только USB. Выбора Wi-Fi нет.
-- Пункт Wi-Fi Hotspot в настройках ГУ не включается без авторизации в Honda Connect. В ряде стран Honda Connect не работает. Поэтому схема BT + Wi-Fi, как в штатном беспроводном Android Auto, на этой ГУ тоже не получится.
+- In CarLife on head unit: "Help" (right top), then Android or iPhone. In both sections, the first point is the type of connection, and there is only USB. There is no choice Wi-Fi.
+- Item Wi-Fi Hotspot in settings head unit is not included without authorization in Honda Connect. In several countries Honda Connect does not work. Therefore, the scheme BT + Wi-FiAs in the regular wireless Android Auto, on this head unit Neither will it.
 
-## Ветка A в коде (2026-10-16)
+## Branch A in code (2026-10-16)
 
-Сделана по разбору LifeAuto Lite 0.1.6, который подключается к Mazda по воздуху. Код: `link/bt/CarlifeBtProbe.kt` и `link/bt/P2pJoin.kt`.
+Made by parsing LifeAuto Lite 0.1.6, which connects to Mazda by wireless connection. Code: `link/bt/CarlifeBtProbe.kt` and `link/bt/P2pJoin.kt`.
 
-1. Пока ждём машину по Wi-Fi, слушаем RFCOMM `carlife` (SPP и CarLife UUID). ГУ подключается сама.
-2. `WIRELESS_INFO_REQUEST`, затем `TARGET_INFO_REQUEST`.
-3. По `TARGET_INFO` телефон входит клиентом в P2P-группу ГУ: сначала по ssid и паролю из `p2pNetInfo` (`WifiP2pConfig.Builder`, с частотой, если она есть), иначе ищет пира с именем из поля 1 и подключается PBC, `groupOwnerIntent=0`. Таймаут 30 с.
-4. Когда у `p2p*` появился IPv4 и ГУ прислала `IP_REQUEST`, уходит `MD_WIFI_IP` 0x00100007.
-5. ГУ подключает 6 TCP-каналов (плюс 9440) к `Tcp6Listener`. Подсеть P2P-группы пускается наравне с подсетями маяка.
-6. Bluetooth-соединение держим до конца ожидания или сессии.
-7. ГУ сняла P2P-группу (Mazda: через ~40 с после ухода в своё меню, лог 2026-10-17) - вход сбрасываем целиком. Когда ГУ переподключит Bluetooth и пришлёт новый `TARGET_INFO`, входим заново. Раньше он отбрасывался как «уже вхожу», и связь не возвращалась до «Стоп» и нового старта.
+1. While waiting for the car on Wi-Fi, listen to RFCOMM `carlife` (SPP and CarLife UUID). head unit connects itself.
+2. `WIRELESS_INFO_REQUEST`, then `TARGET_INFO_REQUEST`.
+3. Po `TARGET_INFO` The phone is entered by the client P2P-Group head unit: the First Battle ssid and password from `p2pNetInfo` (`WifiP2pConfig.Builder`with frequency, if any), otherwise looking for a feast with a name from the field 1 and connects PBC, `groupOwnerIntent=0`. Timeout 30 c.
+4. When `p2p*` has IPv4 and head unit sent `IP_REQUEST`, `MD_WIFI_IP` 0x00100007 leaves.
+5. head unit connects 6 TCP-channels (plus 9440) to `Tcp6Listener`. The subnet of the P2P-group is launched on a par with the subnets of the lighthouse.
+6. Bluetooth-connection keep until the end of the waiting or session.
+7. head unit Smooth P2P-the Group (Mazda: through ~ 40 After leaving the menu, log in. 2026-10-17) - the entrance is dropped entirely. When head unit Reconnect Bluetooth and send a new `TARGET_INFO`We re-enter. Previously, it was discarded as “I’m already entering”, and the connection did not return until “Stop” and a new start.
 
-Не подтверждено: тело `MD_WIFI_IP`. Сейчас это строка с IP в поле 1 protobuf (у LifeAuto тело собирается в нативной части, у Baidu мы этот класс не читали). Если ГУ после него не подключает TCP, смотреть в WL-логе строки `bt rx` после `tx WIFI_IP`: для незнакомых сообщений пишется `shape` (номера полей, числа и длины без содержимого).
+Unconfirmed: body `MD_WIFI_IP`. Now this is a line with IP in the field 1 protobuf (in) LifeAuto The body is assembled in the native part, Baidu I have not read this class. head unit after it does not connect TCP, looking at WL-Line Log `bt rx` after `tx WIFI_IP`: for unfamiliar messages is written `shape` (field numbers, numbers and lengths without contents).
 
-Разрешения: `NEARBY_WIFI_DEVICES` (Android 13+) или `ACCESS_FINE_LOCATION` (ниже), спрашиваются вместе с остальными по кнопке «Ждать машину по Wi-Fi».
+Resolutions: `NEARBY_WIFI_DEVICES` (Android 13+) or `ACCESS_FINE_LOCATION` (below), are asked along with the rest by the button "Wait for the car according to Wi-Fi".

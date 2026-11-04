@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Диагноз по логу Headswap: вероятные причины проблемы и что делать.
+"""Diagnosis by Headswap: log is the probable cause of the problem and what to do.
 
-Запуск:  python -X utf8 tools/logdiag.py <zip|папка|файл.log> [--json] [--all]
+Launch: python -X utf8 tools/logdiag.py <zip|folder|file.log> [--json] [--all]
 
-Поверх tools/logdigest.py: берёт его сводку, считает по сырому логу маркеры из
-tools/logdiag_rules.json и прогоняет правила. Правила — данные (JSON), движок только
-сравнивает факты, поэтому их можно дополнять без кода и перенести в приложение.
-Только stdlib.
+On top of tools/logdigest.py: takes his summary, considers raw log markers from
+tools/logdiag_rules.json and runs the rules. Rules are data (JSON), engine only
+compares the facts, so they can be supplemented without code and transferred to the application.
+Only stdlib.
 """
 import json
 import os
@@ -21,8 +21,8 @@ RULES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logdiag_r
 CHANNEL_RE = re.compile(r"STATISTIC_INFO channel=(\d+)")
 EIO_RE = re.compile(r"EIO \(I/O error\)|ENODEV")
 PAUSE_RE = re.compile(r"VIDEO_ENCODER_PAUSE")
-SHOW = 3          # сколько причин показывать
-MIN_SCORE = 30    # ниже — не показываем
+SHOW = 3          # Reasons to show
+MIN_SCORE = 30    # Below, we do not show
 
 
 def vtuple(v):
@@ -37,16 +37,16 @@ def load_rules(path=RULES_PATH):
     return r
 
 
-# ---------------------------------------------------------------- факты
+# ------------------------------------------ facts
 
 def scan_text(logs, logcats, markers):
-    """Маркеры: число событий (совпадения в пределах 2 с — одно событие: одна ошибка
-    пишется и в лог, и в WL), первая и последняя строка. Плюс пауза → EIO и channel."""
+    """Markers: number of events (coincidences within 2 with - one event: one error)
+    written in both log and WL), first and last line. Plus a pause → EIO and channel."""
     found = {k: {"n": 0, "first": None, "last": None, "_t": None, "ts": []} for k in markers}
     channel = None
     pause_eio = 0
     for name, text in logs + logcats:
-        clock = ld.Clock(ld.stamp_of(name))  # дата из имени: время разных файлов не должно совпадать
+        clock = ld.Clock(ld.stamp_of(name))  # date from the name: different files must not match
         last_pause = None
         for raw in text.splitlines():
             m = ld.TS_RE.match(raw)
@@ -81,7 +81,7 @@ def scan_text(logs, logcats, markers):
 
 
 def near(a, b, sec):
-    """Сколько событий из a случилось в пределах sec секунд от какого-нибудь события из b."""
+    """How many events from a happened within sec seconds of any event from b."""
     return sum(1 for x in a if any(abs((x - y).total_seconds()) <= sec for y in b))
 
 
@@ -100,7 +100,7 @@ def facts_of(path, rules):
     ep = r.get("episodes") if isinstance(r.get("episodes"), dict) else {}
     counts = ep.get("counts") or {}
     frames = [s["frames"] or 0 for s in ss]
-    # видео от телефона (AA), а не кадры заглушки: «rx=.. config=.. data=N»
+    # video from phone (AA), not frame stub: "rx=.. config=.. data=N"
     aa_video = [int(m.group(1)) for s in ss if (m := re.search(r"data=(\d+)", s.get("aa") or ""))]
     eio_s = [s for s in ss if re.search(r"EIO|ENODEV", s.get("reason") or "")]
     durs = [s["dur_s"] for s in eio_s if s.get("dur_s") is not None]
@@ -128,7 +128,7 @@ def facts_of(path, rules):
         "eio_median_s": statistics.median(durs) if durs else None,
         "no_gms": ep.get("no_gms_flags") or 0,
         "pause_eio": pause_eio,
-        # abort в ту же секунду, что пропал Wi-Fi, — телефон потерял сеть; без этого — VPN/стек
+        # abort in the same second that Wi-Fi went missing - phone lost network; without it - VPN/ stack
         "abort_iface": near(found.get("abort", {}).get("ts", []), found.get("iface_down", {}).get("ts", []), 3),
     }
     f["abort_no_iface"] = found.get("abort", {}).get("n", 0) - f["abort_iface"]
@@ -139,7 +139,7 @@ def facts_of(path, rules):
     return f, found, r
 
 
-# ---------------------------------------------------------------- правила
+# -------------------------------------------------- rules
 
 def check(cond, f):
     name, op, val = cond
@@ -153,7 +153,7 @@ def check(cond, f):
         a, b = vtuple(x), vtuple(val)
         return a is not None and a >= b
     if x is None:
-        if op in ("==", "!="):  # «нет данных» не равно нулю
+        if op in ("==", "!="):  # “No data” is zero.
             return (op == "!=") != (val is None)
         x = 0
     if op == "==":
@@ -190,7 +190,7 @@ def diagnose(f, found, rules):
         if fixed:
             v = vtuple(f.get("version"))
             if v is not None and v >= vtuple(fixed):
-                continue  # уже исправлено в версии юзера — эта причина не та
+                continue  # I have already corrected the user version - this is not the reason
             advice = f"Обновите Headswap до {fixed} или новее (последняя {rules['latest']}): там это исправлено. " + advice
             steps.insert(0, f"Обновите Headswap до {fixed} или новее")
         evidence = []
@@ -209,7 +209,7 @@ def diagnose(f, found, rules):
     return hits
 
 
-# ---------------------------------------------------------------- вывод
+# --------------------------------------------
 
 def summary_line(f):
     parts = []

@@ -16,11 +16,11 @@ import com.yegorkapomidorka.headswap.aa.CarPreset
 import com.yegorkapomidorka.headswap.aa.CarSettings
 
 /**
- * Выбор машины: поле-выпадашка (список CarPreset раскрывается прямо под полем, его ширины) и под ним карточка «Будет применено» с названием каждой настройки.
- * Строки карточки фиксированной высоты, при выборе меняются только значения: ничего не прыгает.
- * Последний шаг онбординга (в настройках раздела нет). Сам ничего не пишет, только сообщает выбор в [onPick];
- * применяет экран по своей кнопке «Применить».
- * [withOther] - последним пунктом «Моей машины нет в списке» (выбор null, настройки не трогаются).
+ * Machine selection: drop-down field (the list of CarPreset is revealed right under the field, its width) and under it a "Will be applied" card with the name of each setting.
+ * Lines of the card of fixed height, when choosing only values change: nothing jumps.
+ * The last step of onboarding (in the section settings there is no). He writes nothing, only reports the choice in [onPick];
+ * Use the screen on your “Apply” button.
+ * [withOther] - last item "My car is not in the list" (choice null, settings are not touched).
  */
 class CarChooser(val ctx: Context, private val withOther: Boolean, private val onPick: (CarPreset?) -> Unit) {
     private val fieldValue = ctx.text("", 17f, 500).apply {
@@ -32,7 +32,7 @@ class CarChooser(val ctx: Context, private val withOther: Boolean, private val o
     private val field: LinearLayout
     private val opts: List<CarPreset?> = CarPreset.values().toList() + if (withOther) listOf(null) else emptyList()
 
-    /** false - ещё ничего не выбрано (поле «Выберите машину», значения «—»). */
+    /** false - nothing is selected yet (Choose a car field, - values). */
     var hasChoice = false
         private set
     var choice: CarPreset? = null
@@ -75,7 +75,7 @@ class CarChooser(val ctx: Context, private val withOther: Boolean, private val o
         show(null, has = false)
     }
 
-    /** Показать выбор (без вызова [onPick]). */
+    /** Show selection (without calling [onPick]). */
     fun show(p: CarPreset?, has: Boolean = true) {
         val c = ctx
         hasChoice = has
@@ -94,14 +94,14 @@ class CarChooser(val ctx: Context, private val withOther: Boolean, private val o
         for ((v, t) in values.zip(texts)) v.text = t
     }
 
-    /** Раскрытое поле: рамка цвета акцента той же толщины (ничего не сдвигается), шеврон вверх. */
+    /** Open field: frame of accent color of the same thickness (nothing moves), chevron up. */
     private fun setOpen(open: Boolean) {
         val c = ctx
         field.background = c.rippleBg(c.shape(c.clr(R.color.surf), 16, c.clr(if (open) R.color.acc else R.color.line), 1.5f), 16)
         chevron.rotation = if (open) -90f else 90f
     }
 
-    /** Список под полем: шириной с поле, до ~6 строк, дальше прокрутка; нажатие мимо закрывает. */
+    /** List under field: width from field, to ~ 6 lines, next scroll; pressing past closes. */
     private fun openList() {
         val c = ctx
         val popup = ListPopupWindow(c)
@@ -128,7 +128,7 @@ class CarChooser(val ctx: Context, private val withOther: Boolean, private val o
         }
     }
 
-    /** Строка списка: выбранная залита pric, начертание у всех одно (не прыгает). */
+    /** List string: selected is filled with pric, all have the same mark (does not jump). */
     private inner class Adapter : BaseAdapter() {
         override fun getCount() = opts.size
 
@@ -157,12 +157,12 @@ class CarChooser(val ctx: Context, private val withOther: Boolean, private val o
     private companion object {
         const val ITEM_DP = 48
 
-        /** Подписи строк «Будет применено», в порядке [settingNames]. */
+        /** Signatures of the lines "Will be applied", in order [settingNames]. */
         val LABELS = listOf(R.string.car_label_mode, R.string.set_resolution, R.string.set_aa_density, R.string.set_fps, R.string.set_music_rate)
     }
 }
 
-/** Названия настроек, как в разделах «Видео» и «Звук»: режим, разрешение, масштаб AA, кадры, музыка. */
+/** The names of settings, as in the sections "Video" and "Sound": mode, resolution, scale AA, frame, music. */
 private fun Context.settingNames(s: CarSettings): List<String> = listOf(
     getString(if (s.transcode) R.string.set_transcode_title else R.string.set_direct_title),
     getString(s.videoMode.effective(s.transcode).titleRes),

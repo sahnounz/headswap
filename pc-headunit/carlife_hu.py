@@ -34,32 +34,32 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
-# каналы внешнего заголовка (Protocol.kt, object Ch)
+# external channels header (Protocol.kt, object Ch)
 CH_CMD, CH_VIDEO, CH_MEDIA, CH_TTS, CH_VR, CH_TOUCH = 1, 2, 3, 4, 5, 6
 CH_NAMES = {CH_CMD: "CMD", CH_VIDEO: "VIDEO", CH_MEDIA: "MEDIA", CH_TTS: "TTS", CH_VR: "VR", CH_TOUCH: "TOUCH"}
 MAX_OUTER_LEN = 64 * 1024 * 1024
-# лимиты длины inner-сообщения в режиме 6 сокетов
+# inner- message length limits in 6 mode socket
 MAX_CMD_LEN = 1024 * 1024
 MAX_DATA_LEN = 64 * 1024 * 1024
 
-# режим tcp6: порты, которые слушает телефон (беспроводной формат CarLife), порядок подключения = порядок каналов
+# mode tcp6: ports that listen to the phone (wireless format CarLife), connection order = channel order
 DEFAULT_PORTS = {CH_CMD: 7240, CH_VIDEO: 8240, CH_MEDIA: 9240, CH_TTS: 9241, CH_VR: 9242, CH_TOUCH: 9340}
-DATA_PORT = 9440                    # Data-канал: телефон принимает соединение и игнорирует его
+DATA_PORT = 9440                    # Data-channel: phone accepts connection and ignores it
 
-# ветка B (--discover): телефон раздаёт хотспот и шлёт UDP-маяк, ГУ слушает его и подключается к отправителю
-BEACON_PORT = 7999                  # UDP-порт приёма маяка (как у эталонной ГУ)
-BEACON_PAYLOAD = b"CarlifeHost"     # что шлёт телефон раз в 2 с (содержимое строго не проверяем)
-PROBE_PORT = 8999                   # UDP-проба: JSON-запрос на телефон, ответ необязателен
+# B branch (--discover): phone hands out hotspot and sends UDP-beacon, head unit listens to it and connects to sender
+BEACON_PORT = 7999                  # UDP- beacon reception port (as in the reference head unit)
+BEACON_PAYLOAD = b"CarlifeHost"     # that sends the phone once in 2 with (the content is not strictly checked)
+PROBE_PORT = 8999                   # UDP-Prob: JSON-phone request, no reply required
 PROBE_REQUEST = b'{"carlifehost":"carlife","deviceInfo":{}}'
 
-# коды сообщений (Protocol.kt, object Msg)
+# message codes (Protocol.kt, object Msg)
 HU_PROTOCOL_VERSION = 0x00018001
 MD_INFO = 0x00010004
 HU_INFO = 0x00018003
 VIDEO_ENCODER_INIT = 0x00018007
 VIDEO_ENCODER_INIT_DONE = 0x00010008
 VIDEO_ENCODER_START = 0x00018009
-VIDEO_ENCODER_PAUSE = 0x0001800A    # Protocol.kt, Msg.VIDEO_ENCODER_PAUSE; тело пустое, как у START
+VIDEO_ENCODER_PAUSE = 0x0001800A    # Protocol.kt, Msg.VIDEO_ENCODER_PAUSE; body empty as in START
 STATISTIC_INFO = 0x00018027
 HU_AUTHEN_REQUEST = 0x00018048
 MD_AUTHEN_RESPONSE = 0x00010049
@@ -97,10 +97,10 @@ def msg_name(t: int) -> str:
     return NAMES.get(t, "UNKNOWN")
 
 
-# ---- protobuf руками (varint и length-delimited) ----
+# ---- protobuf hands (varint and length-delimited) ----
 
 def varint(v: int) -> bytes:
-    v &= 0xFFFFFFFFFFFFFFFF          # отрицательный int32 = 10 байт, как в protoc
+    v &= 0xFFFFFFFFFFFFFFFF          # negative int32 = 10 bytes as in protoc
     out = bytearray()
     while True:
         b = v & 0x7F
@@ -125,7 +125,7 @@ def pb_str(field: int, s: str) -> bytes:
 
 
 def pb_parse(b: bytes) -> list[tuple[int, int, object]] | None:
-    """[(поле, wire, значение)]; None, если байты не похожи на protobuf. Строки/вложенные: bytes."""
+    """[(field, wire, value)]; None if bytes are not similar to protobuf. Strings/attached: bytes."""
     res = []
     p = 0
 
@@ -186,7 +186,7 @@ def pb_get_int(fields, number: int) -> int | None:
 
 
 def pb_render(body: bytes, limit: int = 200) -> str:
-    """Короткий текст protobuf-тела для лога: поле=значение."""
+    """Short text of protobuf-body for log: field = value."""
     if not body:
         return "{}"
     fields = pb_parse(body)
@@ -207,27 +207,27 @@ def pb_render(body: bytes, limit: int = 200) -> str:
     return "{" + (s if len(s) <= limit else s[:limit] + "...") + "}"
 
 
-# ---- кадры ----
+# ---- frame ----
 
 def outer(chan: int, inner: bytes) -> bytes:
-    """Внешний кадр: chan u32 BE, len u32 BE, затем inner."""
+    """External frame: chan u32 BE, len u32 BE, then inner."""
     return struct.pack(">II", chan, len(inner)) + inner
 
 
 def cmd_inner(mtype: int, body: bytes = b"") -> bytes:
-    """Inner для CMD/TOUCH: len u16 BE, reserved u16 = 0, type u32 BE."""
+    """Inner for CMD/TOUCH: len u16 BE, reserved u16 = 0, type u32 BE."""
     if len(body) > 0xFFFF:
         raise ValueError(f"CMD body too long: {len(body)}")
     return struct.pack(">HHI", len(body), 0, mtype) + body
 
 
 def data_inner(mtype: int, body: bytes = b"", time_: int = 0) -> bytes:
-    """Inner для VIDEO/MEDIA/TTS/VR: len u32 BE, time u32 BE, type u32 BE."""
+    """Inner for VIDEO/MEDIA/TTS/VR: len u32 BE, time u32 BE, type u32 BE."""
     return struct.pack(">III", len(body), time_, mtype) + body
 
 
 def nal_types(data: bytes) -> list[int]:
-    """Типы NAL-единиц Annex-B буфера (старт-коды 00 00 01 / 00 00 00 01): 5 = IDR, 7/8 = SPS/PPS."""
+    """Types of NAL-Buffer Annex-B Units (Start Codes 00 00 01/00 00 00 01): 5 = IDR, 7/8 = SPS/PPS."""
     types = []
     p = data.find(b"\x00\x00\x01")
     while p >= 0 and p + 3 < len(data):
@@ -241,7 +241,7 @@ def is_cmd_style(chan: int) -> bool:
 
 
 def parse_inner(chan: int, inner: bytes):
-    """-> (type, body, truncated) или None, если заголовок неполный."""
+    """-> (type, body, truncated) or None if header is incomplete."""
     if is_cmd_style(chan):
         if len(inner) < 8:
             return None
@@ -256,13 +256,13 @@ def parse_inner(chan: int, inner: bytes):
 
 
 class FrameParser:
-    """Накопительный разбор внешних кадров из потока TCP."""
+    """Accumulative analysis of external frame from the stream TCP."""
 
     def __init__(self):
         self.buf = bytearray()
 
     def feed(self, data: bytes):
-        """-> список (chan, inner) по всем целым кадрам. ValueError на битом заголовке."""
+        """-> list (chan, inner) for all integer frame. ValueError bit header."""
         self.buf += data
         out = []
         while len(self.buf) >= 8:
@@ -277,7 +277,7 @@ class FrameParser:
 
 
 class InnerStreamParser:
-    """Накопительный разбор inner-сообщений одного канала (режим tcp6: свой сокет на канал, без внешнего заголовка)."""
+    """Cumulative analysis of inner- messages of one channel (tcp6: mode of its socket per channel, without external header)."""
 
     def __init__(self, chan: int):
         self.chan = chan
@@ -287,7 +287,7 @@ class InnerStreamParser:
         self.buf = bytearray()
 
     def feed(self, data: bytes):
-        """-> список целых inner (заголовок + тело). ValueError на битом заголовке."""
+        """-> inner integer list (header + body). ValueError bit header."""
         self.buf += data
         out = []
         while len(self.buf) >= self.hdr:
@@ -306,7 +306,7 @@ class InnerStreamParser:
         return out
 
 
-# ---- сообщения ГУ ----
+# ---- head unit messages ----
 
 def build_protocol_version() -> bytes:
     return cmd_inner(HU_PROTOCOL_VERSION, pb_int(1, 4) + pb_int(2, 2))
@@ -342,7 +342,7 @@ def make_random_value(now: datetime | None = None) -> str:
 
 
 def build_video_encoder_init(w: int = 1920, h: int = 720, fps: int = 30) -> bytes:
-    # поле 4 в Schemas.videoEncoderInfo нет, ГУ шлёт 2
+    # 4 field in Schemas.videoEncoderInfo no, head unit sling 2
     return cmd_inner(VIDEO_ENCODER_INIT, pb_int(1, w) + pb_int(2, h) + pb_int(3, fps) + pb_int(4, 2))
 
 
@@ -371,11 +371,11 @@ def build_heartbeat() -> bytes:
 
 
 def auth_expected(brand: str, model: str, sdk: str, rnd: str) -> str:
-    """md5hex("CARLIFE" + brand + model + sdk + rnd), строчный hex (HuAuth.verifyCode)."""
+    """md5hex("CARLIFE" + brand + model + sdk + rnd), line hex (HuAuth.verifyCode)."""
     return hashlib.md5(("CARLIFE" + brand + model + sdk + rnd).encode("utf-8")).hexdigest()
 
 
-# ---- сессия ----
+# ---- session ----
 
 class Options:
     def __init__(self, host="127.0.0.1", port=7240, duration=120.0, no_auth=False, touch_test=False,
@@ -386,23 +386,23 @@ class Options:
                  video_kbps=0, dip_kbps=0, dip_at=20.0, dip_for=5.0,
                  pause_cycles=0, pause_every=10.0, pause_for=3.0):
         self.host, self.port, self.duration = host, port, duration
-        # циклы паузы: pause_every с от первого кадра (потом от каждого START) шлём PAUSE, через pause_for с - START
+        # Pause cycles: pause_every with from the first frame (then from each START) by PAUSE, through pause_for with - START
         self.pause_cycles, self.pause_every, self.pause_for = pause_cycles, pause_every, pause_for
-        # шейпер видео (tcp6): ГУ читает video-сокет не быстрее video_kbps (0 = без ограничения), а с dip_at по
-        # dip_at+dip_for секунд от первого кадра - не быстрее dip_kbps (0 = без провала). Обратное давление настоящее, TCP.
+        # Shaper Video (tcp6): head unit reads video-socket no faster than video_kbps (0 = no limit), but with dip_at on
+        # dip_at+dip_for seconds from the first frame - no faster than dip_kbps (0 = no failure). Reverse pressure present, TCP.
         self.video_kbps, self.dip_kbps, self.dip_at, self.dip_for = video_kbps, dip_kbps, dip_at, dip_for
         self.no_auth, self.touch_test = no_auth, touch_test
         self.out = out or HERE / "out"
         self.quiet = quiet
-        self.transport = transport                          # "stream" (один сокет, внешний заголовок) или "tcp6"
-        self.ports = dict(ports or DEFAULT_PORTS)           # tcp6: канал -> порт на телефоне
+        self.transport = transport                          # "stream" (one socket, external header) or "tcp6"
+        self.ports = dict(ports or DEFAULT_PORTS)           # tcp6: channel -> port on the phone
         self.kill_chan = kill_chan.upper() if kill_chan else None
         self.kill_after = kill_after
         self.extra_data_socket = extra_data_socket
-        # ветка B (телефон раздаёт хотспот): host телефона берём из адреса отправителя UDP-маяка
+        # branch B (phone hands out hotspot): host phone take from sender address UDP-beacon
         self.discover = discover
-        self.beacon_port = beacon_port                      # порт приёма маяка; 0 = эфемерный (тесты)
-        self.bind_ip = bind_ip                              # на какой карте слушать маяк
+        self.beacon_port = beacon_port                      # Lighthouse receiving port; 0 = ephemeral (tests)
+        self.bind_ip = bind_ip                              # On which map to listen to the lighthouse
         self.discover_timeout = discover_timeout
         self.probe_8999 = probe_8999
         self.probe_port = probe_port
@@ -426,8 +426,8 @@ class HeadUnit:
     CONNECT_TIMEOUT = 5.0
     SHAPE_RCVBUF = 32 * 1024
     SHAPE_CHUNK = 4096
-    KILL_WAIT = 10.0                # tcp6: сколько ждать, пока мост сам закроет остальные сокеты
-    PROBE_WAIT = 2.0                # --probe-8999: сколько ждать ответ
+    KILL_WAIT = 10.0                # tcp6: how long to wait for the bridge itself to close the rest of socket
+    PROBE_WAIT = 2.0                # --probe-8999: how long to wait for the answer
 
     def __init__(self, opts: Options):
         self.o = opts
@@ -437,7 +437,7 @@ class HeadUnit:
         self.port = opts.port
         self.wlock = threading.Lock()
         self.loglock = threading.Lock()
-        # tcp6: сокет и замок записи на канал; extra — Data-канал (только держим открытым)
+        # tcp6: socket and channel recording lock; extra - Data-channel (only keep open)
         self.socks: dict[int, socket.socket] = {}
         self.locks: dict[int, threading.Lock] = {}
         self.extra: socket.socket | None = None
@@ -464,19 +464,19 @@ class HeadUnit:
         self.vid_size = (1280, 720)
         self.vfile = None
         self.t0 = 0.0
-        self.host = opts.host                       # tcp6: при --discover подменяется адресом отправителя маяка
-        self.bsock: socket.socket | None = None     # UDP-сокет приёма маяка
-        self.beacon_port = opts.beacon_port         # настоящий порт (beacon_port=0 даёт свободный)
+        self.host = opts.host                       # tcp6: at --discover is replaced by a beacon sender address
+        self.bsock: socket.socket | None = None     # UDP-socket Beacon Reception
+        self.beacon_port = opts.beacon_port         # real port (beacon_port=0 gives free)
         self.beacons = 0
         self.discovered_host: str | None = None
         self.probe_reply: bool | None = None
-        # циклы паузы: фаза "wait" (идёт видео, ждём следующий PAUSE) или "paused"; замки: on_video зовётся из потоков чтения
+        # pause cycles: phase "wait" (video coming, waiting for the next PAUSE) or "paused"; locks: on_video is called from reading streams
         self.plock = threading.Lock()
         self.pause_phase = "wait"
-        self.pause_k = 0                            # сколько PAUSE уже послано
+        self.pause_k = 0                            # How many PAUSEs have already been sent
         self.pause_next_at: float | None = None
-        self.pause_cur: dict | None = None          # текущий цикл; после START в нём же копятся замеры
-        self.pause_results: list[dict] = []         # циклы, у которых послан START
+        self.pause_cur: dict | None = None          # current cycle; after START it also accumulates measurements
+        self.pause_results: list[dict] = []         # cycles in which START is sent
 
     def log(self, msg: str):
         line = f"{time.strftime('%H:%M:%S')}.{int(time.time() * 1000) % 1000:03d} {msg}"
@@ -488,7 +488,7 @@ class HeadUnit:
                 self.logf.flush()
 
     def listen(self):
-        """Открыть порт заранее (port=0 даёт свободный; self.port хранит настоящий)."""
+        """Open port in advance (port=0 gives free; self.port stores real)."""
         self.srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.srv.bind((self.o.host, self.o.port))
@@ -496,17 +496,17 @@ class HeadUnit:
         self.port = self.srv.getsockname()[1]
 
     def send(self, chan: int, inner: bytes, label: str = ""):
-        """stream: outer(chan, inner) в единственный сокет; tcp6: голый inner в сокет канала."""
+        """stream: outer(chan, inner) in single socket; tcp6: naked inner in socket channel."""
         if self.tcp6:
             if self.killed and chan == self.kill_num:
-                return                                      # сокет закрыт нами, писать некуда
+                return                                      # socket is closed by us, there is nowhere to write
             try:
                 with self.locks[chan]:
                     self.socks[chan].sendall(inner)
             except OSError as e:
                 if not self.killed:
                     raise
-                # после kill мост мог уже закрыть остальные сокеты: это не ошибка записи
+                # after kill bridge could already close the rest of socket: is not a write error
                 self.peer_gone(chan, f"write error: {e}")
                 return
         else:
@@ -520,7 +520,7 @@ class HeadUnit:
         body = inner[8:]
         self.send(CH_CMD, inner, f"{msg_name(mtype)} 0x{mtype:08X} len={len(body)} {extra or pb_render(body)}")
 
-    # --- приём от моста ---
+    # --- reception from the bridge ---
 
     def on_message(self, chan: int, inner: bytes):
         p = parse_inner(chan, inner)
@@ -606,10 +606,10 @@ class HeadUnit:
         if self.o.pause_cycles:
             self.pause_on_video(now, body)
 
-    # --- циклы паузы ---
+    # --- pause cycles ---
 
     def pause_on_video(self, now: float, body: bytes):
-        """Кадр в фазе паузы - нарушение (мост на PAUSE слать не должен); после START - замер первого кадра и IDR."""
+        """frame in pause phase - violation (the bridge on PAUSE should not be sent); after START - measurement of the first frame and IDR."""
         msg = None
         with self.plock:
             c = self.pause_cur
@@ -631,7 +631,7 @@ class HeadUnit:
             self.log(msg)
 
     def pause_tick(self, now: float):
-        """Из loop(): отсчёт от первого кадра, PAUSE -> ждать pause_for -> START -> снова ждать pause_every."""
+        """From loop(): countdown from the first frame, PAUSE -> wait for pause_for -> START -> wait again for pause_every."""
         if self.pause_phase == "wait":
             if self.pause_k >= self.o.pause_cycles:
                 return
@@ -659,11 +659,11 @@ class HeadUnit:
             self.send_cmd(VIDEO_ENCODER_START, cmd_inner(VIDEO_ENCODER_START))
 
     def pause_summary(self) -> dict:
-        """Строки итога по циклам паузы -> dict для результата; пишет в лог."""
+        """Result lines by pause cycles -> dict for result; writes to log."""
         res = self.pause_results
         total = sum(c["paused_frames"] for c in res)
         c = self.pause_cur
-        if self.pause_phase == "paused" and c is not None:       # сессия кончилась посреди паузы
+        if self.pause_phase == "paused" and c is not None:       # session ended in the middle of a pause
             total += c["paused_frames"]
             self.log(f"pause #{c['k']}: session ended during pause, paused_frames={c['paused_frames']}")
 
@@ -682,7 +682,7 @@ class HeadUnit:
         return {"cycles": [{k: c[k] for k in ("k", "paused_frames", "first_ms", "idr_ms")} for c in res],
                 "worst_idr_ms": max(idrs) if idrs else None, "no_idr": no_idr, "paused_frames_total": total}
 
-    # --- потоки ---
+    # --- streams ---
 
     def reader(self):
         parser = FrameParser()
@@ -703,7 +703,7 @@ class HeadUnit:
                 self.finish(f"read error: {e}")
 
     def reader_tcp6(self, chan: int, sock: socket.socket, parser: InnerStreamParser | None):
-        """Поток чтения одного сокета tcp6 (parser=None у Data-канала: только ждём EOF)."""
+        """The reading stream of one socket tcp6 (parser=None for Data-channel: just waiting for EOF)."""
         name = CH_NAMES.get(chan, "DATA")
         try:
             while not self.stop.is_set():
@@ -735,7 +735,7 @@ class HeadUnit:
         return bool(self.o.video_kbps or self.o.dip_kbps)
 
     def video_limit_kbps(self, now: float) -> int:
-        """Текущий предел чтения видео, кбит/с (0 = без ограничения)."""
+        """Current video reading limit, kbit/s (0 = no limit)."""
         if self.o.dip_kbps and self.first_frame_at is not None:
             t = now - self.first_frame_at
             if self.o.dip_at <= t < self.o.dip_at + self.o.dip_for:
@@ -743,7 +743,7 @@ class HeadUnit:
         return self.o.video_kbps
 
     def shape_wait(self, n: int):
-        """Шейпер: после n прочитанных байт спать, чтобы средняя скорость чтения не превышала предел."""
+        """Shaper: After n read bytes sleep so that the average reading speed does not exceed the limit."""
         now = time.monotonic()
         kbps = self.video_limit_kbps(now)
         if kbps != self.shape_kbps:
@@ -758,7 +758,7 @@ class HeadUnit:
             time.sleep(delay)
 
     def peer_gone(self, chan: int, why: str):
-        """Мост закрыл (или порвал) сокет канала. После kill это ожидаемый ответ моста на потерю канала."""
+        """The bridge closed (or tore) the socket channel. After the kill, this is the bridge's expected response to the loss of the canal."""
         if self.killed:
             if self.closed_others_after is None and self.kill_at is not None:
                 self.closed_others_after = time.monotonic() - self.kill_at
@@ -772,7 +772,7 @@ class HeadUnit:
             self.stop.set()
 
     def open_stream(self) -> bool:
-        """stream: слушать порт и принять одно соединение."""
+        """stream: listen port and accept one connection."""
         if self.srv is None:
             self.listen()
         self.log(f"listening on {self.o.host}:{self.port}")
@@ -782,14 +782,14 @@ class HeadUnit:
         return True
 
     def beacon_listen(self):
-        """Открыть UDP-порт маяка заранее (beacon_port=0 даёт свободный; self.beacon_port хранит настоящий)."""
+        """Open UDP-light port in advance (beacon_port=0 gives free; self.beacon_port stores real)."""
         self.bsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.bsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.bsock.bind((self.o.bind_ip, self.o.beacon_port))
         self.beacon_port = self.bsock.getsockname()[1]
 
     def recv_beacon(self, timeout: float) -> tuple[str, int] | None:
-        """Одна датаграмма с маяком за timeout секунд: логирует и считает, возвращает адрес отправителя."""
+        """One datagram with a beacon in timeout seconds: logs and counts, returns the sender address."""
         self.bsock.settimeout(max(timeout, 0.001))
         try:
             data, addr = self.bsock.recvfrom(2048)
@@ -801,7 +801,7 @@ class HeadUnit:
         return addr[0], addr[1]
 
     def wait_beacon(self, timeout: float) -> tuple[str, int] | None:
-        """Ждать маяк до timeout секунд, вернуть адрес отправителя первой датаграммы или None."""
+        """Wait for the beacon to timeout seconds, return the sender address of the first datagram or None."""
         if self.bsock is None:
             self.beacon_listen()
         self.log(f"waiting for beacon on {self.o.bind_ip}:{self.beacon_port} (timeout {timeout:g} s)")
@@ -811,14 +811,14 @@ class HeadUnit:
             if left <= 0:
                 return None
             try:
-                addr = self.recv_beacon(min(left, 0.5))     # короткие паузы: Ctrl+C проходит и на Windows
+                addr = self.recv_beacon(min(left, 0.5))     # short pauses: Ctrl+C passes on Windows
             except ConnectionResetError:
-                continue                                    # Windows: ICMP от чужой отправки, не ошибка
+                continue                                    # Windows: ICMP from someone else's shipment, no error
             if addr:
                 return addr
 
     def probe(self, ip: str):
-        """Одна UDP-датаграмма на <ip>:probe_port и до PROBE_WAIT секунд ожидания ответа (необязателен)."""
+        """One UDP-datagram on <ip>:probe_port and up to PROBE_WAIT seconds waiting for response (optional)."""
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
             s.settimeout(self.PROBE_WAIT)
@@ -826,14 +826,14 @@ class HeadUnit:
             data, _ = s.recvfrom(4096)
             self.probe_reply = True
             self.log(f"probe {self.o.probe_port}: reply {data[:64]!r}")
-        except OSError:                                     # timeout и ConnectionReset (порт закрыт) = ответа нет
+        except OSError:                                     # timeout and ConnectionReset (port closed) = no reply
             self.probe_reply = False
             self.log(f"probe {self.o.probe_port}: no reply")
         finally:
             s.close()
 
     def discover(self) -> bool:
-        """Ветка B: ждать UDP-маяк, host = адрес отправителя; по желанию проба 8999. False, если маяка нет."""
+        """B: branch waiting for UDP-beacon, host = sender's address; optionally sample 8999. False, if there is no beacon."""
         try:
             addr = self.wait_beacon(self.o.discover_timeout)
         except KeyboardInterrupt:
@@ -848,14 +848,14 @@ class HeadUnit:
         if self.o.probe_8999:
             self.probe(self.host)
         try:
-            while self.recv_beacon(0.001):                  # уже накопившиеся маяки: только посчитать
+            while self.recv_beacon(0.001):                  # The lights are still there, just counting.
                 pass
         except OSError:
             pass
         return True
 
     def open_tcp6(self) -> bool:
-        """tcp6: подключиться к шести портам телефона по порядку каналов (плюс Data по желанию)."""
+        """tcp6: connect to six phone ports in order of channels (plus Data optionally)."""
         self.log(f"connecting to {self.host} (tcp6)")
         targets = [(c, CH_NAMES[c], self.o.ports[c]) for c in sorted(CH_NAMES)]
         if self.o.extra_data_socket:
@@ -863,7 +863,7 @@ class HeadUnit:
         for chan, name, port in targets:
             try:
                 if chan == CH_VIDEO and self.shaping:
-                    # малое окно приёма до connect: иначе шейпер копит секунды видео в буфере ПК, давление до телефона не доходит
+                    # small reception window up to connect: otherwise the Shaper saves seconds of video in the PC buffer, pressure does not reach the phone
                     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, self.SHAPE_RCVBUF)
                     s.settimeout(self.CONNECT_TIMEOUT)
@@ -909,7 +909,7 @@ class HeadUnit:
             s.close()
 
     def kill_socket(self):
-        """Fault injection (tcp6): закрыть один сокет, остальные оставить открытыми."""
+        """Fault injection (tcp6): close one socket, leave the rest open."""
         sock = self.socks[self.kill_num]
         self.log(f"fault injection: closing {self.o.kill_chan} socket, the others stay open")
         self.kill_at = time.monotonic()
@@ -922,7 +922,7 @@ class HeadUnit:
             sock.close()
 
     def run(self) -> dict:
-        """Принять соединение (stream) или подключиться к шести портам (tcp6), отработать сессию, вернуть итог (dict)."""
+        """Accept connection (stream) or connect to six ports (tcp6), work session, return total (dict)."""
         self.o.out.mkdir(parents=True, exist_ok=True)
         self.logf = open(self.o.out / "carlife_hu.log", "w", encoding="utf-8")
         self.vfile = open(self.o.out / "carlife_video.h264", "wb")

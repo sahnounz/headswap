@@ -18,7 +18,7 @@ class UpgradeNoticeTest {
 
     @Test
     fun oldUserSeesOneWindowPerLaunch() {
-        // обновился с версии до 2.6.0: окно 3.0 сейчас, окно 2.6.0 при следующем запуске, окно 4.0 после них
+        // updated from version to 2.6.0: 3.0 window now, 2.6.0 window at next launch, 4.0 window after them
         var v30 = false
         var a11y = false
         var v40 = false

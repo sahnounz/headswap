@@ -1,30 +1,29 @@
-# 0001. Мост — клиент сервера ГУ Android Auto на 127.0.0.1:5277, без интента в Gearhead
+# 0001. The bridge is a client of Android Auto's head unit server on 127.0.0.1:5277
 
-- Статус: принято
-- Дата: 2026-10-06
-- Источники: `docs/aa-headunit.md` §1.1–1.4, README.md, коммит 4fbea1e «Headswap 1.0», `aa/AapSession.kt`
+- Status: accepted
+- Date: 2026-10-06
+- Sources: `docs/aa-headunit.md` §1.1–1.4, README.md, commit 4fbea1e “Headswap 1.0”, `aa/AapSession.kt`
 
-## Контекст
+## Context
 
-Нужно получить поток Android Auto на телефоне без донгла и без второго устройства. Сторонние способы запустить
-AA «изнутри» (intent в `WirelessStartupActivity`, TCP-сервер на порту 5288) сломаны на AA 17.4+ и Android 16.
+We need an Android Auto stream on the phone without a dongle or a second device. Alternative ways of starting AA
+internally, such as an intent to `WirelessStartupActivity` or a TCP server on port 5288, fail on AA 17.4+ and Android 16.
 
-## Решение
+## Decision
 
-Headswap сам выступает головным устройством AA: подключается TCP-клиентом к серверу ГУ, который сам Android Auto
-поднимает на `127.0.0.1:5277`, и проходит версию, TLS, service discovery, открытие каналов и видео H.264
-(`aa/AapSession.kt:53`, порт по умолчанию `:30`). Для машины тот же телефон остаётся устройством CarLife (AOA или
-беспровод). Сервер ГУ пользователь включает вручную в режиме разработчика AA (см. 0002).
+Headswap acts as an AA head unit: it connects as a TCP client to Android Auto's own head unit server on
+`127.0.0.1:5277`, then completes version negotiation, TLS, service discovery, channel setup, and H.264 video
+(`aa/AapSession.kt:53`; default port at `:30`). To the car, the same phone remains a CarLife device over AOA or wireless.
+The user manually enables AA's head unit server in developer settings (0002).
 
-## Альтернативы
+## Alternatives
 
-- LEGACY (AA < 17.4): наш TCP-сервер на 5288 плюс явный intent в Gearhead. По `docs/aa-headunit.md` §1.3–1.4
-  ломается на AA 17.4+ и Android 16, поэтому не используется.
+- LEGACY (AA <17.4): our own TCP server on 5288 and an explicit Gearhead intent. This fails on AA 17.4+ and
+  Android 16, as documented in `docs/aa-headunit.md` §1.3–1.4, and is not used.
 
-## Последствия
+## Consequences
 
-- Работа моста зависит от того, что AA оставляет сервер ГУ на loopback. Смена поведения AA ломает всё сразу.
-- Без включённого сервера ГУ в AA Headswap работать не может: отсюда экран проверки сервера и подсказки
-  в онбординге (см. 0003).
-- Сервер одноразовый и хрупкий: правила обращения с ним в 0003.
-- Для AA мы выглядим как «Google / Desktop Head Unit» (0015).
+- The bridge depends on AA continuing to expose its head unit server on loopback. A change can break the entire bridge.
+- Headswap cannot work without that server, which explains the server check screen and onboarding guidance (0003).
+- The server is single-use and fragile; follow 0003.
+- AA sees us as “Google / Desktop Head Unit” (0015).

@@ -9,7 +9,7 @@ import com.yegorkapomidorka.headswap.ui.LogShare
 import java.io.File
 import java.io.RandomAccessFile
 
-/** Обвязка LogDiag для приложения: правила из assets, логи из LogShare, работа в фоне, результат на главном потоке. */
+/** LogDiag binding for application: rules from assets, logs from LogShare, work in background, result on main thread. */
 object DiagRunner {
     private const val RULES_ASSET = "logdiag_rules.json"
     private const val MAX_LOGS = 5
@@ -39,7 +39,7 @@ object DiagRunner {
         return LogDiag.run(logs, env, rules, en)
     }
 
-    /** Файл целиком или последние MAX_FILE_BYTES: без неполной первой строки, с пометкой в начале (как в zip отчёта). */
+    /** File is whole or last MAX_FILE_BYTES: without incomplete first line, marked at the beginning (as in zip report). */
     private fun readTail(f: File): String = RandomAccessFile(f, "r").use { raf ->
         val len = raf.length()
         val cut = len > MAX_FILE_BYTES

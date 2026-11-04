@@ -18,8 +18,8 @@ import com.yegorkapomidorka.headswap.R
 import com.yegorkapomidorka.headswap.dex.DexState
 
 /**
- * Уведомление foreground-сервиса по Notification.dc.html: заголовок = состояние, текст = этапы, действие «Стоп».
- * Сервис только вызывает build(); пока он работает, тикер раз в секунду обновляет уведомление, если состояние изменилось.
+ * Notification of foreground-service by Notification.dc.html: header = status, text = steps, action "Stop".
+ * The service only calls build(); while it is running, the ticker updates the notification once per second if the state has changed.
  */
 object HeadswapNotification {
     private const val AA_PACKAGE = "com.google.android.projection.gearhead"
@@ -35,7 +35,7 @@ object HeadswapNotification {
         return n
     }
 
-    /** Режим Headswap Desktop: статус рабочего стола вместо этапов AA, без действия «Открыть Android Auto». */
+    /** Headswap Desktop: mode is desktop status instead of AA stages, without the "Open Android Auto" action. */
     private fun desktopText(): String = DexState.error ?: "${DexState.status} · ${CarLifeState.status}"
 
     private fun desktopFrom(ctx: Context, channel: String): Notification {
@@ -67,7 +67,7 @@ object HeadswapNotification {
 
     private fun from(ctx: Context, channel: String, st: HomeState): Notification {
         if (DexState.desktopSession) return desktopFrom(ctx, channel)
-        val loc = AppLocale.wrap(ctx)       // applicationContext не знает выбранного языка на Android 10-12
+        val loc = AppLocale.wrap(ctx)       // applicationContext does not know the selected language on Android 10-12
         val b = Notification.Builder(ctx, channel)
             .setSmallIcon(R.drawable.ic_stat_headswap)
             .setColor(0xFFF2B33D.toInt())
@@ -107,7 +107,7 @@ object HeadswapNotification {
         val nm = app.getSystemService(NotificationManager::class.java)
         handler.postDelayed(object : Runnable {
             override fun run() {
-                val st = HeadswapStatus.current(app)       // заодно обновляет переходы состояния
+                val st = HeadswapStatus.current(app)       // Also update the status transitions
                 if (!CarLifeState.running) {
                     ticking = false
                     lastKey = ""
@@ -126,7 +126,7 @@ object HeadswapNotification {
     }
 }
 
-/** Кнопка «Стоп» в уведомлении: пометить остановку пользователем и отдать сервису ACTION_STOP. */
+/** Stop button in the notification: mark the stop by the user and give the service ACTION_STOP. */
 class StopReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         Actions.stopBridge(context)

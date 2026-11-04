@@ -13,16 +13,16 @@ import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
 
-/** IPv4-интерфейс локальной сети, куда шлём маяк: хотспот телефона (ветка B) или сеть ГУ, куда вошёл телефон (C′). */
+/** IPv4-LAN interface, where we send the beacon: hotspot Phone (branch) B) or network head unitWhere the phone went (C′). */
 class LanIface(val name: String, val ip: Inet4Address, val prefix: Int, val broadcast: Inet4Address) {
-    /** Адрес в подсети интерфейса (по нему же принимаются сокеты ГУ). */
+    /** Address in the interface subnet (it also accepts socket head unit). */
     fun contains(a: InetAddress): Boolean {
         if (a !is Inet4Address) return false
         val mask = if (prefix == 0) 0 else -1 shl (32 - prefix)
         return (toInt(a) and mask) == (toInt(ip) and mask)
     }
 
-    /** Узлы подсети без своего адреса, сети и broadcast; только для /24 и уже (иначе слишком много). */
+    /** Subnet nodes without their address, network and broadcast; only for /24 and already (otherwise too much). */
     fun hosts(): List<Inet4Address> {
         if (prefix < 24 || prefix > 30) return emptyList()
         val mask = -1 shl (32 - prefix)
@@ -42,18 +42,18 @@ class LanIface(val name: String, val ip: Inet4Address, val prefix: Int, val broa
         ) as Inet4Address
 
         /**
-         * Подходит ли интерфейс для маяка. Мобильные данные (rmnet, ccmni), loopback, туннели и dummy нет;
-         * p2p нет (это ветка A, как в «mix»-режиме Baidu). Остальные IPv4 с broadcast-адресом да.
+         * Whether the interface is suitable for a lighthouse. Mobile data (rmnet, ccmni), loopback, tunnels and dummy is not;
+         * p2p is not (it is branch A, as in "mix" mode Baidu). The rest of IPv4 with broadcast-address yes.
          */
         fun eligibleName(name: String): Boolean =
             EXCLUDED_PREFIXES.none { name.startsWith(it) }
 
-        /** Хотспот (а не STA): свип unicast-маяками только по ним, в домашнюю сеть через wlan0 не сыплем. */
+        /** hotspot (not STA): the zip unicast- beacons only on them, in the home network via wlan0 not rash. */
         fun sweepName(name: String): Boolean = name != "wlan0"
 
         private val EXCLUDED_PREFIXES = listOf("rmnet", "ccmni", "lo", "dummy", "tun", "ppp", "p2p", "ip6tnl", "sit", "v4-", "clat")
 
-        /** Текущие подходящие интерфейсы. */
+        /** Current suitable interfaces. */
         fun scan(): List<LanIface> {
             val out = ArrayList<LanIface>()
             for (ni in NetworkInterface.getNetworkInterfaces()?.toList().orEmpty()) {
@@ -73,25 +73,25 @@ class LanIface(val name: String, val ip: Inet4Address, val prefix: Int, val broa
     }
 }
 
-/** Байты ветки B: маяк телефона и ответ на опрос ГУ. */
+/** Bytes branch B: phone beacon and survey response head unit. */
 object BeaconCodec {
     const val BEACON_PORT = 7999
     const val PROBE_PORT = 8999
 
-    /** Что шлёт Baidu MD 8.6.7 (ConnectManager.sendHotspotUdp): ГУ берёт только адрес отправителя. */
+    /** That Baidu MD 8.6.7 (ConnectManager.sendHotspotUdp): head unit takes only the sender's address. */
     val BEACON: ByteArray = "CarlifeHost".toByteArray(Charsets.US_ASCII)
 
-    /** Ответ FT/CL2AA на опрос 8999 (расширение под отдельные ГУ, в официальном MD слушателя нет). */
+    /** FT/CL2AA response to the 8999 survey (expansion for separate head unit, there is no listener in the official MD). */
     val READY: ByteArray = """{"carlifehost":"carlife","status":"ready"}""".toByteArray(Charsets.US_ASCII)
 
-    /** Опрос ГУ: датаграмма со строкой carlifehost (регистр важен, как у FT). */
+    /** Survey head unit: datagram with the line carlifehost (register is important, as in FT). */
     fun isProbe(data: ByteArray, len: Int): Boolean = String(data, 0, len, Charsets.ISO_8859_1).contains("carlifehost")
 }
 
 /**
- * Ветка B: телефон раздаёт хотспот, ГУ в нём клиент. Раз в 2 с маяк «CarlifeHost» на UDP 7999 в broadcast каждого
- * подходящего интерфейса, раз в 12 с unicast каждому адресу подсети хотспота (часть ГУ broadcast не ловит: FT, CL2AA);
- * ответчик на UDP 8999. Работает, пока ГУ не подключила 6 сокетов (stop()). Всё в WL-лог, без содержимого пакетов ГУ.
+ * B: branch of the phone distributes hotspot, head unit in it client. Once in 2 with beacon "CarlifeHost" on UDP 7999 in broadcast each
+ * suitable interface, once in 12 with unicast each address of the subnet hotspot (part of head unit broadcast does not catch: FT, CL2AA);
+ * UDP 8999. Works until head unit has connected 6 socket (stop()). All in WL-log, without contents of packages head unit.
  */
 class HotspotBeacon(
     private val ifaces: () -> List<LanIface> = { LanIface.scan() },
@@ -100,12 +100,12 @@ class HotspotBeacon(
     private val beaconPort: Int = BeaconCodec.BEACON_PORT,
     private val probePort: Int = BeaconCodec.PROBE_PORT,
     private val clock: () -> Long = { SystemClock.elapsedRealtime() },
-    /** Набор сетей изменился (включили/выключили хотспот): для статуса на экране. */
+    /** The set of networks has changed (hotspot enabled/off): for on-screen status. */
     private val onIfaces: (List<LanIface>) -> Unit = {},
     /**
-     * Сеть машины, в которую вошёл телефон (WifiNetworkSpecifier): сокеты маяка и ответчика привязываются к ней, чтобы
-     * пакеты не ушли в основную сеть. Свип unicast при этом выключен: сеть машины может быть на wlan1, а не на хотспотном
-     * интерфейсе. Список [ifaces] вызывающий сужает до интерфейса этой сети сам. null - как раньше.
+     * Network of the machine into which the phone entered (WifiNetworkSpecifier): socket beacon and the defendant are tied to it to
+     * packages did not go to the main network. The unicast swipe is turned off: the machine network can be on wlan1, and not on hotspot
+     * interface. List [ifaces] caller narrows to the interface of this network itself. null - as before.
      */
     private val bindNetwork: Network? = null,
 ) {
@@ -113,7 +113,7 @@ class HotspotBeacon(
     private var sender: Thread? = null
     private var responder: Thread? = null
     @Volatile private var probeSocket: DatagramSocket? = null
-    @Volatile private var known: Set<String>? = null   // null: ещё не смотрели, первый опрос всегда сообщает
+    @Volatile private var known: Set<String>? = null   // null: has not yet been viewed, the first survey always reports
 
     @Volatile var sent = 0L
         private set
@@ -122,10 +122,10 @@ class HotspotBeacon(
     @Volatile var probes = 0L
         private set
 
-    /** Фактический порт ответчика (в тестах 0 = любой). -1, пока не открыт. */
+    /** The actual port of the defendant (in 0 = any tests). -1 is not yet open. */
     val probePortBound: Int get() = probeSocket?.localPort ?: -1
 
-    /** Подсети, куда сейчас идёт маяк: по ним Tcp6Listener пускает ГУ. */
+    /** Subnet, where the lighthouse is now going: Tcp6Listener launches head unit. on them */
     @Volatile var current: List<LanIface> = emptyList()
         private set
 
@@ -184,7 +184,7 @@ class HotspotBeacon(
                         targets += i.broadcast
                         if (sweep && LanIface.sweepName(i.name)) targets += i.hosts()
                         for (t in targets) {
-                            if (!running.get()) return   // ГУ уже подключилась: свип не досылаем
+                            if (!running.get()) return   // head unit has already connected: the swipe is not sent
                             try {
                                 s.send(DatagramPacket(BeaconCodec.BEACON, BeaconCodec.BEACON.size, t, beaconPort))
                                 sent++
@@ -211,7 +211,7 @@ class HotspotBeacon(
         }
     }
 
-    /** Сокет маяка; при [bindNetwork] привязан к сети машины до первой отправки. */
+    /** socket beacon; with [bindNetwork] attached to the machine's network before first dispatch. */
     private fun openSender(): DatagramSocket {
         val net = bindNetwork ?: return DatagramSocket()
         val s = DatagramSocket(null)
@@ -220,7 +220,7 @@ class HotspotBeacon(
         return s
     }
 
-    /** Привязка сокета к сети машины; сбой не фатален (пакеты пойдут по маршруту системы), но попадает в лог. */
+    /** Binding socket to the machine network; failure is not fatal (packages will go along the system route), but gets into the log. */
     private fun bindToNetwork(s: DatagramSocket, net: Network, what: String) {
         try {
             net.bindSocket(s)

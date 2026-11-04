@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Палитра DARK из design/project/*.dc.html -->
+<!-- Palette DARK from design/project/*.dc.html -->
 <resources>
     <color name="bg">#0E141A</color>
     <color name="surf">#172026</color>

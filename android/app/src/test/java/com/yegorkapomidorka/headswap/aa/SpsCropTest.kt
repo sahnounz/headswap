@@ -10,10 +10,10 @@ import org.junit.Test
 class SpsCropTest {
     private fun hex(s: String) = ByteArray(s.length / 2) { s.substring(it * 2, it * 2 + 2).toInt(16).toByte() }
 
-    /** SPS AA из записи pc-headunit: Baseline 1280x720, без кропа. */
+    /** SPS AA from record pc-headunit: Baseline 1280x720, without crop. */
     private val aa720 = hex("6742801fda014016e9a8283028368509a8")
 
-    /** x264 1920x1080: кроп снизу 8 px, в SPS есть эмуляционные 00 00 03. */
+    /** x264 1920x1080: crop at bottom 8 px, in SPS there is an emulation 00 00 03. */
     private val x264Baseline = hex("6742c028d900780227e5c044000003000400000300f03c60c920")
     private val x264Main = hex("674d4028eca03c0113f2e022000003000200000300781e30632c")
     private val x264High = hex("67640028acd940780227e5c044000003000400000300f03c60c658")
@@ -46,7 +46,7 @@ class SpsCropTest {
         }
     }
 
-    /** Эталон: ffmpeg -bsf:v h264_metadata=crop_top=..:crop_bottom=.. на тех же потоках, байт в байт. */
+    /** Reference: ffmpeg -bsf:v h264_metadata=crop_top=..:crop_bottom=.. on the same threads, bytes per byte. */
     @Test
     fun matchesFfmpegH264Metadata() {
         assertArrayEquals(
@@ -57,7 +57,7 @@ class SpsCropTest {
             hex("6742801fda014016fc2a159a8283028368509a80"),
             SpsCrop.rewrite(aa720, 0, 0, 40, 40).sps,
         )
-        // поток Димы (h529): AA 1280x720 с полями 512x256, ffmpeg crop 256/256/128/128 -> 768x464
+        // Dim stream (h529): AA 1280x720 with fields 512x256, ffmpeg crop 256/256/128/128 -> 768x464
         assertArrayEquals(
             hex("6742801fda014016f010202040820419a8080808368509a8"),
             SpsCrop.rewrite(hex("6742801fda014016e9a8080808368509a8"), 256, 256, 128, 128).sps,
@@ -68,7 +68,7 @@ class SpsCropTest {
     fun wide21FromAa720AddsCropFlag() {
         val r = SpsCrop.rewrite(aa720, 0, 0, 40, 40)
         assertEquals(SpsCrop.Info(1280, 720, 0, 0, 40, 40, 2, 2), SpsCrop.parse(r.sps))
-        // первые байты (профиль, уровень) не тронуты
+        // first bytes (profile, level) not touched
         assertArrayEquals(aa720.copyOfRange(0, 4), r.sps.copyOfRange(0, 4))
     }
 
@@ -122,7 +122,7 @@ class SpsCropTest {
         assertTrue(sdr, sdr.contains("5a07" + "0a05" + "0800" + "10e802"))
         val plain = h(AapMessages.serviceDiscoveryResponse(VideoMode.WIDE_HD.sdOptions(false)).payload)
         assertFalse(plain, plain.contains("5a070a05"))
-        // WIDE_MID (CX-5 G6S) из 1920x1080: поля 192 справа и 432 снизу, legacy-поля нулевые
+        // WIDE_MID (CX-5 G6S) from 1920x1080: fields 192 at right and 432 at bottom, legacy-fields zero
         val mid = h(AapMessages.serviceDiscoveryResponse(VideoMode.WIDE_MID.sdOptions(false, marginsAtBottom = true)).payload)
         assertTrue(mid, mid.contains("0803100218002000"))
         assertTrue(mid, mid.contains("5a0c" + "0a0a" + "0800" + "10b003" + "1800" + "20c001"))
@@ -140,7 +140,7 @@ class SpsCropTest {
     fun geometrySpsCropable() {
         for (m in listOf(VideoMode.WIDE, VideoMode.WIDE_MID, VideoMode.WIDE_HD, VideoMode.WIDE_640, VideoMode.WIDE_2_1, VideoMode.R1024)) {
             assertTrue(m.name, m.spsCropable)
-            // кроп всегда включён: в passthrough режим остаётся как есть
+            // crop is always included: in passthrough mode remains as is
             assertSame(m, m.effective(transcode = false))
             assertSame(m, m.effective(transcode = true))
         }
@@ -148,7 +148,7 @@ class SpsCropTest {
         assertSame(VideoMode.WIDE_836, VideoMode.WIDE_836.effective(transcode = false))
         assertFalse(VideoMode.R1080.spsCropable)
         assertSame(VideoMode.R1080, VideoMode.R1080.effective(transcode = false))
-        // своё 1:1 с полями - можно, со масштабом - нет
+        // your 1:1 with fields - you can, with scale - no
         assertTrue(CustomVideoMode(1920, 640).spsCropable)
         assertEquals(CustomVideoMode(1920, 640), CustomVideoMode(1920, 640).effective(transcode = false))
         assertFalse(CustomVideoMode(2240, 976).spsCropable)
@@ -157,7 +157,7 @@ class SpsCropTest {
 
     @Test
     fun tiguanWide976BecomesWide836InPassthrough() {
-        // WIDE_976 масштабирует область 1920x836 -> 2240x976, SPS-кропом не режется: в passthrough та же полоса 1:1
+        // WIDE_976 scales the area of 1920x836 -> 2240x976, SPS-crop is not cut: in passthrough the same band of 1:1
         assertFalse(VideoMode.WIDE_976.spsCropable)
         assertSame(VideoMode.WIDE_836, VideoMode.WIDE_976.effective(transcode = false))
         assertSame(VideoMode.WIDE_976, VideoMode.WIDE_976.effective(transcode = true))

@@ -5,10 +5,10 @@ import android.os.PowerManager
 import com.yegorkapomidorka.headswap.AppLog
 
 /**
- * Дисплей в собственной DisplayGroup (OWN_DISPLAY_GROUP, нужен для ALWAYS_UNLOCKED) гаснет по своему таймауту экрана,
- * как у виртуального устройства. Держим его включённым wake lock'ом, привязанным к displayId (скрытый
- * PowerManager.newWakeLock(level, tag, displayId), работает в главном процессе под --no-hidden-api-checks).
- * Лучшее усилие: не получилось - строка в логе, дисплей работает как раньше.
+ * The display in its own DisplayGroup (OWN_DISPLAY_GROUP, needed for ALWAYS_UNLOCKED) goes out on its screen timeout,
+ * like a virtual device. Keep it on with wake lock's attached to displayId (hidden
+ * PowerManager.newWakeLock(level, tag, displayId), works in the main process under --no-hidden-api-checks.
+ * Best effort: failed - line in the log, the display works as before.
  */
 internal class DisplayWakeLocks(context: Context) {
     private val power = context.getSystemService(PowerManager::class.java)
@@ -31,11 +31,11 @@ internal class DisplayWakeLocks(context: Context) {
     }
 
     companion object {
-        /** Display.FLAG_OWN_DISPLAY_GROUP / FLAG_ALWAYS_UNLOCKED (android-16 Display.java, не DisplayManager.VIRTUAL_DISPLAY_FLAG_*). */
+        /** Display.FLAG_OWN_DISPLAY_GROUP / FLAG_ALWAYS_UNLOCKED (android-16 Display.java, not DisplayManager.VIRTUAL_DISPLAY_FLAG_*). */
         const val FLAG_OWN_DISPLAY_GROUP = 1 shl 8
         const val FLAG_ALWAYS_UNLOCKED = 1 shl 9
 
-        /** Замок по дисплею держим только у дисплея в своей группе: в общей он держал бы включённым экран самого телефона. */
+        /** The lock on the display is kept only at the display in its group: in general, it would keep the screen of the phone itself turned on. */
         fun shouldHold(displayFlags: Int): Boolean = displayFlags and FLAG_OWN_DISPLAY_GROUP != 0
 
         fun describe(displayFlags: Int): String =
@@ -48,7 +48,7 @@ internal class DisplayWakeLocks(context: Context) {
         runCatching { if (lock.isHeld) lock.release() }
     }
 
-    /** Отпускает замки дисплеев, которых уже нет среди [alive] (закрытый родитель уносит и дочерние). */
+    /** Releases display locks, which are no longer among the [alive] (closed parent carries and child). */
     fun retain(alive: Set<Int>) {
         for (id in locks.keys.toList()) if (id !in alive) release(id)
     }

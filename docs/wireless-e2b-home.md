@@ -1,26 +1,26 @@
-# Э2B: ветка B (хотспот телефона + маяк) — проверки дома
+# E2B: branch B (hotspot phone + beacon) - home checks
 
-## Код
+## Code
 
-- `link/wifi/HotspotBeacon.kt`: маяк «CarlifeHost» на UDP 7999 раз в 2 с в broadcast каждого IPv4-интерфейса (без rmnet/ccmni/lo/p2p/туннелей), раз в 12 с unicast каждому адресу подсети хотспота (не wlan0), ответчик UDP 8999 (JSON готовности на датаграмму со строкой `carlifehost`). Останавливается на 6/6.
-- `Tcp6Listener(peerOk)`: 6 портов на 0.0.0.0, принимаются только адреса из подсетей, куда идёт маяк (`why=subnet` в WL иначе).
-- Вход: debug `--ez debug_wifi_b true` (BridgeService), ждёт ГУ 10 минут. Хотспот включает человек.
-- `pc-headunit`: `--transport tcp6 --discover --probe-8999` — ловит маяк на 7999, берёт адрес отправителя, подключается 6 сокетами.
+- `link/wifi/HotspotBeacon.kt`: broadcast a “CarlifeHost” beacon on UDP 7999 every two seconds on each IPv4 interface, excluding rmnet/ccmni/lo/p2p/tunnels. Every twelve seconds, unicast to each address in the hotspot subnet, excluding wlan0. A UDP 8999 responder returns readiness JSON for datagrams containing `carlifehost`. Stop at 6/6 connections.
+- `Tcp6Listener(peerOk)`: 6 ports on the 0.0.0.0, only addresses from subnets where the beacon goes (`why=subnet` in WL otherwise) are accepted.
+- Entrance: debug `--ez debug_wifi_b true` (BridgeService), waiting for head unit 10 minutes. hotspot includes person.
+- `pc-headunit`: `--transport tcp6 --discover --probe-8999` - catches a beacon on 7999, takes the sender address, connects 6 socket.
 
-## Эмулятор A17 (2026-10-14)
+## Emulator A17 (2026-10-14)
 
-NAT эмулятора: маяк дошёл до ПК unicast-свипом на 10.0.2.2, проба 8999 с ответом, 6/6 за 75 мс с 10.0.2.2, видео 30 fps.
+NAT emulator: the beacon reached PC unicast-swipe on 10.0.2.2, sample 8999 with answer, 6/6 for 75 ms with 10.0.2.2, video 30 fps.
 
-## Живой хотспот, Redmi (2026-10-14, Android 16, HyperOS 3, сборка 1.1.12-wl3)
+## Live hotspot, Redmi (2026-10-14, Android 16, HyperOS 3, Assembly 1.1.12-wl3)
 
-Хотспот Redmi, ПК (Windows, Wi-Fi) клиентом, `carlife_hu.py --transport tcp6 --discover --probe-8999 --touch-test`.
+hotspot Redmi, PC (Windows, Wi-Fi) client, `carlife_hu.py --transport tcp6 --discover --probe-8999 --touch-test`.
 
-- Интерфейс хотспота на Xiaomi: `wlan2`, подсеть /24 (10.83.148.0/24), телефон .164, ПК .100. Маяк ушёл в broadcast и свипом, `failed=0`.
-- ПК поймал первый маяк через 1 с после старта скрипта, проба 8999 получила ответ.
-- 6/6 сокетов с адреса ПК (подсеть маяка), рукопожатие 2.0 с авторизацией, видео AA R1080 по Wi-Fi: ~22 fps первые 10 с, дальше 30 fps; музыка (MEDIA) и метаданные трека дошли; тач дошёл.
-- `ACCESS_LOCAL_NETWORK` на Android 16 не действует (`n/a(api 36)`).
-- Брандмауэр Windows: входящий UDP 7999 для python прошёл без отдельных действий (зависит от профиля сети).
+- hotspot interface on Xiaomi: `wlan2`, subnet /24 (10.83.148.0/24), phone .164, PC .100. Lighthouse went to broadcast and swap, `failed=0`.
+- PC caught the first beacon via 1 with after start script, sample 8999 got a response.
+- 6/6 socket from the PC address (lighthouse subnet), handshake 2.0 with authorization, video AA R1080 using Wi-Fi: ~22 fps First 10 c, next 30 fps; musicMEDIA) and track metadata have arrived; touch Got it.
+- `ACCESS_LOCAL_NETWORK` on Android 16 is not valid (`n/a(api 36)`).
+- The Windows: firewall input UDP 7999 for python passed without separate actions (depending on the network profile).
 
-## Не проверено
+## Not verified
 
-Настоящая ГУ (поведение прошивки, вотчдог, переподключение), долгая сессия и нагрев, обрыв Wi-Fi на ходу, 2,4 vs 5 ГГц, автоотключение хотспота HyperOS.
+Current head unit (flashing behavior, standby, reconnection), long session and heating, Wi-Fi break on the go, 2,4 vs 5 GHz, auto-off hotspot HyperOS.

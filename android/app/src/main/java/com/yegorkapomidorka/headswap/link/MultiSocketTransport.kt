@@ -22,27 +22,27 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
-/** Порты беспроводного CarLife (Baidu MD 8.6.7, CommonParams): ГУ подключается к телефону как TCP-клиент. */
+/** Wireless ports CarLife (Baidu MD 8.6.7, CommonParams): head unit connects to the phone as a TCP- client. */
 object Tcp6Ports {
     val DEFAULT: Map<Int, Int> = linkedMapOf(
         Ch.CMD to 7240, Ch.VIDEO to 8240, Ch.MEDIA to 9240, Ch.TTS to 9241, Ch.VR to 9242, Ch.TOUCH to 9340,
     )
 
-    /** Канал Data: принимаем и игнорируем, в готовность 6/6 не входит. */
+    /** Data: channel is accepted and ignored, 6/6 is not included in the readiness. */
     const val DATA = 9440
 }
 
 class BadInnerHeader(msg: String) : IOException(msg)
 
 /**
- * Inner-сообщения из сокета одного канала, без внешнего заголовка: заголовок 8 байт (CMD, TOUCH: длина u16)
- * или 12 байт (VIDEO, MEDIA, TTS, VR: длина u32), затем тело по declared len (как ConnectSocket.readData у Baidu).
- * Резинка по типам нет: неверный заголовок = разрыв с причиной (U5 в плане, решается по H4).
+ * Inner-messages from socket single channel, without external header: header 8 bytes (CMD, TOUCH: length u16)
+ * or 12 bytes (VIDEO, MEDIA, TTS, VR: length u32), then body by declared len (as ConnectSocket.readData in Baidu).
+ * Rubber band by type: wrong header = break with the cause (U5 in the plan, solved by H4).
  */
 object InnerCodec {
     fun hdrLen(chan: Int) = if (Ch.isCmdStyle(chan)) 8 else 12
 
-    /** Следующее inner целиком; null = чистый EOF на границе сообщения. EOFException = обрыв посреди сообщения. */
+    /** Next inner whole; null = net EOF at message boundary. EOFException = break in the middle of message. */
     fun read(chan: Int, din: DataInputStream): ByteArray? {
         val hl = hdrLen(chan)
         val hdr = ByteArray(hl)
@@ -55,7 +55,7 @@ object InnerCodec {
         val type = Wire.u32(hdr, if (cmd) 4 else 8)
         val limit = if (cmd) InnerAssembler.MAX_CMD_DECLARED else Wire.MAX_OUTER_LEN
         if (declared !in 0..limit) throw BadInnerHeader("длина $declared вне 0..$limit (тип ${Msg.hex(type)}, заголовок ${hexBytes(hdr)})")
-        // VW CNS3 (Tiguan L Pro, h129) шлёт VIDEO_HEARTBEAT в CMD-сокет в CMD-кадре: 8 байт, длина 0
+        // VW CNS3 (Tiguan L Pro, h129) VIDEO_HEARTBEAT in CMD-socket in CMD-frame: 8 byte, length 0
         val cmdHb = chan == Ch.CMD && type == Msg.VIDEO_HEARTBEAT && declared == 0
         if (!cmdHb && type ushr 16 != chan) {
             throw BadInnerHeader("тип ${Msg.hex(type)} не канала ${Ch.name(chan)}, длина $declared, заголовок ${hexBytes(hdr)}")
@@ -68,9 +68,9 @@ object InnerCodec {
     }
 
     /**
-     * Heartbeat в CMD-сокете мог прийти и 12-байтным видео-заголовком [длина u32][тип u32][метка u32]: тогда после
-     * прочитанных 8 байт висят 4 байта метки. Смотрим вперёд, только если 12 байт уже в буфере (не блокируемся):
-     * следующий заголовок с CMD-типом через 4 байта, а не сразу, значит хвост есть, пропускаем.
+     * Heartbeat in CMD-socket could come and 12-byte video-header [length u32][Type u32][label u32]: then after
+     * 8 bytes read hang 4 byte tag. Look forward only if 12 bytes are already in the buffer (not blocked):
+     * next header with CMD-type through 4 byte, and not immediately, so there is a tail, skip.
      */
     private fun skipHeartbeatTail(din: DataInputStream) {
         if (!din.markSupported() || din.available() < 12) return
@@ -91,27 +91,27 @@ object InnerCodec {
 class LinkSetupException(msg: String) : Exception(msg)
 
 /**
- * Серверная сторона беспроводного CarLife: слушает 6 портов каналов (+ Data 9440) на одном адресе и ждёт ГУ.
- * Правила приёма: первое подключение на порт побеждает, повторное на тот же порт закрывается (у Baidu наоборот,
- * побеждает последнее); все сокеты должны прийти с адреса первого принятого. Слушатели живут до закрытия транспорта,
- * чтобы отбивать лишние подключения.
+ * The server side of the wireless CarLife: listens to 6 channel ports (+ Data 9440) at one address and is waiting for head unit.
+ * Reception rules: the first connection to the port wins, the second one to the same port is closed (in Baidu vice versa,
+ * wins the latter); all socket should come from the address of first accepted. Listeners live until the transport closes,
+ * to prevent unnecessary connections.
  */
 class Tcp6Listener(
     private val bind: InetAddress,
     private val ports: Map<Int, Int> = Tcp6Ports.DEFAULT,
     private val dataPort: Int? = Tcp6Ports.DATA,
     private val clock: () -> Long = { SystemClock.elapsedRealtime() },
-    /** Кого пускать при bind на 0.0.0.0: ветка B пускает только адреса из подсетей, куда идёт маяк. */
+    /** bind on 0.0.0.0: The B branch only lets addresses from subnets where the beacon is going. */
     private val peerOk: (InetAddress) -> Boolean = { true },
 ) {
     private val lock = Object()
-    private val servers = LinkedHashMap<Int, ServerSocket>()   // канал -> сервер; DATA_CHAN = порт Data
+    private val servers = LinkedHashMap<Int, ServerSocket>()   // channel -> server; DATA_CHAN = port Data
     private val accepted = LinkedHashMap<Int, Socket>()
     private var dataSocket: Socket? = null
     private var peer: InetAddress? = null
     private var closed = false
 
-    /** Открыть все порты. Не открылся любой из шести: исключение с причиной, всё уже закрыто. */
+    /** Open all ports. None of the six have opened: exception with cause, everything is closed. */
     fun open(): Tcp6Listener {
         val all = LinkedHashMap(ports)
         if (dataPort != null) all[DATA_CHAN] = dataPort
@@ -124,7 +124,7 @@ class Tcp6Listener(
                 } catch (e: IOException) {
                     s.close()
                     WLog.ev(WLog.TCP, "bind-fail", "chan" to chanName(chan), "port" to port, "err" to e.message)
-                    if (chan == DATA_CHAN) continue   // без Data жить можно
+                    if (chan == DATA_CHAN) continue   // without Data can live
                     throw LinkSetupException("tcp6: порт ${chanName(chan)} $port не открылся: ${e.message}")
                 }
                 synchronized(lock) { servers[chan] = s }
@@ -140,13 +140,13 @@ class Tcp6Listener(
         return this
     }
 
-    /** Адрес первого принятого пира (после 6/6 - ГУ); до первого подключения null. */
+    /** Address of the first accepted feast (after 6/6 - head unit); up to the first connection of null. */
     val peerAddress: InetAddress? get() = synchronized(lock) { peer }
 
-    /** Фактический порт канала (в тестах порты 0). */
+    /** Actual channel port (in 0 ports tests). */
     fun boundPort(chan: Int): Int = synchronized(lock) { servers[chan]?.localPort ?: -1 }
 
-    /** Ждать все 6 сокетов. Не дождались: всё закрыто, исключение с причиной k/6 и списком недостающих. */
+    /** Waiting for all 6 socket. Not waited: everything is closed, exception with the cause of k/6 and the list of missing. */
     fun await(timeoutMs: Long, label: String): MultiSocketTransport {
         val start = clock()
         synchronized(lock) {
@@ -180,12 +180,12 @@ class Tcp6Listener(
         if (closed) return
         closed = true
         for (s in servers.values) quiet { s.close() }
-        // принятые, но не переданные транспорту сокеты закрываются здесь; переданные закрывает транспорт сам
+        // accepted but not transferred to transport socket close here; transferred closes transport itself
         dataSocket?.let { quiet { it.close() } }
         lock.notifyAll()
     }
 
-    /** Закрыть и сокеты каналов (подъём не состоялся). */
+    /** Close and socket channels (no rise). */
     private fun dropAccepted() {
         for (s in accepted.values) quiet { s.close() }
     }
@@ -195,7 +195,7 @@ class Tcp6Listener(
             val s = try {
                 server.accept()
             } catch (_: IOException) {
-                return   // сервер закрыт
+                return   // server is closed
             }
             onAccept(chan, s)
         }
@@ -221,8 +221,8 @@ class Tcp6Listener(
             if (peer == null) peer = addr
             setOptions(s)
             if (chan == Ch.VIDEO) {
-                // малый буфер отправки: иначе очередь прячется в ядре (до МиБ), запись не блокируется и слив не меряется,
-                // политика битрейта на воздухе слепнет (лог VW 15.10: слив 6-19 МиБ/с, битрейт ни разу не сдвинулся)
+                // small sending buffer: otherwise the queue hides in the kernel (up to MiB), the record is not blocked and the drain is not measured,
+                // bitrate policy on wireless connection is blind (VW 15.10 log: drain 6-19 MiB/s, bitrate never moved)
                 s.sendBufferSize = VIDEO_SNDBUF
                 WLog.ev(WLog.TCP, "sndbuf", "chan" to "VIDEO", "asked" to VIDEO_SNDBUF, "got" to s.sendBufferSize)
             }
@@ -238,7 +238,7 @@ class Tcp6Listener(
         }
     }
 
-    /** Data-канал Baidu (9440) нам не нужен: вычитываем, чтобы не забился буфер приёма ГУ. */
+    /** Data- channel Baidu (9440) we do not need: read out, so that the buffer of reception head unit. does not score */
     private fun drainData(s: Socket) {
         val buf = ByteArray(4096)
         var total = 0L
@@ -254,7 +254,7 @@ class Tcp6Listener(
         WLog.ev(WLog.TCP, "data-closed", "rx" to total)
     }
 
-    /** Отмена подъёма до 6/6 (сервис остановлен): закрыть всё, включая принятые сокеты. */
+    /** Cancellation of the upgrade to 6/6 (service stopped): close everything, including accepted socket. */
     fun abort() {
         synchronized(lock) {
             dropAccepted()
@@ -267,7 +267,7 @@ class Tcp6Listener(
     companion object {
         private const val DATA_CHAN = 0
 
-        /** SO_SNDBUF видео-сокета (ядро удваивает): ~250 мс при 4 Мбит/с. */
+        /** Video-socket SO_SNDBUF, doubled by the kernel: about 250 ms at 4 Mbit/s. */
         const val VIDEO_SNDBUF = 64 * 1024
 
         fun setOptions(s: Socket) {
@@ -286,10 +286,10 @@ class Tcp6Listener(
 }
 
 /**
- * Шесть TCP-сокетов в формате Baidu: каждый канал свой сокет, внешнего заголовка нет. Читатель и писатель на канал.
- * На video-сокет ГУ может слать VIDEO_HEARTBEAT (0x20002, 12 байт), VW CNS3 шлёт его в CMD-сокет (8 байт):
- * вычитываем и считаем, в протокол не отдаём.
- * Обрыв любого сокета закрывает все (ровно один onClosed с именем канала в причине).
+ * Six TCP-socket in Baidu: format each channel has its own socket, external header no. Reader and writer on the channel.
+ * video-socket head unit can send VIDEO_HEARTBEAT (0x20002, 12 bytes), VW CNS3 sends it to CMD-socket (8 bytes):
+ * We read and consider, we do not give into the protocol.
+ * The break of any socket closes everything (exactly one onClosed with the channel name in the cause).
  */
 class MultiSocketTransport internal constructor(
     private val sockets: Map<Int, Socket>,
@@ -313,7 +313,7 @@ class MultiSocketTransport internal constructor(
     private val t0 = clock()
     @Volatile private var onClosedCb: ((String) -> Unit)? = null
 
-    // heartbeat ГУ на video-сокете (VW CNS3 шлёт его в CMD-сокет, тогда считаем ещё и hbCmd)
+    // heartbeat head unit on video-socket (VW CNS3 sends it to CMD-socket, then we also count hbCmd)
     @Volatile private var hbCount = 0L
     @Volatile private var hbCmd = 0L
     private var hbFirstMs = 0L
@@ -374,7 +374,7 @@ class MultiSocketTransport internal constructor(
     private fun closeAll() {
         Tcp6Listener.quiet { closeListener() }
         for (s in sockets.values) Tcp6Listener.quiet { s.close() }
-        // свою нить не прерываем: после fail() на ней идёт весь CarLifeSession.close() (остановка видео, onClosed)
+        // its thread is not interrupted: after fail() it goes all CarLifeSession.close() (video stop, onClosed)
         val me = Thread.currentThread()
         for (t in threads) if (t !== me) t.interrupt()
     }
@@ -447,7 +447,7 @@ class MultiSocketTransport internal constructor(
     }
 }
 
-/** Для тестов и диагностики: inner из потока по одному (обёртка над InnerCodec). */
+/** For tests and diagnostics: inner from the stream one by one (overwrapping over InnerCodec). */
 fun readInners(chan: Int, input: InputStream): List<ByteArray> {
     val din = DataInputStream(input)
     val out = ArrayList<ByteArray>()

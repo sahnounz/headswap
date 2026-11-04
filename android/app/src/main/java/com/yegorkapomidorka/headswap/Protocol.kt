@@ -5,7 +5,7 @@ import com.yegorkapomidorka.headswap.aa.NaviField6
 import com.yegorkapomidorka.headswap.aa.NaviTurnInfo
 import java.io.ByteArrayOutputStream
 
-/** Каналы внешнего заголовка (спека §2.2). */
+/** External channels header (singing § 2.2). */
 object Ch {
     const val CMD = 1
     const val VIDEO = 2
@@ -24,11 +24,11 @@ object Ch {
         else -> "CH$c"
     }
 
-    /** Внутренний заголовок: 8 байт (CMD, TOUCH) или 12 (остальные). */
+    /** Internal header: 8 byte (CMD, TOUCH) or 12 (other). */
     fun isCmdStyle(c: Int) = c == CMD || c == TOUCH
 }
 
-/** Коды сообщений (спека §3, §5, §6, §7). */
+/** Message Codes (Specific § 3, §5, §6, §7). */
 object Msg {
     const val HU_PROTOCOL_VERSION = 0x00018001
     const val PROTOCOL_VERSION_MATCH_STATUS = 0x00010002
@@ -57,7 +57,7 @@ object Msg {
     const val MODULE_STATUS = 0x00010026
     const val STATISTIC_INFO = 0x00018027
     const val MODULE_CONTROL = 0x00018028
-    /** ГУ -> MD: передача, поле 1 (2 P, 3 D, 5 R, 0 зажигание выкл; Kia 20032131, h672). */
+    /** head unit -> MD: gear, field 1 (2 P, 3 D, 5 R, 0 ignition off; Kia 20032131, h672). */
     const val HU_GEAR_INFO = 0x00018029
     const val GEAR_INFO = 0x00010029
     const val NAVI_NEXT_TURN_INFO = 0x00010030
@@ -93,7 +93,7 @@ object Msg {
     const val TTS_INIT = 0x00040001
     const val VR_INIT = 0x00050002
 
-    /** HU -> MD по каналу VR: PCM16 mono 16 кГц с микрофона ГУ (Baidu CommonParams.MSG_VR_DATA = 360449). */
+    /** HU -> MD via VR: PCM16 mono 16 kHz from microphone head unit (Baidu CommonParams.MSG_VR_DATA = 360449). */
     const val VR_MIC_DATA = 0x00058001
 
     const val TOUCH_ACTION = 0x00068001
@@ -242,14 +242,14 @@ object Msg {
     fun hex(type: Int): String = "0x%08X".format(type)
 }
 
-/** Разобранное CMD/TOUCH сообщение: заголовок 8 байт [len u16][resv u16][type u32] + body. */
+/** Disassembled CMD/TOUCH Message: header 8 byte [len u16][resv u16][type u32] + body. */
 class CmdMsg(val type: Int, val resv: Int, val declaredLen: Int, val body: ByteArray, val truncated: Boolean)
 
-/** Разобранное VIDEO/MEDIA/TTS/VR сообщение: заголовок 12 байт [len u32][time u32][type u32] + data. */
+/** Disassembled VIDEO/MEDIA/TTS/VR Message: header 12 byte [len u32][time u32][type u32] + data. */
 class DataMsg(val type: Int, val time: Int, val declaredLen: Int, val data: ByteArray, val truncated: Boolean)
 
 object Wire {
-    /** Максимум одного куска bulk-записи (спека §1.4). */
+    /** Maximum of one piece bulk-Records (Specific § 1.4). */
     const val CHUNK = 16384
     const val MAX_OUTER_LEN = 64 * 1024 * 1024
 
@@ -271,7 +271,7 @@ object Wire {
         b[o + 3] = v.toByte()
     }
 
-    /** Внешний заголовок [chan u32 BE][len u32 BE]. */
+    /** External header [chan u32 BE][len u32 BE]. */
     fun outerHeader(chan: Int, innerLen: Int): ByteArray {
         val h = ByteArray(8)
         putU32(h, 0, chan)
@@ -279,7 +279,7 @@ object Wire {
         return h
     }
 
-    /** Внутреннее CMD/TOUCH сообщение: [len u16][0 u16][type u32] + body. */
+    /** Internal CMD/TOUCH Message: [len u16][0 u16][type u32] + body. */
     fun cmdInner(type: Int, body: ByteArray?): ByteArray {
         val n = body?.size ?: 0
         require(n <= 0xFFFF) { "CMD body too long: $n" }
@@ -290,7 +290,7 @@ object Wire {
         return m
     }
 
-    /** Внутреннее VIDEO/... сообщение: [len u32][time u32][type u32] + data. */
+    /** Internal VIDEO/... Message: [len u32][time u32][type u32] + data. */
     fun dataInner(type: Int, time: Int, data: ByteArray?): ByteArray {
         val n = data?.size ?: 0
         val m = ByteArray(12 + n)
@@ -302,8 +302,8 @@ object Wire {
     }
 
     /**
-     * Последовательность отдельных write(): сначала 8-байтный заголовок, затем тело кусками <= 16384
-     * (так делает HU Baidu и на это рассчитан f_accessory, спека §1.4).
+     * Sequence of individual write(): first 8 byte header, then body pieces <= 16384
+     * (That's what he does. HU Baidu and for this purpose is calculated f_accessory, heat § 1.4).
      */
     fun writeSequence(chan: Int, inner: ByteArray): List<ByteArray> {
         val out = ArrayList<ByteArray>()
@@ -318,8 +318,8 @@ object Wire {
     }
 
     /**
-     * Запись как у Baidu (AoaWriteTransport :73-85, AOAConnectManager :177-190): 8 байт заголовка одним write,
-     * весь inner одним write любого размера. Для ГУ Mobis CCNC (h242).
+     * Write as in Baidu (AoaWriteTransport :73-85, AOAConnectManager :177-190): 8 byte header single write,
+     * all inner one write of any size. For head unit Mobis CCNC (h242).
      */
     fun writeWhole(chan: Int, inner: ByteArray): List<ByteArray> =
         if (inner.isEmpty()) listOf(outerHeader(chan, 0)) else listOf(outerHeader(chan, inner.size), inner)
@@ -346,19 +346,19 @@ object Wire {
 }
 
 /**
- * Сборка data-сообщения, которое ГУ режет на несколько внешних кадров одного канала. VW CNS2 Delphi (h425) шлёт
- * MIC_DATA [12 + 1024 Б] кадрами по 256 Б: первый с заголовком, дальше голое продолжение.
- * feed() возвращает целое inner или null, пока сообщение не собрано.
+ * data- message assembly, which head unit cuts into several external frame single channel. VW CNS2 Delphi (h425)
+ * MIC_DATA [12 + 1024 B] frame by 256 B: first with header, then bare continuation.
+ * feed() returns the integer inner or null while the message is not collected.
  */
 class DataReassembler(private val maxLen: Int = 64 * 1024) {
     private var buf: ByteArray? = null
     private var have = 0
 
-    /** Сколько сообщений собрано из кусков (для лога). */
+    /** How many messages are collected from pieces (for log). */
     var assembled = 0
         private set
 
-    /** Размер первого куска последнего собранного сообщения (для лога). */
+    /** The size of the first piece of the last message collected (for the log). */
     var firstFragment = 0
         private set
 
@@ -388,15 +388,15 @@ class DataReassembler(private val maxLen: Int = 64 * 1024) {
 class ProtocolDesync(msg: String) : Exception(msg)
 
 /**
- * Накопительный разбор внешнего заголовка: читаемые из USB куски могут резаться как угодно,
- * сообщения собираются из потока байт, границы transfer не важны.
+ * Cumulative analysis of external header: readable from USB pieces can be cut as you like,
+ * messages are collected from the byte stream, transfer boundaries are not important.
  */
 class FrameParser {
     private var buf = ByteArray(32768)
     private var start = 0
     private var end = 0
 
-    /** Подать очередной кусок; sink вызывается на каждое полное сообщение. */
+    /** Submit another piece; sink is called for every full message. */
     fun feed(data: ByteArray, off: Int, n: Int, sink: (chan: Int, inner: ByteArray) -> Unit) {
         ensure(n)
         System.arraycopy(data, off, buf, end, n)
@@ -420,7 +420,7 @@ class FrameParser {
         }
     }
 
-    /** Байт в буфере, ещё не составивших целое сообщение. */
+    /** Byte in the buffer that has not yet generated a whole message. */
     fun pending() = end - start
 
     private fun ensure(n: Int) {
@@ -439,14 +439,14 @@ class FrameParser {
 }
 
 /**
- * Сборка inner-сообщений по каналам. Часть ГУ (VW Tharu XR 2026) шлёт заголовок inner (8 байт для CMD/TOUCH,
- * 12 для data-каналов) и тело отдельными внешними кадрами. Если кадр - ровно заголовок с declared len > 0,
- * он удерживается, и кадры этого же канала дописываются, пока не наберётся declared len; потом уходит одно inner.
- * Тот же ГУ режет поток и в другую сторону: кадр = хвост тела + следующие inner целиком + заголовок следующего
- * (154 байта: конец MODULE_CONTROL, HU_AUTHEN_RESULT, STATISTIC_INFO). Поэтому после удержания канал разбирается
- * как поток по declared len, а кадр без удержания режется на несколько inner, если он целиком складывается
- * в цепочку заголовков с правильным типом (старшие 16 бит типа = номер канала).
- * Сообщения целиком в одном кадре (Honda Vezel) проходят как есть, в том числе с неверным declared len.
+ * Assembly of inner-messages by channels. Part of head unit (VW Tharu XR 2026) send header inner (8 bytes for CMD/TOUCH,
+ * 12 for data-channels) and body by separate external frame. If frame is exactly header with declared len > 0,
+ * it is held, and frame of the same channel are added until declared len is typed; then one inner. goes away
+ * The same head unit cuts the flow in the other direction: frame = body tail + next inner whole + header next
+ * (154 byte: end of MODULE_CONTROL, HU_AUTHEN_RESULT, STATISTIC_INFO). Therefore, after retention, the channel is disassembled
+ * as a stream on the declared len, and frame without holding cut by several inner if it is fully folded
+ * in the header chain with the correct type (older 16 bits of type = channel number).
+ * Messages entirely in one frame (Honda Vezel) pass as is, including with the incorrect declared len.
  */
 class InnerAssembler {
     private val pending = HashMap<Int, ByteArray>()
@@ -472,7 +472,7 @@ class InnerAssembler {
         sink(chan, inner)
     }
 
-    /** Отдать все целые inner из buf; неполный хвост удержать. Битый заголовок посреди потока: остаток уходит как есть. */
+    /** Give all integer inner of buf; incomplete tail hold. Beat header in the middle of the stream: the remainder goes as is. */
     private fun drain(chan: Int, buf: ByteArray, sink: (chan: Int, inner: ByteArray) -> Unit) {
         val hdrLen = hdrLen(chan)
         var off = 0
@@ -489,7 +489,7 @@ class InnerAssembler {
         if (off < buf.size) pending[chan] = buf.copyOfRange(off, buf.size)
     }
 
-    /** Кадр - цепочка inner с правильными заголовками; последний может быть неполным (или обрывком заголовка). */
+    /** The frame is a inner chain with the correct header; the latter may be incomplete (or a fragment of the header). */
     private fun chainOk(chan: Int, buf: ByteArray): Boolean {
         val hdrLen = hdrLen(chan)
         var off = 0
@@ -512,7 +512,7 @@ class InnerAssembler {
         return declared in 0..limit && type ushr 16 == chan
     }
 
-    /** Сколько каналов сейчас ждут тело. */
+    /** How many channels the body is waiting for. */
     fun waiting() = pending.size
 
     companion object {
@@ -521,8 +521,8 @@ class InnerAssembler {
 }
 
 /**
- * Данные для MD_INFO (поля CarlifeDeviceInfo).
- * Источник: CarlifeDeviceInfoManager.getCarlifeDeviceInfoBuilder (Baidu CarLife 8.6.7, :70-114).
+ * Data for MD_INFO (CarlifeDeviceInfo fields).
+ * Source: CarlifeDeviceInfoManager.getCarlifeDeviceInfoBuilder (Baidu CarLife 8.6.7, :70-114).
  */
 class DeviceInfo(
     val os: String = "Android",
@@ -552,15 +552,15 @@ class DeviceInfo(
 ) {
     companion object {
         /**
-         * Как в 8.6.7 (:90-98): при SDK_INT >= 33 MD врёт ГУ "29"/29, иначе шлёт настоящие значения.
-         * @return пара (sdk строкой, sdk_int)
+         * As in 8.6.7 (:90-98): when SDK_INT >= 33 MD lies head unit "29" / 29, otherwise sends real values.
+         * @return Pair of (sdk The line, sdk_int)
          */
         fun reportedSdk(realSdkInt: Int): Pair<String, Int> =
             if (realSdkInt >= 33) Pair("29", 29) else Pair(realSdkInt.toString(), realSdkInt)
     }
 }
 
-/** Тела сообщений (protobuf), байты сверены со спекой §9. */
+/** Message bodies (protobuf); bytes checked against specification §9. */
 object Msgs {
     fun protocolVersion(major: Int, minor: Int) =
         PbWriter().int32(1, major).int32(2, minor).toByteArray()
@@ -579,7 +579,7 @@ object Msgs {
     /** CarlifeBTIdentifyResultInd {required int32 status=1; required string address=2} (Baidu BtHfpProtocolHelper :135-147). */
     fun btIdentifyResult(status: Int, address: String) = PbWriter().int32(1, status).string(2, address).toByteArray()
 
-    /** CarlifeTouchAction; pointerx/pointery (второй палец) optional, без них тело как у одного пальца. */
+    /** CarlifeTouchAction; pointerx/pointery (second finger) optional, without them the body is like one finger. */
     fun touchAction(action: Int, x: Int, y: Int, pointerX: Int? = null, pointerY: Int? = null): ByteArray {
         val w = PbWriter().int32(1, action).int32(2, x).int32(3, y)
         if (pointerX != null) w.int32(4, pointerX)
@@ -589,7 +589,7 @@ object Msgs {
 
     fun deviceInfo(d: DeviceInfo): ByteArray {
         val w = PbWriter()
-        // поля optional: пустые строки не пишем
+        // fields optional: empty lines do not write
         fun s(f: Int, v: String) {
             if (v.isNotEmpty()) w.string(f, v)
         }
@@ -605,8 +605,8 @@ object Msgs {
     }
 
     /**
-     * CarlifeModuleStatusList для MODULE_STATUS (ModuleStatusManage.sendCarlifeModuleListStatus, :158-221):
-     * модули 1,2,3,4,6 всегда, 8 и 9 только если у ГУ major >= 2; статус у всех 0.
+     * CarlifeModuleStatusList for MODULE_STATUS (ModuleStatusManage.sendCarlifeModuleListStatus, :158-221):
+     * 1,2,3,4,6 modules always, 8 and 9 only if head unit major >= 2; status at all 0.
      */
     fun moduleStatusList(huMajor: Int): ByteArray {
         val ids = if (huMajor >= 2) intArrayOf(1, 2, 3, 4, 6, 8, 9) else intArrayOf(1, 2, 3, 4, 6)
@@ -616,16 +616,16 @@ object Msgs {
     }
 
     /**
-     * MODULE_STATUS об одном модуле (ModuleStatusManage.sendCarlifeModuleStatus, :260-273): cnt=1 и {moduleID, statusID}.
-     * Для VR (moduleID 4): 1 = голосовой помощник работает, 0 = нет.
+     * MODULE_STATUS for one module (ModuleStatusManage.sendCarlifeModuleStatus, :260-273): cnt=1 and {moduleID, statusID}.
+     * For VR (moduleID 4): 1 = voice assistant works, 0 = no.
      */
     fun moduleStatusSingle(moduleId: Int, statusId: Int): ByteArray =
         PbWriter().int32(1, 1).bytes(2, PbWriter().int32(1, moduleId).int32(2, statusId).toByteArray()).toByteArray()
 
     /**
-     * CARLIFE_DATA_SUBSCRIBE_DONE на запрос ГУ (CarlifeDataSubscribe.handleMobileCarLifeInfoList, :18-53):
-     * moduleID зеркалится, supportFlag: 0 -> true, 1 -> false, 2 -> true, прочие false.
-     * null, если запрос не разобрался (Baidu в этом случае не отвечает).
+     * CARLIFE_DATA_SUBSCRIBE_DONE on request head unit (CarlifeDataSubscribe.handleMobileCarLifeInfoList, :18-53):
+     * moduleID is mirrored, supportFlag: 0 -> true, 1 -> false, 2 -> true, other false.
+     * null, if the request is not sorted out (Baidu in this case does not respond).
      */
     fun subscribeDone(req: ByteArray): ByteArray? {
         val f = PbReader.parse(req) ?: return null
@@ -639,7 +639,7 @@ object Msgs {
         return w.toByteArray()
     }
 
-    /** moduleID из запроса подписки (для лога START/STOP). */
+    /** moduleID from subscription request (for START/STOP log). */
     fun subscribeIds(req: ByteArray): List<Int> {
         val f = PbReader.parse(req) ?: return emptyList()
         return PbReader.all(f, 2).mapNotNull { it.data?.let { d -> PbReader.parse(d) }?.let { s -> PbReader.int(s, 1) } }
@@ -648,8 +648,8 @@ object Msgs {
     fun themeState(mode: Int) = PbWriter().int32(1, mode).toByteArray()
 
     /**
-     * CarlifeMediaInfo (MusicInfoSender.sendMusicInfoToVehicle :160-262). Все 9 полей proto2 required: пишем всегда,
-     * пустые строки тоже, иначе ГУ на protobuf с required выбросит сообщение. duration в секундах.
+     * CarlifeMediaInfo (MusicInfoSender.sendMusicInfoToVehicle :160-262). All 9 fields proto2 required: write always,
+     * empty lines too, otherwise head unit on protobuf with required will throw a message. duration in seconds.
      */
     fun mediaInfo(i: CarlifeMediaInfo, albumArt: ByteArray): ByteArray =
         PbWriter().string(1, i.source).string(2, i.song).string(3, i.artist).string(4, i.album)
@@ -660,8 +660,8 @@ object Msgs {
     fun mediaProgress(progressBar: Int) = PbWriter().int32(1, progressBar).toByteArray()
 
     /**
-     * CarlifeNaviNextTurnInfo (RGEventHUDCollection :109-125). Поля 1-5 всегда; поле 6 по режиму [NaviField6]:
-     * bytes turnIconData (8.6.7) и/или int32 time (apollo-DuerOS / CarProjection) под одним номером 6.
+     * CarlifeNaviNextTurnInfo (RGEventHUDCollection :109-125). Fields 1-5 always; field 6 on the mode [NaviField6]:
+     * bytes turnIconData (8.6.7) and/or int32 time (apollo-DuerOS/CarProjection) under one number 6.
      */
     fun naviNextTurn(t: NaviTurnInfo, field6: NaviField6, icon: ByteArray): ByteArray {
         val w = PbWriter().int32(1, t.action).int32(2, t.nextTurn).string(3, t.roadName)
@@ -674,7 +674,7 @@ object Msgs {
     fun frameRate(fps: Int) = PbWriter().int32(1, fps).toByteArray()
 }
 
-/** Разобранный HU_FEATURE_CONFIG_RESPONSE (CarlifeFeatureConfigList). */
+/** Disassembled HU_FEATURE_CONFIG_RESPONSE (CarlifeFeatureConfigList). */
 class FeatureConfig(
     val items: List<Pair<String, Int>>,
     val huBtAudioSupport: Boolean?,
@@ -713,7 +713,7 @@ object Hex {
         return sb.toString()
     }
 
-    /** Классический дамп 16 байт в строке, первые max байт. */
+    /** The classic 16 byte dump in a string, the first max byte. */
     fun dump(b: ByteArray, max: Int = 256): String {
         val n = minOf(b.size, max)
         val sb = StringBuilder()
@@ -739,11 +739,11 @@ object Hex {
     }
 }
 
-/** Работа с H.264 Annex-B. */
+/** Working with H.264 Annex-B. */
 object AnnexB {
     private val SC4 = byteArrayOf(0, 0, 0, 1)
 
-    /** Позиции стартовых кодов: (начало кода, длина кода 3 или 4). */
+    /** Starter code positions: (code start, code length 3 or 4). */
     private fun startCodes(d: ByteArray): List<IntArray> {
         val res = ArrayList<IntArray>()
         var i = 0
@@ -761,7 +761,7 @@ object AnnexB {
         return res
     }
 
-    /** Все стартовые коды приводятся к 4-байтным 00 00 00 01. Данные без стартовых кодов возвращаются как есть. */
+    /** All start codes are given to 4-byte 00 00 00 01. Data without start codes are returned as is. */
     fun normalize(d: ByteArray): ByteArray {
         val sc = startCodes(d)
         if (sc.isEmpty() || sc.all { it[1] == 4 }) return d
@@ -776,7 +776,7 @@ object AnnexB {
         return out.toByteArray()
     }
 
-    /** NAL-типы (nal_unit_type) в порядке следования. */
+    /** NAL-types (nal_unit_type) in order. */
     fun nalTypes(d: ByteArray): List<Int> {
         val res = ArrayList<Int>()
         for (s in startCodes(d)) {
@@ -789,8 +789,8 @@ object AnnexB {
     fun startsWithSps(d: ByteArray) = nalTypes(d).firstOrNull() == 7
 
     /**
-     * Минимальный level_idc H.264 для кадра w x h при 30 fps по MaxFS: 31 до 720p (3600 MB), 40 до 8192 MB (1080p),
-     * 42 до 8704 MB (2240x976 = 8540), 50 до 22080 MB (2560x1440 = 14400), выше 51.
+     * Minimum level_idc H.264 for frame w x h at 30 fps using MaxFS: 31 up to 720p (3600 MB), 40 to 8192 MB (1080p),
+     * 42 to 8704 MB (2240x976 = 8540), 50 to 22080 MB (2560x1440 = 14400), above 51.
      */
     fun levelFor(w: Int, h: Int): Int {
         val mb = ((w + 15) / 16) * ((h + 15) / 16)
@@ -804,11 +804,11 @@ object AnnexB {
     }
 
     /**
-     * Подпись SPS Exynos (c2.exynos: Baseline, constraints 0x00, level_idc 52) старые ГУ CarLife не декодируют,
-     * экран остаётся чёрным (Desay G6S, Samsung A55). Приводим к подписи c2.qti: constraint_set0 = 1, level по размеру.
-     * Трогаем только SPS с level_idc > 41 (для наших размеров это ошибочная подпись), остальные отдаём как есть.
-     * Байты profile/constraints/level идут сразу за заголовком NAL, эмуляционных 0x03 перед ними нет, а новые значения
-     * (constraints 0x80, level >= 31) пару 00 00 не образуют. Возвращает исходный массив, если менять нечего.
+     * Signature SPS Exynos (c2.exynos: Baseline, constraints 0x00, level_idc 52) old head unit CarLife do not decode,
+     * the screen remains black (Desay G6S, Samsung A55). We give the signature c2.qti: constraint_set0 = 1, level in size.
+     * We only touch SPS with level_idc > 41 (for our sizes this is an erroneous signature), we give the rest as it is.
+     * Bytes profile/constraints/level go right behind header NAL, emulation 0x03 in front of them no, and new values
+     * (constraints 0x80, level >= 31) do not form a pair of 00 00. Returns the original array if there is nothing to change.
      */
     fun fixSps(d: ByteArray, w: Int, h: Int): ByteArray {
         var out = d
@@ -820,7 +820,7 @@ object AnnexB {
             if (level <= 41) continue
             val cons = if (profile == 66) (d[p + 2].toInt() or 0x80).toByte() else d[p + 2]
             val lvl = levelFor(w, h).toByte()
-            // c2.qti на 2240x976 уже пишет 0x80/42: копия без изменений ломала поиск отличий в withFixedSps
+            // c2.qti on 2240x976 already writes 0x80/42: copy without changes broke the search for differences in withFixedSps
             if (cons == d[p + 2] && lvl == d[p + 3]) continue
             if (out === d) out = d.copyOf()
             out[p + 2] = cons

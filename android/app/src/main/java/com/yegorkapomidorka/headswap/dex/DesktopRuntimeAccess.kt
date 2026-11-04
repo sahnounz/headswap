@@ -12,7 +12,7 @@ internal interface DesktopRuntimeAccess {
     fun createChildDisplay(surface: Surface, width: Int, height: Int, density: Int): VirtualDisplay
     fun inject(event: InputEvent, id: Int, actionButton: Int = 0)
     fun childTaskState(id: Int, packageName: String): Int
-    /** Пакеты задач дочернего экрана, свежие первыми; null - Android не отдал или экран не опознан. */
+    /** Child screen task packs, fresh first; null - Android has not given or screen is not identified. */
     fun childTaskPackages(id: Int): List<String>?
     fun registerParentDisplay(id: Int, token: IBinder, width: Int, height: Int) {}
     fun registerChildDisplay(parentId: Int, id: Int, token: IBinder, width: Int, height: Int) {}

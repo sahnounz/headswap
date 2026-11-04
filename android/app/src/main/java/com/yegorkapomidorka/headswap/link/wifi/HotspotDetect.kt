@@ -8,19 +8,19 @@ import java.net.Inet4Address
 import java.net.NetworkInterface
 
 /**
- * Включена ли точка доступа телефона. Имя интерфейса само по себе не ответ: у Samsung swlan0, у большинства ap0,
- * а у Xiaomi/Qualcomm хотспот сидит на wlan1 (h420), и тот же wlan1 бывает вторым STA (сеть машины, WifiNetworkSpecifier).
- * Порядок: скрытый API WifiManager; если не вышло - имена интерфейсов, где wlan[1-9] берём только когда он точно не STA.
+ * Whether the phone access point is enabled. The interface name itself is not the answer: Samsung swlan0, most ap0,
+ * and Xiaomi/Qualcomm hotspot sits on wlan1 (h420), and the same wlan1 is the second STA (machine network, WifiNetworkSpecifier).
+ * Order: hidden API WifiManager; if not, the names of interfaces where wlan[1-9] take only when it is definitely not STA.
  */
 object HotspotDetect {
     private const val WIFI_AP_STATE_ENABLED = 13
 
-    /** Хотспотные имена без оговорок. */
+    /** hotspot names without reservation. */
     fun apName(name: String): Boolean = name.startsWith("swlan") || name.startsWith("ap")
 
     /**
-     * Интерфейс похож на хотспот. [sta] - имена интерфейсов, на которых телефон сам клиент Wi-Fi (известны из
-     * ConnectivityManager); null - узнать не вышло, тогда wlan[1-9] не трогаем: это может быть второй STA.
+     * The interface is similar to hotspot. [sta] - the names of the interfaces on which the phone itself client Wi-Fi (known from
+     * ConnectivityManager); null - did not work out, then wlan[1-9] do not touch: it may be the second STA.
      */
     fun apIface(name: String, sta: Set<String>?): Boolean {
         if (apName(name)) return true
@@ -31,7 +31,7 @@ object HotspotDetect {
 
     fun isUp(ctx: Context): Boolean = apEnabledByApi(ctx) ?: ifacesSayUp(staIfaces(ctx))
 
-    /** Скрытые isWifiApEnabled()/getWifiApState(): null, если система их не отдала (hidden API, SecurityException). */
+    /** Hidden isWifiApEnabled()/getWifiApState(): null, if the system has not given them away (hidden API, SecurityException). */
     private fun apEnabledByApi(ctx: Context): Boolean? {
         val wm = ctx.applicationContext.getSystemService(WifiManager::class.java) ?: return null
         try {
@@ -46,7 +46,7 @@ object HotspotDetect {
         }
     }
 
-    /** Интерфейсы Wi-Fi-сетей, известных ConnectivityManager (хотспот телефона среди них не бывает). null - не вышло. */
+    /** Interfaces Wi-Fi-networks known ConnectivityManager (hotspot phone among them does not exist). null - did not work. */
     @Suppress("DEPRECATION")
     private fun staIfaces(ctx: Context): Set<String>? = try {
         val cm = ctx.applicationContext.getSystemService(ConnectivityManager::class.java)

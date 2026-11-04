@@ -32,8 +32,8 @@ internal object DelegatedDesktopPolicy {
     }
 
     /**
-     * [visible]: задача на экране (TaskInfo.isVisible, API 32+); после moveTaskToBack она остаётся первой в списке, но не видна.
-     * [displayId]/[userId] = [UNKNOWN], если Android не отдал их приложению (скрытые поля TaskInfo).
+     * [visible]: On-Screen Task (TaskInfo.isVisible, API 32+); after moveTaskToBack, it remains first on the list, but is not visible.
+     * [displayId]/[userId] = [UNKNOWN]if Android They did not give them to the application (hidden fields) TaskInfo).
      */
     data class Task(val displayId: Int, val userId: Int, val basePackage: String?, val topPackage: String?, val visible: Boolean = true)
 
@@ -41,8 +41,8 @@ internal object DelegatedDesktopPolicy {
 
     /**
      * null means unavailable/filtered, not an empty display. Never examine another display or user.
-     * Задача с неизвестным дисплеем учитывается только по пакету: на практике у приложения одна задача (повторный запуск
-     * переиспользует её), так что оценка верна, пока то же приложение не открыто и на экране телефона.
+     * The task with an unknown display is taken into account only by package: in practice, the application has one task (restart)
+     * re-uses it), so the score is correct until the same application is open and on the phone screen.
      */
     fun taskState(id: Int, userId: Int, packageName: String, permitted: Boolean, tasks: List<Task>?): Int {
         require(id > 0) { "Проверка основного экрана запрещена" }
@@ -61,8 +61,8 @@ internal object DelegatedDesktopPolicy {
     }
 
     /**
-     * Пакеты задач экрана [id] для «Недавних», свежие первыми, без повторов. null, если права или список недоступны либо
-     * хоть у одной задачи не опознан экран или пользователь: иначе в список попали бы пакеты экрана телефона.
+     * Screen task packs [id] for "Recent", fresh first, no repetitions. nullif the rights or list are not available or
+     * at least one task is not identified screen or user: otherwise in the list would be the phone screen packages.
      */
     fun childPackages(id: Int, userId: Int, permitted: Boolean, tasks: List<Task>?): List<String>? {
         require(id > 0) { "Проверка основного экрана запрещена" }

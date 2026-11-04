@@ -1,35 +1,34 @@
-# 0003. Сервер 5277 одноразовый: не гасить, живость проверять только полным рукопожатием
+# 0003. Server 5277 is single-use: check it with a complete handshake and close cleanly
 
-- Статус: принято (проба на главном проверяется в бете 3.0)
-- Дата: 2026-10-24
-- Источники: PR #108, #118, `aa/AaServerCheck.kt:38-45`, `aa/AaProbe.kt:11`, `aa/AapSession.kt:53-55`
+- Status: accepted (home-screen probing under validation in beta 3.0)
+- Date: 2026-10-24
+- Sources: PR #108, #118, `aa/AaServerCheck.kt:38-45`, `aa/AaProbe.kt:11`, `aa/AapSession.kt:53-55`
 
-## Контекст
+## Context
 
-Сервер ГУ в AA после закрытия любой сессии глохнет: нужен ручной перезапуск. Голый `connect`/`close` на 5277 тоже
-ломает его: TCP принимается, а `VERSION_RESPONSE` больше не приходит (24.10). Короткая проба «рукопожатие → SDR →
-ByeBye» вредна: следующее подключение получало 27 с `ECONNREFUSED`. Без службы спецвозможностей (0002) перезапускать некому.
+AA's head unit server stops after a session closes and needs a manual restart. A bare `connect`/`close` on 5277
+also breaks it: TCP connects, but no `VERSION_RESPONSE` arrives (24 October). A short handshake → SDR → ByeBye probe
+was harmful: the next connection received `ECONNREFUSED` for 27 seconds. With the accessibility service removed (0002),
+there is no automatic restart.
 
-## Решение
+## Decision
 
-- Сессию всегда закрываем штатно: ByeBye, `shutdownOutput`, дочитать до EOF, `close` (`AapSession.kt:53`).
-- Автопроба при старте убрана; проба осталась кнопкой в «Для разработчиков» (PR #108), диагностика идёт через
-  `AaProbe` с ByeBye.
-- Статус сервера на главном считается пробой при открытии экрана (PR #118) вместо фейкового флажка «Готов к поездке».
-  Проба — настоящая AA-сессия до открытия каналов, держится `HOLD_MS = 1000` и закрывается ByeBye
-  (`AaServerCheck.kt:141`); закрытие ровно на SDR сервер вешает (комментарий `AaServerCheck.kt:42`).
-  Идея не ждать видео, а закрывать сессию с фокусом NATIVE через 1 с после AuthComplete — Дима;
-  проверено 3/3 чисто.
-- Мост ждёт конец идущей пробы перед подключением (`AWAIT_MS`).
+- Always close cleanly: ByeBye → `shutdownOutput` → read through EOF → `close` (`AapSession.kt:53`).
+- Remove automatic probing at startup; retain the developer-screen probe (PR #108), using `AaProbe` with ByeBye.
+- Replace the home screen's assumed “Ready to drive” flag with a real probe when the screen opens (PR #118).
+  Establish an AA session through channel setup, hold it for `HOLD_MS = 1000`, then close with ByeBye
+  (`AaServerCheck.kt:141`). Closing exactly at SDR hangs the server (`AaServerCheck.kt:42`).
+  Dima proposed not waiting for video: retain NATIVE focus and close one second after AuthComplete. Three of three trials passed.
+- The bridge waits for a running probe to finish before connecting (`AWAIT_MS`).
 
-## Альтернативы
+## Alternatives
 
-- Голый connect как проба живости — ломает сервер, отвергнуто после проверки 24.10.
-- Проба «SDR + ByeBye» — вешает сервер: 85+ с без `VERSION_RESPONSE` (воспроизведено).
+- Bare TCP connect as a health check: rejected after reproducing server failure on 24 October.
+- SDR + ByeBye: reproduced a hang with no `VERSION_RESPONSE` for more than 85 seconds.
 
-## Последствия
+## Consequences
 
-- Любая новая проба или диагностика обязана проходить рукопожатие целиком и закрываться штатно.
-- Проба «SDR + ByeBye» (85+ с молчания, заметка 30.10) — старый вариант. Его заменила полная короткая сессия
-  с удержанием 1 с (6 чистых прогонов подряд), она и встроена в бету 3.0. Окончательное подтверждение — бета 3.0:
-  если после открытия главного появятся `AA нет VERSION_RESPONSE`, начинать с этой пробы.
+- Every new probe or diagnostic connection must complete the handshake and close cleanly.
+- The SDR + ByeBye probe noted on 30 October is obsolete. A full short session with a one-second hold replaced it;
+  six consecutive runs passed, and it is included in beta 3.0. Final confirmation depends on beta testing.
+  If opening the home screen is followed by missing AA VERSION_RESPONSE messages, investigate this probe first.

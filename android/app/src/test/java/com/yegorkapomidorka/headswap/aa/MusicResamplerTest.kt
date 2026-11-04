@@ -10,10 +10,10 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 class MusicResamplerTest {
-    /** Выходная частота -> (L, M) отношения L/M к 48000. */
+    /** Output frequency -> (L, M) L/M to 48000 ratio. */
     private val ratios = mapOf(44100 to (147 to 160), 32000 to (2 to 3), 24000 to (1 to 2), 22050 to (147 to 320))
 
-    /** Стерео-синус (R = L) в int16 LE на 48 кГц. */
+    /** Stereo sine (R = L) in int16 LE at 48 kHz. */
     private fun sine(freq: Double, amp: Double, frames: Int): ByteArray {
         val b = ByteArray(frames * 4)
         for (i in 0 until frames) {
@@ -26,7 +26,7 @@ class MusicResamplerTest {
         return b
     }
 
-    /** Левый канал выхода как Int. */
+    /** Left channel output as Int. */
     private fun left(pcm: ByteArray) = IntArray(pcm.size / 4) { i ->
         ((pcm[i * 4].toInt() and 0xFF) or (pcm[i * 4 + 1].toInt() shl 8)).toShort().toInt()
     }
@@ -59,7 +59,7 @@ class MusicResamplerTest {
     @Test
     fun chunkingDoesNotChangeResult() {
         val src = sine(1000.0, 10000.0, 20000)
-        // добавим шум в правый канал, чтобы каналы различались
+        // add noise to the right channel so that the channels are different
         val rnd = java.util.Random(1)
         for (i in 0 until 20000) {
             val v = rnd.nextInt(2000) - 1000
@@ -111,7 +111,7 @@ class MusicResamplerTest {
 
     @Test
     fun toneAboveOutputNyquistIsAttenuated() {
-        // частота выше 0,5 x выход: давится минимум в 10 раз (пик < 1000 при амплитуде 10000)
+        // frequency above 0,5 x output: presses at least 10 times (peak < 1000 with 10000 amplitude)
         val tones = mapOf(22050 to 12000.0, 24000 to 15000.0, 32000 to 17000.0, 44100 to 21000.0)
         for ((rate, hz) in tones) {
             val out = left(MusicResampler(rate).process(sine(hz, 10000.0, 48000)))
@@ -136,7 +136,7 @@ class MusicResamplerTest {
 
     @Test
     fun saturatesInsteadOfWrapping() {
-        // полный размах на низкой частоте: выход не должен «перескакивать» знак
+        // full scale at low frequency: output should not "jump" sign
         for (rate in ratios.keys) {
             val out = left(MusicResampler(rate).process(sine(100.0, 32767.0, 48000)))
             var maxJump = 0

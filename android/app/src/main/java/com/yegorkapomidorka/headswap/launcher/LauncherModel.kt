@@ -20,24 +20,24 @@ import com.yegorkapomidorka.headswap.desktop.DesktopAppCatalog
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
-/** Что показано в области справа от рейки. Рейка остаётся всегда: это путь домой. */
+/** What is shown in the area to the right of the reiki. Reiki remains always: it is the way home. */
 sealed interface Area {
     data object Home : Area
     data object AllApps : Area
     data object Picker : Area
     data object Settings : Area
     data object Calls : Area
-    /** Список медиаприложений (переключатель плееров на карточке музыки). */
+    /** List of media applications (player switch on music card). */
     data object Players : Area
-    /** Навигатор, развёрнутый на всю область. */
+    /** Navigator deployed to the entire area. */
     data object Navigator : Area
-    /** Чужое приложение в дочернем окне. */
+    /** A foreign application in the child window. */
     data class App(val ref: AppRef) : Area
 }
 
 /**
- * Состояние лаунчера живёт в процессе, а не в Activity: дочерние окна и список приложений переживают
- * пересоздание Activity (поворот, смена конфигурации ГУ).
+ * The state of launcher lives on, not in Activity: child windows and app list survive
+ * Activity re-creation (rotation, configuration change head unit).
  */
 internal object LauncherModel {
     private lateinit var appCtx: Context
@@ -55,11 +55,11 @@ internal object LauncherModel {
     var autoplay by mutableStateOf(true)
     var localPlayer by mutableStateOf<String?>(null)
     var onlinePlayer by mutableStateOf<String?>(null)
-    /** Режим темы ГУ (CHANGE_MD_THEME, 0 день, 1 ночь, 2 авто); null - ГУ ещё не присылала. Обновляет [LauncherRoot]. */
+    /** Theme mode head unit (CHANGE_MD_THEME, 0 day, 1 night, 2 car); null - head unit has not yet sent. Updates [LauncherRoot]. */
     var huTheme by mutableStateOf<Int?>(null)
-    /** Дисплей, на котором музыку уже включили автоматически: автозапуск один раз на рабочий стол. */
+    /** Display, on which the music has already been turned on automatically: autorun once on your desktop. */
     var autoplayedDisplay = -1
-    /** Светлая ли палитра сейчас: выбор «Тема» и, для «Авто», режим фар машины. */
+    /** Whether the palette is light now: the choice of "Theme" and, for "Auto", the headlight mode of the car. */
     val lightTheme: Boolean get() = ThemeChoice.light(theme, huTheme)
     var cardView by mutableStateOf(CardView.NAVIGATOR)
     var apps by mutableStateOf<List<AppRef>>(emptyList())
@@ -69,49 +69,49 @@ internal object LauncherModel {
     var catalog by mutableStateOf<List<DesktopAppCatalog.Entry>>(emptyList())
     var catalogLoaded by mutableStateOf(false)
     var status by mutableStateOf(StatusInfo())
-    /** Подтверждение удаления приложения из списка («Убрать?»). */
+    /** Confirming the removal of an application from the list (“Remove?”). */
     var confirmRemove by mutableStateOf<AppRef?>(null)
-    /** Область справа от рейки и карточка навигации - в координатах корня Compose. */
+    /** Area to the right of the rail and navigation card - in the coordinates of the root Compose. */
     var areaRect by mutableStateOf<Rect?>(null)
     var navCardRect by mutableStateOf<Rect?>(null)
 
-    /** Чужой лаунчер из DexPrefs.desktopComponent в окне над панелью навигации; null - наш рабочий стол. Ведёт [ForeignActions]. */
+    /** Alien launcher from DexPrefs.desktopComponent in the window above the navigation bar; null is our desktop. Led by [ForeignActions]. */
     var foreign by mutableStateOf<AppRef?>(null)
-    /** Оверлей «Недавние» на экране. */
+    /** Overlay "Recent" on the screen. */
     var recentsOpen by mutableStateOf(false)
-    /** Приложения оверлея; null - список ещё запрашивается. */
+    /** Overlay applications; null - list still requested. */
     var recents by mutableStateOf<List<AppRef>?>(null)
-    /** Пакеты, виденные на экране ГУ в этом сеансе, свежие первыми ([ForeignDesktop.mergeHistory]). */
+    /** The packages seen on the head unit screen in this session are fresh first ([ForeignDesktop.mergeHistory]). */
     var recentsHistory: List<String> = emptyList()
-    /** Последний выбор из DexPrefs, который уже разобрали (пустая строка - ещё не разбирали, null - наш стол). */
+    /** The last choice from DexPrefs, which has already been disassembled (empty line - not yet disassembled, null - our table). */
     var foreignSeen: String? = ""
-    /** Метка отката [ForeignDesktop.brokenKey]: этот лаунчер на этом экране ГУ не стартовал. В prefs не пишется. */
+    /** The [ForeignDesktop.brokenKey] rollback mark: this launcher on this screen head unit did not start. No writing is written in prefs. */
     var foreignBroken: String? = null
-    /** Экран ГУ, для которого собрана история. */
+    /** Screen head unit, for which the story is collected. */
     var foreignDisplay = -1
 
-    /** Ключ «пакет/класс» приложения в окне приложения; null - ещё ни разу не открывали. */
+    /** The key "package / class" of the application in the application window; null - has never been opened. */
     var appKey by mutableStateOf<String?>(null)
-    /** Страница настроек, с которой открыть экран (выбор навигатора по тапу на пустую карточку). */
+    /** The settings page from which to open the screen (selecting a navigator by tap on an empty card). */
     var settingsPage by mutableStateOf(SettingsPage.LOOK)
-    /** Лицензия (индекс в About.licenses), чей полный текст открыт в «О приложении»; null - список. */
+    /** License (index in About.licenses), whose full text is open in "About the application"; null - list. */
     var aboutLicense by mutableStateOf<Int?>(null)
 
-    /** «Назад» внутри настроек (см. [BackNav.settingsStep]); false - шагов нет, выходить с экрана. */
+    /** "Back" inside the settings (see. [BackNav.settingsStep]); false - no steps, get off the screen. */
     fun settingsBack(): Boolean {
         val (page, licenseOpen) = BackNav.settingsStep(settingsPage, aboutLicense != null) ?: return false
         settingsPage = page
         if (!licenseOpen) aboutLicense = null
         return true
     }
-    /** Плотность дисплея ГУ: дочерние окна живут с ней же. */
+    /** Display density head unit: child windows live with it. */
     var densityDpi = 160
-    /** Страница «Все приложения» запоминается между заходами. */
+    /** The "All Apps" page is remembered between visits. */
     var allAppsPage = 0
 
     val launchDebounce = Debounce()
     val launchLock = LaunchLock()
-    /** Приложение, которое сейчас стартует: под «Запускаем <название>…». */
+    /** The application that is now starting: under "Start <name>...". */
     var starting by mutableStateOf<String?>(null)
 
     fun init(ctx: Context) {
@@ -172,7 +172,7 @@ internal object LauncherModel {
 
     fun label(ref: AppRef): String? = catalog.firstOrNull { it.packageName == ref.pkg && it.className == ref.cls }?.label
 
-    /** Список пользователя без удалённых из системы приложений. */
+    /** User list without applications removed from the system. */
     val visibleApps: List<AppRef>
         get() = if (!catalogLoaded) apps else apps.filter { label(it) != null }
 
@@ -188,12 +188,12 @@ internal object LauncherModel {
     fun nextCardView() { cardView = cardView.next().also { prefs.cardView = it } }
     fun setNavigator(pkg: String?) { savedNavigator = pkg; prefs.navigator = pkg }
     fun chooseMusicPlayer(pkg: String?) { musicPlayer = pkg; prefs.musicPlayer = pkg; noteOnlinePlayer(pkg) }
-    /** Выбрали или услышали [pkg]: если это онлайн-плеер, он становится вторым слотом чипа. */
+    /** Choose or hear [pkg]: if it is an online player, it becomes the second chip slot. */
     fun noteOnlinePlayer(pkg: String?) {
         val next = PlayerChip.lastOnline(lastOnlinePlayer, pkg)
         if (next != lastOnlinePlayer) { lastOnlinePlayer = next; prefs.lastOnlinePlayer = next }
     }
-    /** Пропущенные не новее этого момента просмотрены: счётчик сбрасывается после тапа по карточке. */
+    /** Missed not newer than this moment viewed: the counter is reset after tap on the card. */
     var missedSeenMs by mutableLongStateOf(0L)
         private set
     fun markMissedSeen() {
@@ -202,12 +202,12 @@ internal object LauncherModel {
         prefs.missedSeenMs = now
     }
 
-    /** Установленные известные навигаторы (по каталогу приложений с лаунчерным входом). */
+    /** Installed known navigators (according to the application directory with launcher input). */
     val installedPackages: Set<String> get() = catalog.mapTo(HashSet()) { it.packageName }
     val navigatorPkg: String? get() = NavigatorPick.effective(savedNavigator, installedPackages)
     val installedNavigators: List<String> get() = NavigatorPick.KNOWN.filter { it in installedPackages }
 
-    /** Предыдущий экран лаунчера для «Назад»; после самого «Назад» пуст, чтобы не ходить по кругу. */
+    /** Previous: launcher screen for “Back”; after the “Back” itself is empty, so as not to walk in a circle. */
     var previous: Area? = null
         private set
 
@@ -220,7 +220,7 @@ internal object LauncherModel {
     }
     fun home() { go(Area.Home); previous = null }
 
-    /** «Назад» с экрана лаунчера: на предыдущий экран, если он был не главным, иначе на главный. */
+    /** “Back” from the launcher: screen to the previous screen, if it was not the main one, otherwise to the main one. */
     fun back() {
         val target = BackNav.target(area, previous)
         go(target)
@@ -229,13 +229,13 @@ internal object LauncherModel {
 
     fun now(): Long = SystemClock.uptimeMillis()
 
-    // --- иконки приложений ---
+    // --- app icons ---
 
     private val icons = ConcurrentHashMap<String, ImageBitmap>()
 
     fun cachedIcon(ref: AppRef): ImageBitmap? = icons[ref.key]
 
-    /** Вызывать не из UI-потока: иконка пакета может грузиться через другой процесс. */
+    /** Call not from UI-flow: package icon can be loaded through another process. */
     fun loadIcon(ref: AppRef): ImageBitmap? {
         icons[ref.key]?.let { return it }
         val drawable = runCatching { appCtx.packageManager.getActivityIcon(ComponentName(ref.pkg, ref.cls)) }.getOrNull()

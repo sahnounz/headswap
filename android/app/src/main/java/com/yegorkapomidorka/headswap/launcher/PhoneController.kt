@@ -22,8 +22,8 @@ import androidx.compose.runtime.setValue
 import android.os.SystemClock
 
 /**
- * Данные карточки «Телефон»: журнал вызовов и контакты (runtime-разрешения, выдаются с телефона), состояние звонка
- * из TelephonyManager, управление через TelecomManager. Без разрешений - пустое состояние, ничего не падает.
+ * Phone card details: call log and contacts (runtime- permissions issued from the phone), call status
+ * from TelephonyManager, control via TelecomManager. Without permissions - empty state, nothing falls.
  */
 @Suppress("DEPRECATION")
 internal object PhoneController {
@@ -45,7 +45,7 @@ internal object PhoneController {
         private set
     var ringed = false
         private set
-    /** Секунд с начала OFFHOOK; обновляется tick(). */
+    /** Seconds from the beginning of OFFHOOK; updated by tick(). */
     var offhookSec by mutableIntStateOf(0)
         private set
 
@@ -53,7 +53,7 @@ internal object PhoneController {
     private var listener: PhoneStateListener? = null
     private var lastLoad = 0L
 
-    /** Раз в пару секунд из корня лаунчера: подписка на звонки, таймер разговора, перечитывание журнала. */
+    /** Once in a couple of seconds from the root of launcher:, subscribe to calls, talk timer, re-read log. */
     fun tick(ctx: Context) {
         logPermitted = has(ctx, Manifest.permission.READ_CALL_LOG)
         contactsPermitted = has(ctx, Manifest.permission.READ_CONTACTS)
@@ -76,7 +76,7 @@ internal object PhoneController {
         io.execute { reloadCalls(ctx); reloadContacts(ctx) }
     }
 
-    /** Разрешения карточки «Телефон»: запрос открывает кнопка «Открыть запрос на телефоне» (MainActivity, cmd phone_card_perm). */
+    /** Phone card permissions: the request opens the button "Open request on the phone" (MainActivity, cmd phone_card_perm). */
     val PERMISSIONS = listOf(
         Manifest.permission.READ_PHONE_STATE, Manifest.permission.READ_CALL_LOG, Manifest.permission.READ_CONTACTS,
         Manifest.permission.CALL_PHONE, Manifest.permission.ANSWER_PHONE_CALLS,
@@ -92,7 +92,7 @@ internal object PhoneController {
                 onState(ctx, state, phoneNumber.orEmpty())
             }
         }
-        // PhoneStateListener() берёт Looper потока создания: tick() идёт с главного потока корня лаунчера
+        // PhoneStateListener() takes the Looper creation thread: tick() comes with the main thread root of launcher
         runCatching { tm.listen(l, PhoneStateListener.LISTEN_CALL_STATE); listener = l }
             .onFailure { Log.w(TAG, "call state listener: ${it.javaClass.simpleName}") }
     }
@@ -108,7 +108,7 @@ internal object PhoneController {
             else -> { ringed = false; callTitle = ""; offhookSec = 0 }
         }
         callState = state
-        if (state == CallState.IDLE) lastLoad = 0L // звонок кончился: журнал перечитаем на ближайшем tick()
+        if (state == CallState.IDLE) lastLoad = 0L // call ended: log reread on the nearest tick()
     }
 
     private fun titleFor(ctx: Context, number: String): String {
@@ -168,7 +168,7 @@ internal object PhoneController {
         if (list != contacts) contacts = list
     }
 
-    // --- управление звонком ---
+    // --- call management ---
 
     @SuppressLint("MissingPermission")
     fun accept(ctx: Context) {
@@ -176,14 +176,14 @@ internal object PhoneController {
         runCatching { ctx.getSystemService(TelecomManager::class.java)?.acceptRingingCall() }
     }
 
-    /** Отклонить входящий, завершить разговор или отменить исходящий - один и тот же endCall. */
+    /** Reject Incoming, End Conversation or Cancel Outgoing - Same endCall. */
     @SuppressLint("MissingPermission")
     fun end(ctx: Context) {
         if (!has(ctx, Manifest.permission.ANSWER_PHONE_CALLS)) return
         runCatching { ctx.getSystemService(TelecomManager::class.java)?.endCall() }
     }
 
-    /** Звонок без запуска экранов из лаунчера: placeCall, окно звонка откроется на телефоне. */
+    /** Call without starting screens from launcher: placeCall, the call window will open on your phone. */
     @SuppressLint("MissingPermission")
     fun dial(ctx: Context, number: String) {
         if (number.isBlank() || !has(ctx, Manifest.permission.CALL_PHONE)) return

@@ -32,7 +32,7 @@ class BridgeModeTest {
         assertEquals(BridgeMode.ANDROID_AUTO, BridgeMode.DEFAULT)
         assertEquals(BridgeMode.ANDROID_AUTO, BridgeMode.parse(null))
         assertEquals(BridgeMode.ANDROID_AUTO, BridgeMode.parse(""))
-        assertEquals(BridgeMode.ANDROID_AUTO, BridgeMode.parse("DESKTOP"))      // ключ, а не имя константы
+        assertEquals(BridgeMode.ANDROID_AUTO, BridgeMode.parse("DESKTOP"))      // The key, not the constant name.
         assertEquals(BridgeMode.ANDROID_AUTO, BridgeMode.parse("aa"))
         assertEquals(BridgeMode.DESKTOP, BridgeMode.parse("desktop"))
     }
@@ -82,7 +82,7 @@ class BridgeModeTest {
         val context = MemoryPrefs()
         AaPrefs(context).bridgeMode = BridgeMode.DESKTOP
         val stored = AaPrefs(context).bridgeMode
-        assertEquals(BridgeMode.DESKTOP, stored)      // после обновления до Android 13 выбор не потерян
+        assertEquals(BridgeMode.DESKTOP, stored)      // after upgrading to Android 13 selection is not lost
         assertEquals(BridgeMode.ANDROID_AUTO, BridgeMode.effective(stored, 31))
         assertEquals(BridgeMode.DESKTOP, BridgeMode.effective(stored, 34))
     }

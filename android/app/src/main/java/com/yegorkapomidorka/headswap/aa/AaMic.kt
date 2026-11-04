@@ -2,15 +2,15 @@ package com.yegorkapomidorka.headswap.aa
 
 import java.util.ArrayDeque
 
-/** Откуда брать звук для микрофона AA. */
+/** Where to get the sound for the microphone AA. */
 enum class MicMode(val key: String, val label: String) {
-    /** Только микрофон ГУ (запрос записи по CarLife); нет данных - ждём дальше. */
+    /** Only microphone head unit (request for recording on CarLife); no data - wait on. */
     CAR("car", "машина"),
 
-    /** Только микрофон телефона. */
+    /** Just a phone microphone. */
     PHONE("phone", "телефон"),
 
-    /** Сначала ГУ; если за HU_TIMEOUT_MS нет данных - микрофон телефона. */
+    /** First head unit; if HU_TIMEOUT_MS is not available - phone microphone. */
     AUTO("auto", "авто");
 
     companion object {
@@ -18,7 +18,7 @@ enum class MicMode(val key: String, val label: String) {
     }
 }
 
-/** Формат микрофона AA (MicCaptureFormat в headunit-revived): PCM 16 кГц 16 бит моно, кадры по 2048 сэмплов. */
+/** AA microphone format (MicCaptureFormat in headunit-revived): PCM 16 kHz 16 bits mono, frame by 2048 samples. */
 object AaMicFormat {
     const val SAMPLE_RATE = 16000
     const val BITS = 16
@@ -27,10 +27,10 @@ object AaMicFormat {
     const val CHUNK_FRAMES = 2048
     const val CHUNK_BYTES = CHUNK_FRAMES * 2
 
-    /** Длительность n байт PCM в микросекундах. */
+    /** Duration of n bytes of PCM in microseconds. */
     fun usForBytes(n: Int): Long = n * 1_000_000L / BYTES_PER_SEC
 
-    /** Тело MEDIA_DATA на канале MIC: [timestamp u64 BE, мкс][PCM]. */
+    /** Body MEDIA_DATA on channel MIC: [timestamp u64 BE, microseconds ][PCM]. */
     fun dataPayload(tsUs: Long, pcm: ByteArray): ByteArray {
         val out = ByteArray(8 + pcm.size)
         for (i in 0 until 8) out[i] = (tsUs ushr (56 - 8 * i)).toByte()
@@ -39,30 +39,30 @@ object AaMicFormat {
     }
 }
 
-/** Телефон просит у ГУ микрофон (MicrophoneRequest). Реализует ядро моста. */
+/** The phone asks the head unit microphone (MicrophoneRequest). Realizes the bridge core. */
 interface AaMicSink {
-    /** true = принято, PCM пойдёт через AaPeer.sendMicPcm. false = отказ (телефону уйдёт ошибка). */
+    /** true = accepted, PCM will go through AaPeer.sendMicPcm. false = failure (the phone will leave an error). */
     fun onMicOpen(): Boolean
 
     fun onMicClose(why: String)
 }
 
-/** Источник звука на телефоне (AudioRecord). */
+/** Sound source on the phone (AudioRecord). */
 interface PhoneMic {
-    /** Начать запись; sink получает PCM16 mono 16 кГц. false = не запустилось (нет разрешения и т.п.). */
+    /** Start recording; sink gets PCM16 mono 16 kHz. false = not started (no resolution, etc.). */
     fun start(sink: (ByteArray) -> Unit): Boolean
 
     fun stop()
 }
 
 /**
- * Поток микрофона к телефону: нарезка PCM на кадры по 4096 Б (2048 сэмплов, ровно 128 мс, как требует гайд
- * Google и делает headunit-revived), окно maxUnacked из MicrophoneRequest, подтверждения Ack.
+ * Microphone flow to the phone: cutting PCM on frame by 4096 B (2048 samples, exactly 128 ms as required by guide
+ * Google and makes headunit-revived), window maxUnacked from MicrophoneRequest, confirmations Ack.
  *
- * Отправка кадров не блокирует: emit только ставит сообщение в очередь AAP. До activate() кадры копятся
- * (ответ MicrophoneResponse должен уйти раньше первых DATA). Хвост < 4096 Б при закрытии отбрасывается
- * (не дополняется нулями). Лишние кадры сверх окна ждут в очереди до maxPending, дальше OVERFLOW:
- * зависшего телефона не копим, сессию закрывает вызывающий.
+ * Sending frame does not block: emit only puts the message in the queue AAP. To activate() frame accumulates
+ * (MicrophoneResponse response should go before the first DATA). Tail < 4096 B when closing is discarded
+ * (not supplemented by zeros). Extra frame above the window waiting in line to maxPending, next OVERFLOW:
+ * Hanging phone not dig, session closes caller.
  */
 class AaMicUplink(
     private val emit: (sessionId: Int, tsUs: Long, pcm: ByteArray) -> Unit,
@@ -113,7 +113,7 @@ class AaMicUplink(
         }
     }
 
-    /** MicrophoneResponse(успех) поставлен в очередь: можно слать данные. */
+    /** MicrophoneResponse(success) is queued: you can send data. */
     fun activate() {
         synchronized(lock) {
             if (!open) return
@@ -122,7 +122,7 @@ class AaMicUplink(
         }
     }
 
-    /** pcm = PCM16 LE mono; capturedAtUs = момент захвата первого байта (мкс, часовой механизм телефона). */
+    /** pcm = PCM16 LE mono; capturedAtUs = the moment of capture of the first byte (mcs, phone clock). */
     fun feed(pcm: ByteArray, capturedAtUs: Long): Feed {
         synchronized(lock) {
             if (!open) return Feed.CLOSED
@@ -148,7 +148,7 @@ class AaMicUplink(
         }
     }
 
-    /** Ack телефона: count принятых сообщений сессии sessionId. false = не наш/лишний ack. */
+    /** Ack Phone: count Received Session Messages sessionId. false = Not Our/Excess ack. */
     fun ack(sessionId: Int, count: Int): Boolean {
         synchronized(lock) {
             if (!open || sessionId != sid || count <= 0 || count > inFlight) return false
@@ -159,7 +159,7 @@ class AaMicUplink(
         }
     }
 
-    /** Закрыть сессию; null, если она не была открыта. Невышедшее отбрасывается. */
+    /** Close session; null if it was not opened. Unreleased is discarded. */
     fun close(): Summary? {
         synchronized(lock) {
             if (!open) return null
@@ -182,38 +182,38 @@ class AaMicUplink(
     }
 
     companion object {
-        /** Четыре кадра по 128 мс: застрявший телефон прерывает сессию, а не растит задержку. */
+        /** Four frame by 128 ms: A stuck phone interrupts a session rather than growing a delay. */
         const val MAX_PENDING_CHUNKS = 4
     }
 }
 
-/** Отменяемая отложенная задача (для таймера fallback). */
+/** Cancel pending task (for fallback timer). */
 fun interface MicTimerHandle {
     fun cancel()
 }
 
 /**
- * Маршрутизация микрофона AA: кто и откуда даёт звук.
- *  - open от AA: режим CAR/AUTO просят запись у ГУ (CarLife MIC_RECORD_RECOG_START), PHONE сразу пишет с телефона;
- *  - данные ГУ (VR 0x58001) идут в AA; в AUTO без данных за huTimeoutMs - fallback на микрофон телефона;
- *  - close от AA или потеря CarLife: остановить запись на ГУ (MIC_RECORD_END) / на телефоне.
- * Без Android: всё внешнее приходит лямбдами. Лог: префикс MIC.
+ * The routing of the AA: microphone, who and from where gives the sound.
+ *  - open from AA: mode CAR/AUTO request entry from head unit (CarLife MIC_RECORD_RECOG_START), PHONE immediately writes from the phone;
+ *  - data head unit (VR 0x58001) go to AA; in AUTO without data for huTimeoutMs - fallback on the phone microphone;
+ *  - close from AA or loss of CarLife: stop recording on head unit (MIC_RECORD_END) / on your phone.
+ * Without Android: everything external comes lambdas. Log: prefix MIC.
  */
 class AaMicRouter(
     private val log: (String, Boolean) -> Unit,
     private val mode: () -> MicMode,
-    /** Есть живая CarLife-сессия (после START), у ГУ можно просить запись. */
+    /** There is a live CarLife-session (after START), with head unit you can request a recording. */
     private val huLinkUp: () -> Boolean,
-    /** Запрос записи у ГУ: true = старт, false = стоп. false в ответе = отправить не удалось. */
+    /** Request entry from head unit: true = start, false = stop. false in response = send failed. */
     private val huRecord: (start: Boolean) -> Boolean,
     private val phone: () -> PhoneMic?,
-    /** PCM -> телефону (AapSession.sendMicPcm). */
+    /** PCM -> Phone (AapSession.sendMicPcm). */
     private val toAa: (pcm: ByteArray, capturedAtUs: Long) -> Unit,
     private val schedule: (delayMs: Long, task: Runnable) -> MicTimerHandle,
     private val nowMs: () -> Long = { System.nanoTime() / 1_000_000 },
     private val nowUs: () -> Long = { System.nanoTime() / 1_000 },
     private val huTimeoutMs: Long = HU_TIMEOUT_MS,
-    /** Baidu MD (ReceiveDataThread.FILTER_PAKCAGE_NUM) выбрасывает первые 20 пакетов VR после старта записи. */
+    /** Baidu MD (ReceiveDataThread.FILTER_PAKCAGE_NUM) throws out the first 20 packages of VR after recording starts. */
     private val huSkipPackets: Int = HU_SKIP_PACKETS,
 ) {
     enum class State { IDLE, HU_WAIT, HU, PHONE }
@@ -240,7 +240,7 @@ class AaMicRouter(
     val bytesFromHu: Long get() = synchronized(lock) { huBytes }
     val bytesFromPhone: Long get() = synchronized(lock) { phoneBytes }
 
-    /** Телефон открыл микрофон. false = отказ (в режиме CAR нет CarLife, в PHONE не запустился AudioRecord). */
+    /** The phone opened the microphone. false = failure (CAR mode does not have CarLife, PHONE did not start AudioRecord). */
     fun open(): Boolean {
         synchronized(lock) {
             if (state != State.IDLE) {
@@ -291,7 +291,7 @@ class AaMicRouter(
         }
     }
 
-    /** CarLife-сессия закрыта (USB оборван): запись на ГУ пропала, в AUTO переходим на телефон. */
+    /** CarLife-session is closed (USB is broken): recording on head unit is missing, in AUTO we switch to the phone. */
     fun onCarlifeLost() {
         synchronized(lock) {
             if (state != State.HU_WAIT && state != State.HU) return
@@ -306,7 +306,7 @@ class AaMicRouter(
         }
     }
 
-    /** PCM от ГУ (VR 0x58001, тело сообщения). */
+    /** PCM from head unit (VR 0x58001, message body). */
     fun onHuData(pcm: ByteArray) {
         val captured: Long
         synchronized(lock) {
@@ -431,7 +431,7 @@ class AaMicRouter(
     companion object {
         const val HU_TIMEOUT_MS = 2000L
 
-        /** 0: пакеты ГУ не режем. У Baidu 20, но размер пакета ГУ Honda неизвестен (при 4096 Б это 2,5 с речи). */
+        /** 0: head packages unit is not cut. Baidu 20, but the size of the package head unit Honda is unknown (with 4096 B it is 2,5 with speech). */
         const val HU_SKIP_PACKETS = 0
     }
 }

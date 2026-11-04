@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Дайджест логов Headswap: сводка на 1-2 экрана вместо сырых мегабайт.
+"""Headswap: log digest summary on the 1-2 screen instead of raw megabytes.
 
-Запуск:  python -X utf8 tools/logdigest.py <zip|папка|файл.log> [--json]
+Run: python -X utf8 tools/logdigest.py <zip|folder|file.log> [--json]
 
-Вход: zip из приложения (device.txt + logs/headswap-*.log или probe-*.log, иногда
-logcat-*.txt), папка с логами, снятыми через adb, или отдельный лог. Только stdlib.
-Каждый раздел переживает отсутствие данных и пишет «нет данных».
+Input: zip from application (device.txt + logs/headswap-*.log or probe-*.log, sometimes
+logcat-*.txt), a folder with logs removed via adb, or a separate log. Only stdlib.
+Each section experiences a lack of data and writes "no data".
 """
 import json
 import os
@@ -57,7 +57,7 @@ def short_reason(r):
     return r[:40] if r else "?"
 
 
-# ---------------------------------------------------------------- ввод
+# ---------------------------------------------- input
 
 def read_file(p):
     with open(p, "rb") as f:
@@ -65,8 +65,8 @@ def read_file(p):
 
 
 def load_sources(path):
-    """-> (device_txt | None, [(имя, текст)] логов, [(имя, текст)] logcat)."""
-    files = []  # (имя, байты)
+    """-> (device_txt | None, [(name, text)] logs, [(name, text)] logcat)."""
+    files = []  # (name, bytes)
     if os.path.isdir(path):
         for root, _, names in os.walk(path):
             for n in names:
@@ -102,10 +102,10 @@ def stamp_of(name):
         return None
 
 
-# ---------------------------------------------------------------- разбор
+# ---------------------------------------------
 
 class Clock:
-    """Время строки HH:MM:SS.mmm -> datetime с датой из имени файла и переходом через полночь."""
+    """Line time HH:MM:SS.mmm -> datetime with a date from the file name and going through midnight."""
 
     def __init__(self, stamp):
         self.base = (stamp or datetime(1970, 1, 1)).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -130,7 +130,7 @@ class AaSess:
         self.start = t
         self.cfg = 0
         self.vdata = 0
-        self.last_media_start = None  # (t, канал)
+        self.last_media_start = None  # (t, channel)
 
 
 class Digest:
@@ -148,7 +148,7 @@ class Digest:
         self.aa = None
         self.aa_summaries = []
         self.episodes = []
-        self.fps = []  # (t, режим, вход, выход, энк, гейт)
+        self.fps = []  # (t, mode, input, output, enc, gate)
         self.sent = []  # (t, fps)
         self.errors = {}
         self.autosrv = {"triggers": Counter(), "results": Counter(), "steps": Counter(), "skips": 0, "failures": 0}
@@ -163,7 +163,7 @@ class Digest:
         self.resume_touch = 0
         self.lines = 0
 
-    # --- сессии
+    # --- sessions
 
     def new_session(self, t, start_src):
         s = {"start": t, "start_src": start_src, "end": None, "dur_s": None, "reason": None,
@@ -178,7 +178,7 @@ class Digest:
                 return s
         return self.sessions[0] if self.sessions else None
 
-    # --- строка файла
+    # --- file string
 
     def episode(self, t, kind, detail=""):
         self.episodes.append({"t": t, "kind": kind, "detail": detail})
@@ -245,11 +245,11 @@ class Digest:
                 continue
             try:
                 in_resume = self.feed_line(t, body)
-            except Exception as e:  # строка неожиданного формата не должна ронять дайджест
+            except Exception as e:  # string of unexpected format should not drop digest
                 self.error(t, f"logdigest: не разобрана строка ({type(e).__name__})")
 
     def feed_line(self, t, body):
-        """True, если началось РЕЗЮМЕ (следующие строки с отступом - его поля)."""
+        """True, if the RESUME starts (the next lines with indentation are its fields)."""
         if body.startswith("AA "):
             self.feed_aa(t, body)
             return False
@@ -304,7 +304,7 @@ class Digest:
         ms = SENT_RE.match(body)
         if ms:
             if self.cur is None and self.orphan_ok:
-                # начало файла обрезано посреди сессии, а резюме в нём так и не появилось
+                # the file is cropped in the middle of the session, and the resume never appeared in it
                 self.cur = self.new_session(None, "обрезано")
                 self.cur["start_est"] = t
             self.orphan_ok = False
@@ -449,7 +449,7 @@ class Digest:
                 self.episode(t, "POWER_CONNECTED", "зажигание вкл")
 
 
-# ---------------------------------------------------------------- сводка
+# --------------------------------------------------- summary
 
 def parse_device(text):
     if not text:
@@ -675,7 +675,7 @@ def digest(path):
     return build(dg, device, logcats)
 
 
-# ---------------------------------------------------------------- текст
+# -------------------------------------------
 
 def kv(d):
     return ", ".join(f"{k} {v}" for k, v in d.items()) if d else NO_DATA

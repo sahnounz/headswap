@@ -46,14 +46,14 @@ def test_inner_parser_data_header():
         got += p.feed(bytes([b]))
     assert got == [v, h]
     assert C.InnerStreamParser(C.CH_VIDEO).feed(v + h) == [v, h]
-    # медиа-канал: тип 0x0003xxxx
+    # Media channel: type 0x0003xxxx
     m = C.data_inner(0x00030006, b"pcm")
     assert C.InnerStreamParser(C.CH_MEDIA).feed(m) == [m]
 
 
 def test_inner_parser_bad_type():
     with pytest.raises(ValueError):
-        C.InnerStreamParser(C.CH_CMD).feed(C.data_inner(C.VIDEO_HEARTBEAT))     # 0x0002xxxx на CMD
+        C.InnerStreamParser(C.CH_CMD).feed(C.data_inner(C.VIDEO_HEARTBEAT))     # 0x0002xxxx to CMD
     with pytest.raises(ValueError):
         C.InnerStreamParser(C.CH_VIDEO).feed(C.cmd_inner(C.MD_INFO) + b"\x00" * 4)
     with pytest.raises(ValueError):
@@ -65,7 +65,7 @@ def test_inner_parser_huge_length():
         C.InnerStreamParser(C.CH_VIDEO).feed((65 * 1024 * 1024).to_bytes(4, "big") + b"\x00" * 4 + C.VIDEO_DATA.to_bytes(4, "big"))
     with pytest.raises(ValueError):
         C.InnerStreamParser(C.CH_MEDIA).feed(b"\xff\xff\xff\xff" + b"\x00" * 4 + (0x00030006).to_bytes(4, "big"))
-    # CMD-заголовок: u16, максимум 65535 < 1 МиБ, поэтому на CMD ошибку даёт только тип
+    # CMD-header: u16, maximum 65535 < 1 MiB, so on CMD error only gives type
     assert C.InnerStreamParser(C.CH_CMD).feed(C.cmd_inner(C.MD_INFO, b"z" * 65535))[0][:2] == b"\xff\xff"
 
 
@@ -80,14 +80,14 @@ def test_options_defaults_and_validation():
     with pytest.raises(ValueError):
         C.Options(transport="tcp6", kill_chan="NOPE")
     with pytest.raises(ValueError):
-        C.Options(video_kbps=1000)                      # шейпер только для tcp6
+        C.Options(video_kbps=1000)                      # Shaper only for tcp6
 
 
 def test_shaper_limit_and_pacing():
     hu = C.HeadUnit(C.Options(transport="tcp6", quiet=True, out=Path(tempfile.mkdtemp()),
                               video_kbps=6000, dip_kbps=1000, dip_at=20.0, dip_for=5.0))
     assert hu.shaping
-    assert hu.video_limit_kbps(0.0) == 6000             # до первого кадра - базовый предел
+    assert hu.video_limit_kbps(0.0) == 6000             # up to the first frame base limit
     hu.first_frame_at = 100.0
     assert hu.video_limit_kbps(119.9) == 6000
     assert hu.video_limit_kbps(120.0) == 1000
@@ -97,20 +97,20 @@ def test_shaper_limit_and_pacing():
     hu.first_frame_at = None
     t = C.time.monotonic()
     for _ in range(10):
-        hu.shape_wait(7500)                             # 75 000 Б при 6000 кбит/с = 0,1 с
+        hu.shape_wait(7500)                             # 75 000 B at 6000 kbit/s = 0,1 s
     took = C.time.monotonic() - t
     hu.logf.close()
     assert 0.08 <= took <= 0.3, took
 
 
-# ---- end-to-end против фейкового телефона ----
+# ---- end-to-end vs Fake Phone ----
 
 CHANS = [C.CH_CMD, C.CH_VIDEO, C.CH_MEDIA, C.CH_TTS, C.CH_VR, C.CH_TOUCH]
 MD_INFO_BODY = C.pb_str(1, "Android") + C.pb_str(4, "HUAWEI") + C.pb_str(14, "ADY-LX9") + C.pb_str(20, "31") + C.pb_int(21, 31)
 
 
 class FakePhone:
-    """Телефон: 6 серверных сокетов на эфемерных портах; эмулятор подключается к ним как клиент."""
+    """Phone: 6 server socket on ephemeral ports; the emulator connects to them as a client."""
 
     def __init__(self):
         self.servers: dict[int, socket.socket] = {}
@@ -125,12 +125,12 @@ class FakePhone:
         self.msgs: dict[int, list[tuple[int, bytes]]] = {c: [] for c in CHANS}     # chan -> [(type, body)]
 
     def accept_all(self):
-        for c in CHANS:                                          # порядок подключения = порядок каналов
+        for c in CHANS:                                          # Connection order = channel order
             self.servers[c].settimeout(5)
             self.conns[c], _ = self.servers[c].accept()
 
     def send(self, chan: int, inner: bytes):
-        self.conns[chan].sendall(inner)                          # без внешнего заголовка
+        self.conns[chan].sendall(inner)                          # without external header
 
     def pump(self, chan: int, until, timeout: float = 5.0):
         s = self.conns[chan]
@@ -170,7 +170,7 @@ def test_tcp6_session():
     hu.TOUCH_DELAY = 0.3
     try:
         phone.accept_all()
-        # CMD: голый HU_PROTOCOL_VERSION, без внешнего заголовка
+        # CMD: naked HU_PROTOCOL_VERSION, without external header
         assert phone.pump(C.CH_CMD, lambda m: len(m) >= 1)
         assert phone.types(C.CH_CMD) == [C.HU_PROTOCOL_VERSION]
         assert phone.parsers[C.CH_CMD].buf == b""
@@ -186,17 +186,17 @@ def test_tcp6_session():
                                          C.pb_str(1, C.auth_expected("HUAWEI", "ADY-LX9", "31", rnd.split(";", 1)[1]))))
         assert phone.pump(C.CH_CMD, lambda m: len(m) >= 9)
         assert phone.msgs[C.CH_CMD][-1] == (C.HU_AUTHEN_RESULT, C.pb_int(1, 1))
-        # видео по VIDEO-сокету
+        # Videos by VIDEO-socket
         phone.send(C.CH_VIDEO, C.data_inner(C.VIDEO_DATA, b"\x00\x00\x00\x01\x67" + b"x" * 10))
         phone.send(C.CH_VIDEO, C.data_inner(C.VIDEO_DATA, b"\x00\x00\x00\x01\x41" + b"y" * 5))
-        # heartbeat идёт по VIDEO, тач — по TOUCH
+        # heartbeat is on VIDEO, touch is on TOUCH
         assert phone.pump(C.CH_VIDEO, lambda m: C.VIDEO_HEARTBEAT in [x[0] for x in m])
         assert phone.pump(C.CH_TOUCH, lambda m: len(m) >= 2)
         assert phone.types(C.CH_TOUCH) == [C.TOUCH_ACTION, C.TOUCH_ACTION]
         assert phone.msgs[C.CH_TOUCH][0][1] == C.pb_int(1, 0) + C.pb_int(2, 640) + C.pb_int(3, 360)
         for c in (C.CH_MEDIA, C.CH_TTS, C.CH_VR):
             assert phone.types(c) == []
-        # телефон закрывает всё
+        # Phone closes everything.
         for s in phone.conns.values():
             s.close()
         t.join(10)
@@ -215,7 +215,7 @@ def test_tcp6_session():
 
 def test_tcp6_connect_failure():
     phone = FakePhone()
-    phone.servers[C.CH_TTS].close()                              # порт TTS никто не слушает
+    phone.servers[C.CH_TTS].close()                              # TTS port no one listens
     hu, t, res, _ = start_hu(phone, 5.0)
     try:
         t.join(10)
@@ -231,10 +231,10 @@ def test_tcp6_kill_chan_bridge_closes_others():
     try:
         phone.accept_all()
         phone.send(C.CH_VIDEO, C.data_inner(C.VIDEO_DATA, b"\x00\x00\x00\x01\x67" + b"x" * 10))
-        # эмулятор закрыл TOUCH: у телефона EOF
+        # Emulator closed TOUCH: at the phone EOF
         phone.conns[C.CH_TOUCH].settimeout(5)
         assert phone.conns[C.CH_TOUCH].recv(10) == b""
-        # остальные ещё открыты: heartbeat продолжается
+        # Others are still open: heartbeat continues
         assert phone.pump(C.CH_VIDEO, lambda m: C.VIDEO_HEARTBEAT in [x[0] for x in m])
         assert t.is_alive()
         for c in CHANS:

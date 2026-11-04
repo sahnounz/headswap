@@ -1,17 +1,17 @@
 package com.yegorkapomidorka.headswap.link
 
 /**
- * Свойства транспорта CarLife. Для USB значения ровно те, что были до появления абстракции.
- * kind идёт в лог строкой «транспорт=…» и в WL-лог.
+ * The transport properties of CarLife. for USB are the same as they were before abstraction.
+ * kind goes to the log line "transport = ..." and to WL-log.
  */
 class TransportCaps(
-    /** usb-aoa, tcp-debug (один поток с внешним заголовком), tcp6 (6 сокетов Baidu без внешнего заголовка). */
+    /** usb-aoa, tcp-debug (one stream with external header), tcp6 (6 socket Baidu without external header). */
     val kind: String,
-    /** Поток с внешним заголовком [chan u32][len u32] (USB AOA, debug-TCP). */
+    /** Flow with external header [chan u32][len u32] (USB AOA, debug-TCP). */
     val outerHeader: Boolean,
-    /** Каждый канал свой сокет, писатель на канал. */
+    /** Each channel has its own socket, a writer on the channel. */
     val separateSockets: Boolean,
-    /** Обрыв приходит системным событием (USB_ACCESSORY_DETACHED), а не только EOF. */
+    /** The break comes with a system event (USB_ACCESSORY_DETACHED), not just EOF. */
     val nativeDetach: Boolean,
 ) {
     companion object {
@@ -22,18 +22,18 @@ class TransportCaps(
 }
 
 /**
- * Транспорт CarLife на уровне «канал + inner-сообщение» (inner = внутренний заголовок 8/12 байт + тело).
- * Протокол (CarLifeSession) не знает, как каналы лежат на проводе: один поток с внешним заголовком или свой сокет на канал.
+ * Transport CarLife at the level of "channel + inner- message" (inner = internal header 8/12 byte + body).
+ * The protocol (CarLifeSession) does not know how the channels lie on the wire: one stream with an external header or its socket per channel.
  */
 interface CarTransport {
     val caps: TransportCaps
 
-    /** Для лога и экрана: описание аксессуара или адреса ГУ. */
+    /** For logo and screen: description of accessory or address head unit. */
     val label: String
 
     /**
-     * Запуск чтения и записи. Вызовы sink сериализованы (одна нить за раз), onWritten тоже.
-     * onClosed вызывается не больше одного раза и только при обрыве со стороны транспорта, не после close().
+     * Start reading and writing. sink calls serialized (one thread at a time), onWritten too.
+     * onClosed is called no more than once and only when the breakage is on the side of transport, not after close().
      */
     fun start(
         sink: (chan: Int, inner: ByteArray) -> Unit,
@@ -42,32 +42,32 @@ interface CarTransport {
     )
 
     /**
-     * Запись как у Baidu: 8 байт внешнего заголовка одним write, весь inner одним write (h242, Mobis CCNC).
-     * Нужна только потоку с внешним заголовком; транспорты без него игнорируют.
+     * Write as Baidu: 8 byte external header one write, all inner one write (h242, Mobis CCNC).
+     * All you need is a stream with an external header; transports without it are ignored.
      */
     fun setWholeWrites(on: Boolean) {}
 
-    /** Неблокирующая постановка inner в очередь канала. */
+    /** Non-blocking inner in the channel queue. */
     fun send(chan: Int, inner: ByteArray)
 
-    /** Закрыть всё, разбудить нити. Идемпотентно, onClosed не зовёт. */
+    /** Close everything, wake up thread. Idempotently, onClosed does not call. */
     fun close()
 
-    /** Принято байт от ГУ (все каналы). */
+    /** Accepted byte from head unit (all channels). */
     val rxBytes: Long
 
-    /** Сообщений в очереди, где стоит канал chan (у потока одна общая очередь на все каналы). */
+    /** Messages in the queue where the chan channel stands (the stream has one common queue for all channels). */
     fun queueSize(chan: Int): Int
 
     /**
-     * Выбросить из очереди ещё не записанные inner канала chan, для которых [pred] истинен; сколько выброшено.
-     * Видео-счётчики не трогает (звук туда не входит). По умолчанию ничего не чистит.
+     * Toss out of the queue the not-yet-recorded inner channel chan, for which [pred] is true; how many are discarded.
+     * Video counters do not touch (the sound does not enter there). By default does not clean anything.
      */
     fun dropQueued(chan: Int, pred: (ByteArray) -> Boolean): Int = 0
 
     val queuedVideoBytes: Long
     val queuedVideoFrames: Int
 
-    /** Скорость слива видео, байт/с (0 = ещё не измерена). */
+    /** Video upload speed, bytes/s (0 = not yet measured). */
     val drainBytesPerSec: Double
 }

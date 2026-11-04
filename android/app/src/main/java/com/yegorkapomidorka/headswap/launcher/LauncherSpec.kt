@@ -8,14 +8,14 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * Размеры лаунчера Headswap Desktop в пикселях экрана ГУ (не в dp: density виртуального дисплея своя).
- * База и формулы - из макета Teyes.dc.html: [W, H, T цель касания, G зазор, M поле, F1 текст, F2 вторичный, F3 цифры].
+ * Dimensions launcher Headswap Desktop in pixels of the screen head unit (not in dp: density virtual display own).
+ * Base and formulas - from layout Teyes.dc.html: [W, H, T target touch, G gap, M field, F1 text, F2 secondary, F3 digits ].
  */
 class LauncherSpec(
     val w: Int, val h: Int, val t: Int, val g: Int, val m: Int, val f1: Int, val f2: Int, val f3: Int,
 ) {
     val wide = w >= 1500
-    /** Узкая лента вроде 1280x480: нижнего ряда нет, приложения сеткой справа. */
+    /** Narrow tape like 1280x480: bottom row no, application grid to the right. */
     val strip = w >= 1200 && h <= 500
     private val k = t / 120.0
 
@@ -29,14 +29,14 @@ class LauncherSpec(
     val radius = r(t * 0.2)
     val ic = r(t * 0.44)
     val statusH = r(f2 * 1.3)
-    /** Нижний ряд одной полосой: кнопка навигации, приложения и телефон высотой T плюс воздух по G сверху и снизу. */
+    /** The bottom row is single band: the navigation button, applications and phone height T plus wireless connection by G at top and bottom. */
     val bottomH = t + 2 * g
-    /** Блок навигации внизу рейки: в нижнем ряду той же высоты, что ряд; в ленте нижнего ряда нет. */
+    /** Navigation unit at the bottom of the rail: in the lower row the same height as the row; there is no bottom row tape. */
     val navH = if (strip) r(t * 1.15) else bottomH
-    /** Сетка 1:2 зеркально: узкая колонка - музыка сверху и телефон снизу, широкая - карта и приложения. */
+    /** The 1:2 grid is mirrored: narrow column - music at the top and phone at the bottom, wide - map and applications. */
     val narrow = r((w - rail - g - m - g) / 3.0)
     val music = if (strip) r(t * 3.4) else narrow
-    /** В ленте карточки нет, ширина нужна только оверлею входящего: 6T на широких, 5T - G на остальных. */
+    /** There is no card in the tape, the width is needed only for the incoming overlay: 6T on wide, 5T - G on the rest. */
     val phone = if (!strip) narrow else if (wide) r(t * 6.0) else r(t * 5.0 - g)
     val cover = r(t * 1.6)
     val tag = max(14, r(f2 * 0.6))
@@ -44,28 +44,28 @@ class LauncherSpec(
     val appSvg = r(t * 0.5)
     val appLbl = r(f2 * 0.85)
 
-    // Рейка: кнопки по T, но не больше, чем влезает по высоте между часами и блоком навигации.
-    // Назад, Домой, Настройки, Вид карточки; в ленте «Вид карточки» на карте.
+    // Reiki: buttons according to T, but not more than climbs in height between the clock and the navigation unit.
+    // Back, Home, Settings, Card View; in the "Card View" on the map.
     private val railButtons = if (strip) 3 else 4
     private val railFree = h - navH - g - (g + g8) - f1
     val rb = max(1, min(t, floor((railFree - railButtons * g4) / railButtons.toDouble()).toInt()))
     val ric = min(ic, r(rb * 0.5))
-    /** Панель «Назад / Домой / Недавние» под окном чужого лаунчера: высота как у круглой кнопки рейки (60-110 px по таблице). */
+    /** Panel "Back / Home / Recent" under the window of someone else's launcher: height like a round rail button (60-110 px on the table). */
     val barH = rb
     val barIc = r(barH * 0.42)
     val logoIn = r(rb * 0.64)
     val backIc = min(r(ric * 1.35), r(rb * 0.66))
-    // Стеклянный чип плееров на обложке (и кнопка «Вид карточки» на карте в ленте)
+    // Glass chip players on the cover (and the button "View card" on the map in the tape)
     val pcB = r(t * 0.72)
     val pcIc = r(pcB * 0.5)
     val pcVk = r(pcIc * 0.8)
-    // Транспорт: пауза T, соседние меньше, чтобы между ними был зазор
+    // Transport: T pause, neighboring less, so that there is a gap between them
     val tp = r(t * 0.78)
     val tpIc = r(ic * 0.85)
     val titleB = t + g8 + g4
-    /** Сколько приложений в быстром ряду (без плюса): в ленте сетка 2x3. */
+    /** How many applications are in the fast range (without a plus): in the 2x3 grid tape. */
     val quickApps = if (strip) 5 else 4
-    /** Узкая карточка «Телефон»: имя цветом состояния, ниже время и счётчик, одна кнопка. */
+    /** Narrow card "Phone": the name of the status color, below the time and counter, one button. */
     val phoneCompact = phone - 2 * g - (if (wide) 2 * t + 2 * g else t + g) < 15 * f2 * 0.55
 
     private fun r(v: Double) = v.roundToInt()
@@ -77,7 +77,7 @@ class LauncherSpec(
 }
 
 object LauncherSpecs {
-    /** [W, H, T, G, M, F1, F2, F3], как RES в макете. */
+    /** [W, H, T, G, M, F1, F2, F3], as RES in the layout. */
     val TABLE: List<IntArray> = listOf(
         intArrayOf(1920, 720, 90, 21, 29, 34, 28, 42),
         intArrayOf(2240, 976, 110, 25, 35, 42, 35, 52),
@@ -91,7 +91,7 @@ object LauncherSpecs {
         intArrayOf(800, 480, 62, 14, 18, 23, 19, 29),
     )
 
-    /** Точная строка таблицы либо ближайшая по высоте и пропорции, масштабированная линейно. */
+    /** The exact row of the table is either the closest in height and proportion, scaled linearly. */
     fun forSize(width: Int, height: Int): LauncherSpec {
         val w = max(1, width)
         val h = max(1, height)
@@ -100,7 +100,7 @@ object LauncherSpecs {
         val near = TABLE.minBy { row ->
             abs(ln(h.toDouble() / row[1])) + abs(ln(aspect / (row[0].toDouble() / row[1])))
         }
-        // линейно по меньшему из отношений, чтобы раскладка гарантированно влезала
+        // linearly on the smaller of the relations, so that the layout is guaranteed to fit
         val k = min(w.toDouble() / near[0], h.toDouble() / near[1])
         return of(near, k, w, h)
     }

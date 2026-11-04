@@ -11,8 +11,8 @@ import com.yegorkapomidorka.headswap.aa.CallStateSource
 import java.util.concurrent.Executors
 
 /**
- * Состояние звонка из TelephonyManager, как Baidu PhoneManager.MyPhoneStateListener. API 31+ - TelephonyCallback
- * (нужно READ_PHONE_STATE), ниже - PhoneStateListener LISTEN_CALL_STATE. Номер не читаем (это READ_CALL_LOG).
+ * Call status from TelephonyManager as Baidu PhoneManager.MyPhoneStateListener. API 31+ - TelephonyCallback
+ * (need READ_PHONE_STATE), below - PhoneStateListener LISTEN_CALL_STATE. We do not read the number (this is READ_CALL_LOG).
  */
 class PhoneCalls(private val ctx: Context, private val enabled: Boolean) : CallStateSource {
     private val tm = ctx.getSystemService(TelephonyManager::class.java)

@@ -1,29 +1,29 @@
-# 0007. VIDEO_HEARTBEAT на PAUSE: пустое сообщение раз в 100 мс
+# 0007. VIDEO_HEARTBEAT on PAUSE: empty message times in 100 ms
 
-- Статус: принято
-- Дата: 2026-10-14 (примерно, PR #2, #18), доработки до 2026-10-30 (PR #123)
-- Источники: PR #2, #18, #37, #67, #68, #69, #72, #96, #123, кейсы h93, h222, h224, h425, h625, h211, `CarLifeSession.kt:1259-1303`, `:1463`
+- Status: adopted
+- Date: 2026-10-14 (approximately, PR #2, #18), improvements to 2026-10-30 (PR #123)
+- Sources: PR #2, #18, #37, #67, #68, #69, #72, #96, #123, cases h93, h222, h224, h425, h625, h211, `CarLifeSession.kt:1259-1303`, `:1463`
 
-## Контекст
+## Context
 
-ГУ закрывает USB через 3,6–6 с после `VIDEO_ENCODER_PAUSE`: VW 20082120/22/34 (h93, h222, h224), CNS2 Delphi (h425),
-Skoda 21290002 (h625), VW BT 1420 по воздуху, Desay G6S по воздуху (h211). Baidu во время паузы шлёт `VIDEO_HEARTBEAT`.
+head unit closes USB via 3,6–6 with after `VIDEO_ENCODER_PAUSE`: VW 20082120/22/34 (h93, h222, h224), CNS2 Delphi (h425),
+Skoda 21290002 (h625), VW BT 1420 using wireless connection, Desay G6S using wireless connection (h211). Baidu During the pause sends `VIDEO_HEARTBEAT`.
 
-## Решение
+## Decision
 
-На PAUSE сразу шлётся `VIDEO_HEARTBEAT` (0x20002, длина 0) и затем раз в 100 мс (`PAUSE_HEARTBEAT_MS`,
-`CarLifeSession.kt:1463`) — как `Recorder.sendEmptyPacketBackground` у Baidu. Вне паузы после `IDLE_HEARTBEAT_MS = 1 с` без
-кадров шлётся тот же heartbeat (Delphi, Skoda). Desay G6S по USB — прежний пустой `VIDEO_DATA` раз в 2 с, без heartbeat.
-VW BT 1420 по воздуху дополнительно получает START с IDR энкодера, не дожидаясь IDR от AA. Включается для каждого ГУ
-отдельно (0006), см. `pauseHeartbeatHu` (`CarLifeSession.kt:1270`).
+On PAUSE immediately flies `VIDEO_HEARTBEAT` (0x20002, length 0) and then once in 100 ms (`PAUSE_HEARTBEAT_MS`,
+`CarLifeSession.kt:1463`) - how `Recorder.sendEmptyPacketBackground` UW Baidu. After the pause `IDLE_HEARTBEAT_MS = 1 с` without
+frame sends the same heartbeat (Delphi, Skoda). Desay G6S by USB - former empty `VIDEO_DATA` times in 2 s, without heartbeat.
+VW BT 1420 by wireless connection additionally gets START with IDR encoder without waiting for IDR from AA. Included for each head unit
+separately (0006), see `pauseHeartbeatHu` (`CarLifeSession.kt:1270`).
 
-## Альтернативы
+## Alternatives
 
-- Пустой `VIDEO_DATA` вместо heartbeat — у BT 1420 ГУ рвала сессию через 0,2–0,4 с после START.
-- Глобальный keepalive — ломал Honda (0006).
-- Самообучаемый heartbeat по поведению ГУ — отложен после 3.0.0 (форк mhzsajan, см. 0006).
+- Empty `VIDEO_DATA` instead of heartbeat - BT 1420 head unit broke session through 0,2–0,4 s after START.
+- Global keepalive - broke Honda (0006).
+- heartbeat self-taught behavior head unit - delayed after 3.0.0 (fork of mhzsajan, see 0006).
 
-## Последствия
+## Consequences
 
-- Новый ГУ с обрывом через 3–6 с после PAUSE добавляется в `pauseHeartbeatHu` по каналу, а не общим включением.
-- Интервал 100 мс взят у Baidu (0010).
+- The new head unit with a break through 3–6 after PAUSE is added to the `pauseHeartbeatHu` via channel rather than generic inclusion.
+- The 100 ms interval is taken from Baidu (0010).

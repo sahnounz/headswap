@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Палитра LIGHT из design/project/*.dc.html -->
+<!-- Palette LIGHT from design/project/*.dc.html -->
 <resources>
     <color name="bg">#F4F7F8</color>
     <color name="surf">#FFFFFF</color>

@@ -9,9 +9,9 @@ import android.media.MediaRecorder
 import com.yegorkapomidorka.headswap.AppLog
 
 /**
- * Микрофон телефона (запасной источник для AA): AudioRecord VOICE_RECOGNITION, 16 кГц моно PCM16.
- * Блоки по 2048 сэмплов (4096 Б). Нужно разрешение RECORD_AUDIO; в фоне Android 11+ молча отдаёт тишину,
- * поэтому в лог идёт пик сигнала первых блоков: нулевой пик = система глушит микрофон.
+ * Phone microphone (spare source for AA): AudioRecord VOICE_RECOGNITION, 16 kHz mono PCM16.
+ * Blocks by 2048 samples (4096 B). You need a resolution of RECORD_AUDIO; in the background of Android 11+ silently gives silence,
+ * Therefore, the log is the peak signal of the first blocks: zero peak = the system jams the microphone.
  */
 class PhoneMicCapture(private val ctx: Context) : PhoneMic {
     @Volatile private var rec: AudioRecord? = null
@@ -69,11 +69,11 @@ class PhoneMicCapture(private val ctx: Context) : PhoneMic {
         var blocks = 0
         var total = 0L
         var peakAll = 0
-        // нить живёт, пока rec - её запись: после stop() и сразу start() (повторный open) running снова true,
-        // и по одному флагу старая нить крутила бы остановленный AudioRecord, не освобождая его
+        // thread lives while rec is her record: after stop() and immediately start() (repeated open) running again true,
+        // and by one flag the old thread would spin the stopped AudioRecord without freeing it
         while (running && rec === r) {
             val n = r.read(buf, 0, buf.size)
-            if (rec !== r) break               // stop() во время read: хвост остановленной записи не отдаём
+            if (rec !== r) break               // stop() during read: tail stopped recording do not give
             if (n <= 0) {
                 if (n < 0 && running) AppLog.i("MIC phone: read вернул $n, останавливаюсь", true)
                 if (n < 0) break
@@ -100,7 +100,7 @@ class PhoneMicCapture(private val ctx: Context) : PhoneMic {
         AppLog.i("MIC phone: поток записи закончен: блоков $blocks, $total Б, максимальный пик $peakAll", true)
     }
 
-    /** Не ждёт нить записи (её sink может стоять на блокировке роутера): нить сама отпустит AudioRecord. */
+    /** Not waiting for thread recording (its sink can stand on the router lock): thread itself will release AudioRecord. */
     @Synchronized
     override fun stop() {
         running = false

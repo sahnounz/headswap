@@ -4,70 +4,70 @@
     <uses-feature
         android:name="android.hardware.usb.accessory"
         android:required="true" />
-    <!-- выбор машины (автостарт беспровода по Bluetooth); без CDM приложение работает, только без привязки -->
+    <!-- selection of the machine (auto-start of wireless by Bluetooth); without CDM application works, only without binding -->
     <uses-feature
         android:name="android.software.companion_device_setup"
         android:required="false" />
 
-    <!-- звонки и журнал вызовов для карточки «Телефон» лаунчера; без телефонии (планшет) приложение ставится, карточка пустая -->
+    <!-- calls and call log for the launcher phone card; without telephony (tablet) the application is placed, the card is empty -->
     <uses-feature
         android:name="android.hardware.telephony"
         android:required="false" />
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
-    <!-- AA-режим: TCP на loopback к серверу ГУ Android Auto (127.0.0.1:5277) -->
+    <!-- AA-mode: TCP on loopback to server head unit Android Auto (127.0.0.1:5277) -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <!-- одно из условий для foreground-сервиса connectedDevice; обычное разрешение, выдаётся при установке -->
+    <!-- one of the conditions for foreground-connectedDevice service; the usual permission is issued upon installation -->
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
-    <!-- Wi-Fi машины (WifiNetworkSpecifier) и признак STA+STA; обычные разрешения, выдаются при установке -->
+    <!-- Wi-Fi machines (WifiNetworkSpecifier) and STA+STA feature; normal permits, issued upon installation -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <!-- какие интерфейсы Wi-Fi заняты телефоном-клиентом, а какие хотспотом (h420); обычное разрешение -->
+    <!-- which Wi-Fi interfaces are occupied by the client phone, and which hotspot (h420); normal resolution -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
-    <!-- Android 17 (targetSdk 37): локальная сеть (входящий TCP беспроводного CarLife, UDP-маяк 7999/8999, mDNS-поиск портов
-         отладки по Wi-Fi при активации с телефона). Loopback (AA 5277, debug, adbd своего телефона) не требует. -->
+    <!-- Android 17 (targetSdk 37): local area network (incoming TCP wireless CarLife, UDP-beacon 7999/8999, mDNS-port search
+         debugging by Wi-Fi when activated from your phone). Loopback (AA 5277, debug, adbd of your phone) does not require. -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
-    <!-- беспровод, ветка A (диагностика): RFCOMM-сервер carlife, ГУ подключается сама; старые разрешения до Android 11 -->
+    <!-- wireless, A branch (diagnostics): RFCOMM-carlife server, head unit connects itself; old resolutions up to Android 11 -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
-    <!-- беспровод, ветка A: вход в Wi-Fi Direct-группу ГУ (WifiP2pManager.connect); до Android 13 вместо него геолокация -->
+    <!-- wireless, A: branch entry Wi-Fi Direct-group head unit (WifiP2pManager.connect); up to Android 13 instead geolocation -->
     <uses-permission
         android:name="android.permission.NEARBY_WIFI_DEVICES"
         android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="32" />
-    <!-- Android 12: запрос одной FINE без COARSE система молча отклоняет -->
+    <!-- Android 12: request one FINE without COARSE system silently rejects -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="32" />
-    <!-- привязка машины через CompanionDeviceManager: исключения на запуск foreground-сервиса и работу в фоне; обычные разрешения -->
+    <!-- tying the machine through CompanionDeviceManager: exceptions to running foreground-service and working in the background; normal permissions -->
     <uses-permission android:name="android.permission.REQUEST_COMPANION_START_FOREGROUND_SERVICES_FROM_BACKGROUND" />
     <uses-permission android:name="android.permission.REQUEST_COMPANION_RUN_IN_BACKGROUND" />
-    <!-- микрофон телефона как запасной источник звука для AA (режим «авто»/«телефон») -->
+    <!-- Phone microphone as a backup sound source for the AA (auto/phone mode) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- h428: состояние звонка для ГУ (MODULE_STATUS PHONE / TELE_STATE), как Baidu -->
+    <!-- h428: call status for head unit (MODULE_STATUS PHONE/TELE_STATE) as Baidu -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <!-- карточка «Телефон» лаунчера Headswap Desktop: журнал вызовов, контакты, звонок и ответ с экрана ГУ; обычные runtime-разрешения,
-         запрашиваются кнопкой в разделе Режим/Рабочий стол -->
+    <!-- "Phone" card launcher Headswap Desktop: call log, contacts, call and response from the screen head unit; regular runtime-resolutions,
+         requested by the button in the Mode / Desktop section -->
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
-    <!-- онбординг: запрос исключения из оптимизации батареи (HyperOS убивает фон) -->
+    <!-- onboarding: Exclusion Request from Battery Optimization (HyperOS Kills Background) -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-    <!-- обновление из приложения: установка скачанного с GitHub APK через PackageInstaller -->
+    <!-- update from app: installation downloaded from GitHub APK via PackageInstaller -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
-    <!-- без queries на API 30+ пакет Android Auto не виден (проверка установки, запуск настроек) -->
+    <!-- without queries on API 30+ package Android Auto is not visible (installation check, settings start) -->
     <queries>
         <package android:name="com.google.android.projection.gearhead" />
-        <!-- раздел «Приложения для магнитолы»: статус установки и запуск каталога (Fermata Auto, ParkedTube, AABrowser) -->
+        <!-- "Magnetola applications" section: installation status and directory start (Fermata Auto, ParkedTube, AABrowser) -->
         <package android:name="me.aap.fermata.auto.dear.google.why" />
         <package android:name="dev.codex.aaparkedyoutube" />
         <package android:name="com.kododake.aabrowser" />
-        <!-- поиск любых приложений для Android Auto: плееры (сервис) и полноэкранные (activity) -->
+        <!-- search for any applications for Android Auto: players (service) and full-screen (activity) -->
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="com.google.android.gms.car.category.CATEGORY_PROJECTION" />
@@ -76,26 +76,26 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.CAR_LAUNCHER" />
         </intent>
-        <!-- рабочий стол с компьютерной активацией: список и проверка запускаемых приложений для встроенных окон -->
+        <!-- Desktop with computer activation: list and check running applications for built-in windows -->
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
-        <!-- лаунчер Headswap Desktop: выбор стороннего рабочего стола (DriveDeck, CarDash) - входы под HOME; LAUNCHER выше -->
+        <!-- launcher Headswap Desktop: third-party desktop selection (DriveDeck, CarDash) - entries under HOME; LAUNCHER above -->
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.HOME" />
         </intent>
-        <!-- лаунчер Headswap Desktop: список музыкальных плееров (MediaBrowserService) для переключателя на карточке музыки -->
+        <!-- launcher Headswap Desktop: music player list (MediaBrowserService) for switch on music card -->
         <intent>
             <action android:name="android.media.browse.MediaBrowserService" />
         </intent>
     </queries>
 
-    <!-- Только явная активация с компьютера (adb shell -> am instrument с токеном из приложения).
-         Цель - главный процесс приложения, не :delegated. Токен сверяется до выдачи любых прав.
-         Имя полное: AGP не раскрывает относительное имя в instrumentation, а в сборке .smoke оно
-         разрешилось бы от applicationId, а не от namespace. -->
+    <!-- Only explicit activation from computer (adb shell -> am instrument with token from application).
+         The target is the main application process, not :delegated. Token is checked before issuing any rights.
+         Full name: AGP does not reveal the relative name in instrumentation, but in assembly .smoke it
+         would be allowed from applicationId, not from namespace. -->
     <instrumentation
         android:name="com.yegorkapomidorka.headswap.dex.DelegatedDesktopInstrumentation"
         android:targetPackage="${applicationId}"
@@ -129,15 +129,15 @@
                 android:resource="@xml/accessory_filter" />
         </activity>
 
-        <!-- раздача логов и отчётов через «Поделиться» (только чтение, без AndroidX FileProvider) -->
+        <!-- distribution of logs and reports through "Share" (read only, without AndroidX FileProvider) -->
         <provider
             android:name=".ui.LogProvider"
             android:authorities="${applicationId}.logs"
             android:exported="false"
             android:grantUriPermissions="true" />
 
-        <!-- Домашний экран Headswap Desktop (лаунчер на Compose): его запускает :delegated (тот же uid) на виртуальном дисплее ГУ,
-             снаружи не нужен; домашним приложением телефона не становится. launchMode как у форка не задан (стандартный). -->
+        <!-- Home screen Headswap Desktop (launcher on Compose): it runs :delegated (the same uid) on the virtual display head unit,
+             there is no need outside; the phone does not become a home application. launchMode as the fork is not specified (standard). -->
         <activity
             android:name=".launcher.LauncherActivity"
             android:exported="false"
@@ -147,12 +147,12 @@
             android:configChanges="orientation|screenSize|smallestScreenSize|keyboardHidden"
             android:theme="@style/Theme.Headswap.Desktop" />
 
-        <!-- кнопка «Стоп» в уведомлении -->
+        <!-- the "Stop" button in the notification -->
         <receiver
             android:name=".ui.StopReceiver"
             android:exported="false" />
 
-        <!-- автостарт беспровода: ACL выбранной машины; выключен, пока машина не выбрана (CarProfile.enableTrigger) -->
+        <!-- autostart wireless: ACL selected machine; off until machine is selected (CarProfile.enableTrigger) -->
         <receiver
             android:name=".link.car.CarAclReceiver"
             android:enabled="false"
@@ -163,24 +163,24 @@
             </intent-filter>
         </receiver>
 
-        <!-- статус установки обновления (PackageInstaller) -->
+        <!-- Update Installation Status (PackageInstaller) -->
         <receiver
             android:name=".update.InstallReceiver"
             android:exported="false" />
 
-        <!-- microphone: только на время захвата микрофона телефона (fallback AA-микрофона); тип в runtime выбирает сервис -->
+        <!-- microphone: only for phone microphone capture time (fallback AA-microphone); type in runtime selects service -->
         <service
             android:name=".BridgeService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice|microphone" />
 
-        <!-- активация Headswap Desktop с самого телефона: сопряжение с отладкой по Wi-Fi, код вводится в уведомлении -->
+        <!-- activation of Headswap Desktop from the phone itself: pairing with debugging by Wi-Fi, code is entered in the notification -->
         <service
             android:name=".dex.PhoneActivationService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
 
-        <!-- производитель рабочего стола (виртуальный экран) в отдельном процессе: его гибель не обрывает активацию в главном -->
+        <!-- manufacturer of the desktop (virtual screen) in a separate process: its death does not terminate the activation in the main -->
         <service
             android:name=".dex.DelegatedDesktopService"
             android:exported="false"

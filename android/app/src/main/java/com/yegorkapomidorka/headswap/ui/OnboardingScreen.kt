@@ -20,10 +20,10 @@ import com.yegorkapomidorka.headswap.aa.CarPreset
 import com.yegorkapomidorka.headswap.dex.PhoneActivation
 
 /**
- * Онбординг (Onboarding.dc.html) и чеклист готовности. Первый шаг - выбор режима, дальше путь зависит от него
- * (OnboardingPath): Android Auto - прежние десять шагов из Readiness.STEPS, свой лаунчер - режим разработчика, активация и общие шаги.
- * При первом запуске уже выполненные шаги (определяются автоматически или отмечены вручную) пропускаются, при повторном
- * прохождении показываются все. В конце - чеклист со статусом каждого пункта; тот же чеклист открывается из Настроек.
+ * onboarding (Onboarding.dc.html) and readiness checklist. The first step is the choice of mode, then the path depends on it
+ * (OnboardingPath): Android Auto - former ten steps from Readiness.STEPS, its launcher - developer mode, activation and common steps.
+ * At the first start, already completed steps (defined automatically or manually marked) are skipped, when repeated
+ * All passes are shown. At the end is a checklist with the status of each item; the same checklist opens from Settings.
  */
 class OnboardingScreen(host: MainActivity, private val showAll: Boolean, startAtChecklist: Boolean, startAt: StepId? = null) : Screen(host) {
     private val root = ctx.vbox()
@@ -32,23 +32,23 @@ class OnboardingScreen(host: MainActivity, private val showAll: Boolean, startAt
     private val aa = AaPrefs(ctx)
     private val desktopOk = BridgeMode.desktopSupported(Build.VERSION.SDK_INT)
 
-    /** Режим, по которому строится путь: сохранённый в настройках, при отладке шагом лаунчера - лаунчер. */
+    /** Path mode: saved in settings, when debugging by launcher - launcher. */
     private var chosen = OnboardingPath.modeFor(BridgeMode.effective(aa.bridgeMode, Build.VERSION.SDK_INT), startAt)
     private var queue: List<StepInfo>
     private var pos = 0
 
-    /** Блок активации живёт между перерисовками шага: идущая попытка и введённые порты не теряются. */
+    /** The activation block lives between step redraws: the attempt and the ports entered are not lost. */
     private var activation: PhoneActivationBlock? = null
     private var renderedReady = false
     private var renderedBusy = false
     private var renderedLabel = ""
     private var checklist = false
 
-    /** Шаг открыт из чеклиста: после него возвращаемся в чеклист. */
+    /** The step is open from the checklist: after it we return to the checklist. */
     private var single: StepInfo? = null
     private var shownDone = false
 
-    /** Машина, отмеченная на шаге выбора, но ещё не применённая. */
+    /** A machine marked in the selection step, but not yet applied. */
     private var carChoice: CarPreset? = null
 
     init {
@@ -61,25 +61,25 @@ class OnboardingScreen(host: MainActivity, private val showAll: Boolean, startAt
     private fun buildQueue(keep: StepId?): List<StepInfo> =
         OnboardingPath.queue(chosen, desktopOk, showAll, { Readiness.isDone(ctx, it) }, keep).map { Readiness.info(it) }
 
-    /** Строки чеклиста: шаги выбранного пути без выбора режима. */
+    /** Checklist lines: steps of the selected path without selecting a mode. */
     private fun checklistSteps(): List<StepInfo> = OnboardingPath.full(chosen, false).map { Readiness.info(it) }
 
     override fun tick() {
         val block = activation ?: return
         if (checklist || current()?.id != StepId.ACTIVATE) return
         block.refresh()
-        if (block.ready && !renderedReady) { next(); return }      // активация прошла, пока шаг был открыт: идём дальше сами
+        if (block.ready && !renderedReady) { next(); return }      // Activation is over while the step is open: go ahead ourselves
         if (block.ready != renderedReady || PhoneActivation.busy != renderedBusy || block.activateLabel != renderedLabel) render()
     }
 
     override fun onShow() {
-        // вернулись из системных настроек: статус мог измениться
+        // back from system settings: status could change
         if (checklist) render() else if (current() != null && Readiness.isDone(ctx, current()!!.id) != shownDone) render()
     }
 
     override fun onPermissionResult() {
         val s = current() ?: return
-        if (!checklist && s.id == StepId.ACTIVATE) { activation?.onPermissionResult(); return }      // render() потерял бы ожидание разрешения
+        if (!checklist && s.id == StepId.ACTIVATE) { activation?.onPermissionResult(); return }      // render() would have lost its resolution expectation
         if (!checklist && Readiness.isDone(ctx, s.id) && (s.id == StepId.NOTIF || s.id == StepId.MIC)) next() else render()
     }
 
@@ -88,7 +88,7 @@ class OnboardingScreen(host: MainActivity, private val showAll: Boolean, startAt
             checklist -> { ui.onboardingDone = true; return false }
             single != null -> { single = null; checklist = true; render() }
             pos > 0 -> { pos--; render() }
-            else -> { ui.onboardingDone = true; return false }      // вышли из онбординга сами: больше не навязываем
+            else -> { ui.onboardingDone = true; return false }      // came out of onboarding themselves: no more imposing
         }
         return true
     }
@@ -120,10 +120,10 @@ class OnboardingScreen(host: MainActivity, private val showAll: Boolean, startAt
         }
     }
 
-    /** Полоса «Шаг n из N» с точками. */
+    /** n Step from N with points. */
     private fun renderProgress(s: StepInfo) {
         val c = ctx
-        // из чеклиста номер считается по полному пути, иначе по очереди (выполненные шаги в ней уже пропущены)
+        // from the checklist number is considered to be on the full path, otherwise in turn (the steps performed in it have already been missed)
         val ids = if (single != null) OnboardingPath.full(chosen, desktopOk) else queue.map { it.id }
         val (n, total) = OnboardingPath.progress(ids, s.id)
         root.pad(c, 20, 20, 20, 24)
@@ -145,15 +145,15 @@ class OnboardingScreen(host: MainActivity, private val showAll: Boolean, startAt
         renderProgress(s)
         renderTitle(s)
 
-        // прокручивается только картинка и текст, заголовок остаётся на месте
+        // scrolls only picture and text, header remains in place
         val body = c.vbox().apply {
-            // с подсказкой и на шагах с окном Android Auto макет компактнее: текст целиком виден без прокрутки
+            // with a hint and on the steps with a window Android Auto layout is more compact: the text is completely visible without scrolling
             val compact = s.hint != null || s.id == StepId.AA_DEV || s.id == StepId.AA_UNKNOWN
             addView(c.stepMockCard(Mocks.build(c, s.id), compact), lp(MATCH, WRAP).margins(c, 0, 4, 0, 0))
-            val text = c.vbox(10).apply { pad(c, 0, 18, 0, 36) }     // нижний отступ больше затемнения края: конец текста не тонет в fade
+            val text = c.vbox(10).apply { pad(c, 0, 18, 0, 36) }     // bottom indent more edge dimming: the end of the text does not sink into fade
             if (done) text.addView(c.doneChip(c.getString(R.string.onb_done_chip)), lp(WRAP, WRAP))
             text.addView(c.numberedList(s.listItems(c)), lp(MATCH, WRAP))
-            // В пути лаунчера уведомления нужны прежде всего для кода сопряжения активации.
+            // In the launcher path, notifications are required primarily for the activation pairing code.
             val hint = if (s.id == StepId.NOTIF && chosen == BridgeMode.DESKTOP) R.string.step_notif_hint_launcher else s.hint
             hint?.let { text.addView(c.stepHint(c.getString(it)), lp(MATCH, WRAP)) }
             addView(text, lp(MATCH, WRAP))
@@ -172,7 +172,7 @@ class OnboardingScreen(host: MainActivity, private val showAll: Boolean, startAt
         root.addView(buttons, lp(MATCH, WRAP))
     }
 
-    /** Первый шаг: Android Auto или свой лаунчер. Выбор пишется в тот же режим моста, что переключатель в «Режиме». */
+    /** First step: Android Auto or your launcher. The choice is written in the same bridge mode as the switch in "Mode". */
     private fun renderMode(s: StepInfo) {
         val c = ctx
         shownDone = Readiness.isDone(c, s.id)
@@ -212,16 +212,16 @@ class OnboardingScreen(host: MainActivity, private val showAll: Boolean, startAt
         }
         if (chosen != m) {
             chosen = m
-            queue = buildQueue(StepId.MODE)      // хвост очереди зависит от режима
+            queue = buildQueue(StepId.MODE)      // queue tail depends on the mode
             pos = queue.indexOfFirst { it.id == StepId.MODE }.coerceAtLeast(0)
         }
         render()
     }
 
     /**
-     * Шаг активации лаунчера: статус, макет, пункты и поля ручного ввода ведёт PhoneActivationBlock (тот же поток, что в «Режиме»),
-     * заголовок и кнопки - как у остальных шагов. Внизу «Активировать» (во время попытки «Отмена») и «Ввести порт и код вручную».
-     * Когда активация прошла, пока шаг открыт, онбординг идёт дальше сам (tick); если шаг открыт уже активированным - «Дальше».
+     * Activation step launcher: status, layout, points and manual input fields leads PhoneActivationBlock (the same flow as in the "mode"),
+     * header and buttons - like the rest of the steps. Below "Activate" (during the "Cancel" attempt) and "Enter port and code manually".
+     * When the activation has passed while the step is open, onboarding goes on itself (tick); if the step is open already activated - "Next".
      */
     private fun renderActivate(s: StepInfo) {
         val c = ctx
@@ -258,8 +258,8 @@ class OnboardingScreen(host: MainActivity, private val showAll: Boolean, startAt
     }
 
     /**
-     * Последний шаг: какая у вас машина. Выпадашка только показывает настройки машины, «Применить» пишет их (AaPrefs.applyCar),
-     * «Пропустить» (для опытных) ничего не трогает и ставит ручную отметку шага.
+     * The last step: what kind of machine you have. Flashlight only shows the settings of the machine, "Apply" writes them (AaPrefs.applyCar),
+     * “Skip” (for the experienced) does not touch anything and puts a manual step mark.
      */
     private fun renderCar(s: StepInfo) {
         val c = ctx
@@ -304,17 +304,17 @@ class OnboardingScreen(host: MainActivity, private val showAll: Boolean, startAt
         root.addView(buttons, lp(MATCH, WRAP))
     }
 
-    /** Прокрутка с затемнением края: видно, что текст продолжается. */
+    /** Scrolling with edge dimming: you can see that the text continues. */
     private fun fadingScroll(content: View) = ScrollView(ctx).apply {
         overScrollMode = View.OVER_SCROLL_NEVER
         isVerticalFadingEdgeEnabled = true
         setFadingEdgeLength(ctx.dp(24))
         isVerticalScrollBarEnabled = true
-        isScrollbarFadingEnabled = true     // постоянная полоса ложится на правый край карточки-иллюстрации; хвост текста и так виден по затемнению
+        isScrollbarFadingEnabled = true     // the permanent stripe lies on the right edge of the illustration card; the tail of the text is already visible by darkening
         addView(content)
     }
 
-    /** Заголовок шага под строкой «Шаг n из N»: вне прокрутки. */
+    /** header steps under the line "Step n from N": out of scroll. */
     private fun renderTitle(s: StepInfo) {
         val c = ctx
         root.addView(
@@ -335,9 +335,9 @@ class OnboardingScreen(host: MainActivity, private val showAll: Boolean, startAt
             StepId.BLUETOOTH -> Readiness.openBluetoothSettings(c)
             StepId.LOCATION -> Readiness.openLocationSettings(c)
             StepId.FIRST -> { ui.setManualDone(s.id.key, true); next() }
-            StepId.CAR -> next()      // свои кнопки в renderCar
+            StepId.CAR -> next()      // their buttons in renderCar
             StepId.DEVMODE -> Readiness.openDeviceInfo(c)
-            StepId.MODE, StepId.ACTIVATE -> {}      // свои кнопки в renderMode / renderActivate
+            StepId.MODE, StepId.ACTIVATE -> {}      // your buttons in renderMode / renderActivate
         }
     }
 
@@ -373,7 +373,7 @@ class OnboardingScreen(host: MainActivity, private val showAll: Boolean, startAt
             host.requestPermissions(arrayOf(p), 1)
             return
         }
-        // системный диалог уже был (или SDK < 33): включаем в настройках уведомлений приложения
+        // system dialogue already was (or SDK < 33): include in the notification settings of the application
         c.startActivity(
             Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, c.packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
@@ -382,7 +382,7 @@ class OnboardingScreen(host: MainActivity, private val showAll: Boolean, startAt
     private fun requestMic() {
         val c = ctx
         if (!firstAsk(Manifest.permission.RECORD_AUDIO) && !host.shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)) {
-            Readiness.appDetails(c)     // отказано насовсем: разрешить можно только в карточке приложения
+            Readiness.appDetails(c)     // refused permanently: only in the application card can be allowed
             return
         }
         markAsked(Manifest.permission.RECORD_AUDIO)
@@ -393,7 +393,7 @@ class OnboardingScreen(host: MainActivity, private val showAll: Boolean, startAt
 
     private fun markAsked(p: String) = ui.setManualDone("asked_$p", true)
 
-    // --- чеклист ---
+    // --- Checklist ---
 
     private fun renderChecklist() {
         val c = ctx

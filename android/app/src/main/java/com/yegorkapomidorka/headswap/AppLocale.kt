@@ -8,9 +8,9 @@ import android.os.LocaleList
 import java.util.Locale
 
 /**
- * Язык интерфейса приложения: «system» (по умолчанию), «en» или «ru».
- * Android 13+: системный per-app язык (LocaleManager, виден и в системных настройках, см. res/xml/locales_config.xml).
- * Android 10–12: выбор хранится в prefs, контексты activity/сервисов оборачиваются через [wrap] в attachBaseContext.
+ * Application interface language: "system" (default), "en" or "ru".
+ * Android 13+: System language per-app (LocaleManager, also visible in system settings, see res/xml/locales_config.xml).
+ * Android 10–12: selection is stored in prefs, contexts of activity/services are wrapped through [wrap] in attachBaseContext.
  */
 object AppLocale {
     const val SYSTEM = "system"
@@ -19,7 +19,7 @@ object AppLocale {
     private const val PREFS = "app_locale"
     private const val KEY = "tag"
 
-    /** Текущий выбор: на 33+ из LocaleManager (его могли сменить в системных настройках), ниже из prefs. */
+    /** Current selection: 33+ from LocaleManager (it could be changed in system settings), below from prefs. */
     fun get(ctx: Context): String {
         if (Build.VERSION.SDK_INT >= 33) {
             val list = ctx.getSystemService(LocaleManager::class.java).applicationLocales
@@ -29,7 +29,7 @@ object AppLocale {
         return stored(ctx)
     }
 
-    /** Сменить язык. На 33+ система сама пересоздаёт activity; ниже вызывающий делает recreate(). */
+    /** Change language. On 33+, the system itself recreates activity; below caller does recreate(). */
     fun set(ctx: Context, tag: String) {
         val t = if (tag in TAGS) tag else SYSTEM
         if (Build.VERSION.SDK_INT >= 33) {
@@ -39,15 +39,15 @@ object AppLocale {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, t).apply()
     }
 
-    /** Нужен ли ручной recreate() после [set]. */
+    /** Do I need a manual recreate() after [set]. */
     val needsRecreate: Boolean get() = Build.VERSION.SDK_INT < 33
 
     private fun stored(ctx: Context): String =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, SYSTEM) ?: SYSTEM
 
     /**
-     * Контекст с выбранным языком для Android 10–12 (на 33+ система уже подставила per-app язык, возвращается как есть).
-     * Использовать в attachBaseContext и там, где строки берутся из applicationContext.
+     * Context with the selected language for Android 10–12 (on 33+ the system has already substituted per-app language, returns as is).
+     * Use in attachBaseContext and where lines are taken from applicationContext.
      */
     fun wrap(base: Context): Context {
         if (Build.VERSION.SDK_INT >= 33) return base

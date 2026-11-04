@@ -1,51 +1,49 @@
-# Записи решений (ADR)
+# Architecture decision records (ADRs)
 
-Здесь записаны решения, которые не видны из кода: почему сделано так, что ещё пробовали и почему отказались.
-Код показывает «как», ADR хранит «почему». Одна запись на одно решение, 20–40 строк.
+Record decisions that code alone cannot explain: why an approach was chosen, what was tried, and why alternatives
+were rejected. Code shows how; an ADR preserves why. Use one record per decision, usually 20–40 lines.
 
-## Когда писать
+## When to write one
 
-Запись нужна, если через полгода кто-то спросит «а почему так?» и из кода ответа не будет:
+Write a record when someone might ask “why?” in six months and the code would not answer:
 
-- выбрали один подход из нескольких (перекодирование vs проброс, P2P vs хотспот);
-- от варианта отказались после проверки на машине (и его захочется попробовать снова);
-- ввели инвариант, который легко сломать случайно («не закрывать сервер 5277», «START только по RSP»);
-- ввели обход под класс ГУ, который меняет общее поведение.
+- Choosing between approaches, such as transcoding versus passthrough or P2P versus a hotspot.
+- Rejecting an option after a vehicle test, especially if someone might try it again.
+- Introducing an invariant that is easy to break, such as preserving server 5277 or sending START only after RSP.
+- Adding a workaround for a class of head units that changes shared behaviour.
 
-Не нужна для единичного фикса, переименования, правки текста. Кейсы конкретных ГУ живут в памяти (база hNN), а не здесь.
+A one-off fix, rename, or text edit does not need an ADR. Individual head unit cases belong in the private hNN case memory.
 
-## Как пишется
+## Authorship and changes
 
-Записи пишет Claude, в том же PR, где принято решение. Егор только поправляет. Источник «почему» — разговор
-в сессии, описание PR, лог с машины. Если причина неизвестна, в записи остаётся `Почему: ? (спросить Егора)`:
-пустое место лучше выдуманной причины.
+Claude writes the ADR in the PR that makes the decision; Yegor reviews and corrects it. The rationale comes from
+the session discussion, PR description, or vehicle logs. If it is unknown, write `Why: ? (ask Yegor)` instead of inventing it.
 
-Если решение пересмотрено, старую запись не переписывают. Ей ставят статус «Заменено NNNN», а новая
-запись ссылается на старую.
+If a decision changes, retain the old record, mark it “Superseded by NNNN”, and link to it from the new record.
 
-## Формат
+## Format
 
-Файл `NNNN-коротко-латиницей.md`, номер по порядку. Шаблон — [0000-template.md](0000-template.md).
+Use sequential filenames `NNNN-short-latin-title.md`. Start from [0000-template.md](0000-template.md).
 
-## Список
+## Index
 
-| № | Решение | Статус |
-|---|---------|--------|
-| 0001 | [Мост — клиент сервера ГУ Android Auto на 127.0.0.1:5277, без интента в Gearhead](0001-aa-client-of-hu-server-5277.md) | принято |
-| 0002 | [Отказ от службы спецвозможностей: сервер ГУ пользователь включает вручную](0002-no-accessibility-service.md) | принято |
-| 0003 | [Сервер 5277 одноразовый: не гасить, живость проверять только полным рукопожатием](0003-server-5277-one-shot.md) | принято |
-| 0004 | [Видео по умолчанию: перекодирование 1280x720 / 15 fps, проброс как исключение](0004-video-transcode-default.md) | заменено 0018 |
-| 0005 | [В прямом пробросе телефон собирает и шлёт ГУ свой IDR](0005-own-idr-in-passthrough.md) | принято |
-| 0006 | [Обходы под ГУ включаются флагом по каналу/модели, а не глобально](0006-per-hu-workarounds.md) | принято |
-| 0007 | [VIDEO_HEARTBEAT на PAUSE: пустое сообщение раз в 100 мс](0007-video-heartbeat-on-pause.md) | принято |
-| 0008 | [Потолок битрейта по размеру IDR включается по каналу ГУ](0008-idr-size-bitrate-ceiling.md) | принято |
-| 0009 | [Запись в USB: заголовок отдельно, тело кусками до 16 КиБ, с исключениями](0009-usb-write-chunking-16k.md) | принято |
-| 0010 | [Эталон поведения — Baidu CarLife 8.6.7; отличие от него считается ошибкой](0010-baidu-carlife-reference.md) | принято |
-| 0011 | [Кадры в декодер перекодировщика подаёт отдельная нить (FeedQueue)](0011-decoder-feed-thread.md) | принято |
-| 0012 | [Приложение обновляется само из GitHub Releases](0012-updates-via-github-releases.md) | принято |
-| 0013 | [Legacy ADB-режим — отдельный APK с пакетом com.baidu.carlife](0013-legacy-adb-separate-apk.md) | принято |
-| 0014 | [Беспроводной CarLife: CarTransport, Wi-Fi Direct и маяк сети машины](0014-wireless-transport.md) | принято |
-| 0015 | [AA видит ГУ как «Google / Desktop Head Unit»; марка машины не входит в идентичность ГУ](0015-aa-sees-desktop-head-unit.md) | принято |
-| 0016 | [Диагностика только по логу приложения; формат лога — контракт](0016-diagnostics-from-app-log.md) | принято |
-| 0017 | [Ограничения ГУ закрываются как «не чинить»; реестр](0017-hu-limits-wont-fix.md) | принято |
-| 0018 | [С 3.0 видео по умолчанию идёт прямым пробросом, частота кадров «Авто»](0018-passthrough-default-3-0.md) | принято |
+| No. | Decision | Status |
+|---|---|---|
+| 0001 | [Client of Android Auto's head unit server on 127.0.0.1:5277](0001-aa-client-of-hu-server-5277.md) | Accepted |
+| 0002 | [No accessibility service; manual server startup](0002-no-accessibility-service.md) | Accepted |
+| 0003 | [Single-use server 5277 and complete handshake probes](0003-server-5277-one-shot.md) | Accepted |
+| 0004 | [Transcoding at 1280×720 / 15 fps as the original default](0004-video-transcode-default.md) | Superseded by 0018 |
+| 0005 | [Locally generated IDR frames in passthrough](0005-own-idr-in-passthrough.md) | Accepted |
+| 0006 | [Head unit workarounds selected by channel/model flags](0006-per-hu-workarounds.md) | Accepted |
+| 0007 | [Empty VIDEO_HEARTBEAT every 100 ms on PAUSE](0007-video-heartbeat-on-pause.md) | Accepted |
+| 0008 | [Channel-specific bitrate ceilings based on IDR size](0008-idr-size-bitrate-ceiling.md) | Accepted |
+| 0009 | [Separate USB headers and body chunks up to 16 KiB](0009-usb-write-chunking-16k.md) | Accepted |
+| 0010 | [Baidu CarLife 8.6.7 as the behavioural reference](0010-baidu-carlife-reference.md) | Accepted |
+| 0011 | [Dedicated decoder input thread and FeedQueue](0011-decoder-feed-thread.md) | Accepted |
+| 0012 | [Automatic updates through GitHub Releases](0012-updates-via-github-releases.md) | Accepted |
+| 0013 | [Separate legacy ADB APK using com.baidu.carlife](0013-legacy-adb-separate-apk.md) | Accepted |
+| 0014 | [Wireless transport, Wi-Fi Direct, and network beacons](0014-wireless-transport.md) | Accepted |
+| 0015 | [AA head unit identity remains Google / Desktop Head Unit](0015-aa-sees-desktop-head-unit.md) | Accepted |
+| 0016 | [Offline application-log diagnostics and stable log text](0016-diagnostics-from-app-log.md) | Accepted |
+| 0017 | [Registry of head unit limitations](0017-hu-limits-wont-fix.md) | Accepted |
+| 0018 | [Passthrough and Auto frame rate by default since 3.0](0018-passthrough-default-3-0.md) | Accepted |

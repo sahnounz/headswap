@@ -1,28 +1,28 @@
-# 0013. Legacy ADB-режим — отдельный APK с пакетом com.baidu.carlife
+# 0013. Legacy ADB-mode - separate APK with com.baidu.carlife package
 
-- Статус: принято (в `main` не влито, живёт в ветке `claude/carlife-adb-release`)
-- Дата: 2026-10-19 (решение про отдельный APK), 2026-10-30 (ветки не удалять)
-- Источники: кейс h60, ветки `claude/carlife-adb-release`, `claude/carlife-adb-diag` (`origin`), `link/CarTransport.kt`
+- Status: Accepted (`main` is not included, lives in the `claude/carlife-adb-release` branch)
+- Date: 2026-10-19 (decision on separate APK), 2026-10-30 (branchs not removed)
+- Sources: case h60, branches `claude/carlife-adb-release`, `claude/carlife-adb-diag` (`origin`), `link/CarTransport.kt`
 
-## Контекст
+## Context
 
-Старые ГУ (h60, Subaru) запускают CarLife сами: `am start com.baidu.carlife/.CarlifeActivity`, пушат `bdim.jar` и ищут
-именно пакет `com.baidu.carlife`. Обычный Headswap (`com.yegorkapomidorka.headswap`) для такого ГУ невидим.
+Old head unit (h60, Subaru) launch CarLife themselves: `am start com.baidu.carlife/.CarlifeActivity`, launch `bdim.jar` and search
+`com.baidu.carlife` package. Ordinary Headswap (`com.yegorkapomidorka.headswap`) for such head unit is invisible.
 
-## Решение
+## Decision
 
-Отдельная сборка с `applicationId = com.baidu.carlife`, `versionName = 8.6.7`, `versionCode = 259` (как у настоящего CarLife:
-ГУ может смотреть версию пакета). Собирается `gradlew assembleDebug -PcarlifePackage` (в ветке: `android/app/build.gradle.kts:15`).
-Связь с ГУ по ADB — через `MultiSocketTransport` с `TransportCaps.TCP_ADB` (ветка, `CarTransport.kt:23`; в `main` такой
-константы нет, там только `USB_AOA`, `TCP_DEBUG`, `TCP6`). Проверка обновлений выключена (0012).
-Егор 30.10: ветки `claude/carlife-adb-release` и `claude/carlife-adb-diag` не удалять, поддержка продолжается.
+Separate assembly with `applicationId = com.baidu.carlife`, `versionName = 8.6.7`, `versionCode = 259` (as in this CarLife:
+head unit can watch the package version). Assembled by `gradlew assembleDebug -PcarlifePackage` (in the branch: `android/app/build.gradle.kts:15`).
+Communication with head unit to ADB - via `MultiSocketTransport` to `TransportCaps.TCP_ADB` (branch, `CarTransport.kt:23`; in `main` such
+no constant, there are only `USB_AOA`, `TCP_DEBUG`, `TCP6`. Checking for updates is disabled (0012).
+Egor 30.10: branches `claude/carlife-adb-release` and `claude/carlife-adb-diag` not to remove, support continues.
 
-## Альтернативы
+## Alternatives
 
-- Переключатель режима в обычном Headswap — не работает: ГУ ищет пакет с конкретным именем.
-- Заглушка-APK с флажком в основном приложении (19.10) — отвергнута, чтобы не смешивать legacy и прод.
+- Mode switch in normal Headswap - not working: head unit is looking for a package with a specific name.
+- stub-APK with the flag in the main application (19.10) - rejected to avoid mixing legacy and prod.
 
-## Последствия
+## Consequences
 
-- Две линии приложения: правки общего кода (`aa/`, `CarLifeSession`) придётся подтягивать в ветку вручную.
-- Ветка живёт отдельно и в `main` не вливается — по той же причине: legacy и прод не смешиваем.
+- Two lines of application: common code edits (`aa/`, `CarLifeSession`) will have to be pulled into the branch manually.
+- The branch lives separately and does not merge into `main` - for the same reason: legacy and prod do not mix.

@@ -1,7 +1,7 @@
-"""Тесты диагноза: python -X utf8 -m unittest tools/test_logdiag.py
+"""Diagnosis Tests: python -X utf8 -m unittest tools/test_logdiag.py
 
-Синтетические логи и ожидания лежат в tools/logdiag_cases/ (cases.json). Те же кейсы гоняет
-Kotlin-тест приложения (LogDiagTest), так что Python и Android обязаны давать одинаковый ответ.
+Synthetic logs and expectations lie in tools/logdiag_cases/ (cases.json). The same cases are chasing
+The Kotlin- application test (LogDiagTest), so that Python and Android are required to give the same answer.
 """
 import json
 import os

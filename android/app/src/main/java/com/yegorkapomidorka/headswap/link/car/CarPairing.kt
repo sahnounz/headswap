@@ -19,26 +19,26 @@ import com.yegorkapomidorka.headswap.AppLog
 import com.yegorkapomidorka.headswap.link.diag.WLog
 
 /**
- * Выбор машины через CompanionDeviceManager: системный диалог со списком Bluetooth-устройств. Привязка даёт приложению
- * исключения на запуск foreground-сервиса из фона, а MAC и имя - фильтр для ресивера ACL ([CarAclReceiver]).
+ * Selecting a machine through the CompanionDeviceManager: system dialog with the list of Bluetooth- devices. Binding gives the application
+ * Exceptions to Launch foreground-service from the background, and MAC and name - filter for receiver ACL ([CarAclReceiver]).
  *
- * API 33+: результат приходит в колбэк (onAssociationCreated) и дублируется в onActivityResult (EXTRA_ASSOCIATION);
- * API 29-32: только onActivityResult (EXTRA_DEVICE), id привязки нет. Запись идемпотентна: [store] не пишет дважды.
+ * API 33+: the result comes in a kolback (onAssociationCreated) and is duplicated in onActivityResult (EXTRA_ASSOCIATION);
+ * API 29-32: only onActivityResult (EXTRA_DEVICE), id bindings no. Write idempotent: [store] does not write twice.
  */
 object CarPairing {
-    /** Код startIntentSenderForResult диалога CDM; результат ловит MainActivity.onActivityResult. */
+    /** startIntentSenderForResult dialog code CDM; result catches MainActivity.onActivityResult. */
     const val REQ_CAR_PAIR = 38
 
     fun available(ctx: Context): Boolean =
         ctx.packageManager.hasSystemFeature(PackageManager.FEATURE_COMPANION_DEVICE_SETUP) &&
             ctx.getSystemService(CompanionDeviceManager::class.java) != null
 
-    /** Имя, выбранное в нашем списке: CDM на 33+ отдаёт displayName, но у части прошивок это MAC. */
+    /** The name selected in our list: CDM on 33+ gives displayName, but the firmware part is MAC. */
     @Volatile private var pickedName: String? = null
 
     /**
-     * Сначала свой список спаренных устройств с именами (системный диалог CDM показывает всё вокруг, часто одними MAC),
-     * затем CDM подтверждает одно выбранное устройство (фильтр по адресу, singleDevice).
+     * First, its list of paired devices with names (system dialogue CDM shows everything around, often MAC alone),
+     * then CDM confirms one selected device (filter at address, singleDevice).
      */
     @SuppressLint("MissingPermission")
     fun start(activity: Activity) {
@@ -55,7 +55,7 @@ object CarPairing {
         }
         if (bonded.isEmpty()) {
             WLog.ev(WLog.TRIGGER, "pair-list", "bonded" to 0)
-            associate(activity, null, null)      // нет разрешения или спаренных: системный диалог как есть
+            associate(activity, null, null)      // no resolution or paired: system dialog as is
             return
         }
         android.app.AlertDialog.Builder(activity)
@@ -83,7 +83,7 @@ object CarPairing {
         }
     }
 
-    /** Результат диалога CDM из MainActivity.onActivityResult(REQ_CAR_PAIR). */
+    /** The result of the dialogue is CDM from MainActivity.onActivityResult(REQ_CAR_PAIR). */
     fun onResult(ctx: Context, resultCode: Int, data: Intent?) {
         if (resultCode != Activity.RESULT_OK || data == null) {
             WLog.ev(WLog.TRIGGER, "pair-cancel", "code" to resultCode)
@@ -101,13 +101,13 @@ object CarPairing {
             WLog.ev(WLog.TRIGGER, "pair-fail", "err" to "no-device")
             return
         }
-        // имя читается с BLUETOOTH_CONNECT (31+); без него SecurityException, имя тогда не показываем
+        // name is read with BLUETOOTH_CONNECT (31+); without it, SecurityException, the name then does not show
         val name = try { dev.name } catch (_: SecurityException) { null }
         store(ctx, dev.address, name, -1)
     }
 
-    /** Забыть машину: снять привязку CDM, очистить профиль, выключить триггер. */
-    @SuppressLint("MissingPermission")      // stopObservingDevicePresence: см. observe
+    /** Forget the machine: unplug CDM, clear profile, turn off trigger. */
+    @SuppressLint("MissingPermission")      // stopObservingDevicePresence: see observe
     fun forget(ctx: Context) {
         val profile = CarProfile(ctx)
         val mac = profile.btMac
@@ -140,14 +140,14 @@ object CarPairing {
         store(ctx, mac, info.displayName?.toString(), info.id)
     }
 
-    /** Записать машину и включить триггер. Повтор (колбэк и onActivityResult) молча пропускается. */
+    /** Record the car and turn on the trigger. Repeat (colback and onActivityResult) silently skips. */
     private fun store(ctx: Context, mac: String, name: String?, id: Int) {
         val profile = CarProfile(ctx)
         val sameMac = CarMac.same(profile.btMac, mac)
-        // тот же MAC и либо тот же id, либо новый без id (путь onActivityResult после колбэка): уже записано
+        // same MAC and either the same id or new without id (onActivityResult path after the kolbek): already recorded
         if (sameMac && (id == -1 || id == profile.cdmAssociationId)) return
         val keepId = if (sameMac && id == -1) profile.cdmAssociationId else id
-        // выбрали другую машину: старую привязку снимаем, иначе на 33+ копятся осиротевшие association
+        // chose another machine: the old binding is removed, otherwise 33+ Orphans association
         val oldId = profile.cdmAssociationId
         if (Build.VERSION.SDK_INT >= 33 && oldId >= 0 && oldId != keepId) {
             try {
@@ -156,16 +156,16 @@ object CarPairing {
                 WLog.ev(WLog.TRIGGER, "forget-fail", "err" to e.javaClass.simpleName)
             }
         }
-        // имя из нашего списка надёжнее displayName CDM (у части прошивок там MAC)
+        // the name from our list is more reliable than displayName CDM (in the firmware part there MAC)
         profile.save(mac, pickedName ?: name ?: if (sameMac) profile.btName else null, keepId)
         CarProfile.enableTrigger(ctx, true)
         WLog.ev(WLog.TRIGGER, "paired", "dev" to WLog.maskMac(mac), "cdm" to id)
         observe(ctx, mac)
     }
 
-    /** Присутствие устройства (31+): запасной путь, основной триггер - ACL. Нужного разрешения может не быть: только лог. */
+    /** Device presence (31+): backup path, the main trigger - ACL. The desired resolution may not be: only log. */
     @Suppress("DEPRECATION")
-    @SuppressLint("MissingPermission")      // REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE не объявлено намеренно: без него SecurityException, только лог
+    @SuppressLint("MissingPermission")      // REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE not announced intentionally: without it SecurityException, only log
     private fun observe(ctx: Context, mac: String) {
         if (Build.VERSION.SDK_INT < 31) return
         val cdm = ctx.getSystemService(CompanionDeviceManager::class.java) ?: return
@@ -190,7 +190,7 @@ object CarPairing {
         }
     }
 
-    /** API 33+: диалог приходит через onAssociationPending, готовая привязка - через onAssociationCreated. */
+    /** API 33+: dialog comes via onAssociationPending, ready binding - via onAssociationCreated. */
     @TargetApi(33)
     @SuppressLint("NewApi")
     private class ModernCallback(private val activity: Activity) : CompanionDeviceManager.Callback() {
@@ -203,7 +203,7 @@ object CarPairing {
         }
     }
 
-    /** API 29-32: диалог приходит через onDeviceFound, выбранное устройство - в onActivityResult. */
+    /** API 29-32: dialogue comes via onDeviceFound, the selected device is in onActivityResult. */
     private class LegacyCallback(private val activity: Activity) : CompanionDeviceManager.Callback() {
         @Deprecated("Deprecated in Java")
         override fun onDeviceFound(chooserLauncher: IntentSender) = launch(activity, chooserLauncher)

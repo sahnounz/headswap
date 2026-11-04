@@ -34,7 +34,7 @@ import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-/** Раздаёт файлы логов и отчётов другим приложениям (ACTION_SEND); без AndroidX FileProvider. Только чтение. */
+/** Distributes log and report files to other applications (ACTION_SEND); without AndroidX FileProvider. Read Only. */
 class LogProvider : ContentProvider() {
     override fun onCreate() = true
 
@@ -72,7 +72,7 @@ class LogProvider : ContentProvider() {
 }
 
 object LogShare {
-    // в манифесте authority = ${applicationId}.logs: у варианта smoke свой id, иначе две установки конфликтуют
+    // the Manifesto authority = ${applicationId}.logs: the Variant smoke Yours idOtherwise, the two sets conflict.
     const val AUTHORITY = BuildConfig.APPLICATION_ID + ".logs"
     private const val MAX_FILE_BYTES = 4L * 1024 * 1024
     private const val MAX_LOGS = 5
@@ -84,7 +84,7 @@ object LogShare {
 
     fun dirs(ctx: Context): List<File> = listOf(logDir(ctx), reportDir(ctx))
 
-    /** Файлы headswap-*.log, новые первыми. */
+    /** headswap-*.log files, new first. */
     fun logFiles(ctx: Context): List<File> =
         logDir(ctx).listFiles { f -> f.name.startsWith("headswap-") && f.name.endsWith(".log") }
             ?.sortedByDescending { it.name } ?: emptyList()
@@ -108,7 +108,7 @@ object LogShare {
         }
     }
 
-    /** Текущий файл headswap-*.log как есть. */
+    /** The current file is headswap-*.log as is. */
     fun shareLog(ctx: Context) {
         val f = AppLog.file?.takeIf { it.isFile } ?: logFiles(ctx).firstOrNull()
         if (f == null) {
@@ -118,7 +118,7 @@ object LogShare {
         shareFile(ctx, f, "text/plain", ctx.getString(R.string.share_subject_log, f.name))
     }
 
-    /** Архив: логи + сведения об устройстве и настройках. Без контактов и геопозиции. */
+    /** Archive: logs + information about the device and settings. Without contacts and geolocation. */
     fun shareReport(ctx: Context) {
         val zip = try {
             buildZip(ctx)
@@ -130,7 +130,7 @@ object LogShare {
         shareFile(ctx, zip, "application/zip", ctx.getString(R.string.share_subject_report))
     }
 
-    /** Архив в «Загрузки» (MediaStore, без разрешений); при неудаче - меню «Поделиться». */
+    /** Archive in "Downloads" (MediaStore, without permissions); if unsuccessful - the "Share" menu. */
     fun saveZip(ctx: Context) {
         val zip = try {
             buildZip(ctx)
@@ -178,7 +178,7 @@ object LogShare {
         return out
     }
 
-    /** wireless.log: на каждый файл (от старых к новым) строка `== имя` и его WL-строки; везде пусто - «WL-строк нет». */
+    /** wireless.log: for each file (from old to new) line `== имя` and his WL-lines; everywhere is empty - "WL-There are no lines.” */
     fun wirelessLog(files: List<Pair<String, List<String>>>): String {
         val sb = StringBuilder()
         var any = false
@@ -192,12 +192,12 @@ object LogShare {
         return if (any) sb.toString() else "WL-строк нет\n"
     }
 
-    /** Строки беспровода: `HH:mm:ss.SSS WL <фаза> ...`, ищем метку с пробелами вокруг. */
+    /** Wireless lines: `HH:mm:ss.SSS WL <фаза> ...`We are looking for a label with spaces around. */
     fun wirelessLines(lines: Sequence<String>): Sequence<String> = lines.filter { WL_MARK in it }
 
     fun wirelessLines(lines: List<String>): List<String> = wirelessLines(lines.asSequence()).toList()
 
-    /** Файл целиком или только последние MAX_FILE_BYTES (hexdump'ы раздувают лог). */
+    /** File whole or only the last MAX_FILE_BYTES (hexdump's inflate log). */
     private fun copyTail(f: File, to: java.io.OutputStream) {
         RandomAccessFile(f, "r").use { raf ->
             val len = raf.length()
@@ -255,12 +255,12 @@ object LogShare {
             appendLine("  сети: ${lanText()}")
             appendLine("  режим: ${CarLifeState.wireless ?: "выключен"}")
             appendLine("  Bluetooth carlife: ${CarLifeState.btProbe ?: "не запускался"}")
-            val car = CarProfile(ctx)      // без MAC и имени
+            val car = CarProfile(ctx)      // without MAC and name
             appendLine("  машина: ${if (car.isSet) "выбрана (CDM id ${car.cdmAssociationId})" else "не выбрана"}")
             if (car.isSet) appendLine("  подключение машины: ${car.connMode}")
             appendLine("  триггер Bluetooth: ${if (CarProfile.triggerEnabled(ctx)) "включён" else "выключен"}")
             appendLine("  авто: ${if (CarLifeState.carAuto) "да" else "нет"}")
-            appendLine("  Wi-Fi машины: ${if (CarWifi(ctx).isSet) "задан" else "не задан"}")      // без SSID и пароля
+            appendLine("  Wi-Fi машины: ${if (CarWifi(ctx).isSet) "задан" else "не задан"}")      // without SSID and password
             appendLine("  сеть машины: ${CarLifeState.carNet}")
         }
     }
@@ -271,7 +271,7 @@ object LogShare {
         "ошибка ${e.javaClass.simpleName}"
     }
 
-    /** Очистить: удалить старые файлы headswap-*.log (текущий оставить). */
+    /** Clear: delete old headswap-*.log files (current save). */
     fun deleteOldLogs(ctx: Context): Int {
         val cur = AppLog.file
         var n = 0

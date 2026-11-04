@@ -7,10 +7,10 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Отладочная проба `--es cmd aa_probe`: настоящая AA-сессия (AapSession, как в мосте) к 127.0.0.1:5277 без CarLife и USB.
- * Видео считается и отбрасывается (ack шлёт сама сессия). Через PROBE_MS сессия закрывается штатно (ByeBye, EOF, close):
- * сервер 5277 одноразовый. Нужна для проверки доступа к loopback при targetSdk 37 (Local Network Permission).
- * Не запускать при работающем мосте: сервер примет только одно соединение.
+ * `--es cmd aa_probe` debugging test: real AA-session (AapSession, as in bridge) to 127.0.0.1:5277 without CarLife and USB.
+ * The video is counted and discarded (ack sends the session itself). Through PROBE_MS, the session closes normally (ByeBye, EOF, close):
+ * 5277 server is one-time. Need to check access to loopback at targetSdk 37 (Local Network Permission).
+ * Do not start when the bridge is running: the server will accept only one connection.
  */
 object AaProbe {
     private const val TAG = "AAPROBE"
@@ -67,7 +67,7 @@ object AaProbe {
         }
         val sink = CountingSink()
         val ended = CountDownLatch(1)
-        // пишет нить сессии, читаем после ended.await (latch даёт happens-before)
+        // writes thread session, read after ended.await (latch gives happens-before)
         var endReason = "-"
         var endOk = false
         var discovery = false

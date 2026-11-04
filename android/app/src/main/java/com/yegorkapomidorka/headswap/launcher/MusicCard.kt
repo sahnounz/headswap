@@ -46,11 +46,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 private val MusicBase = Color(0xFF211C10)
-/** Стеклянная подложка чипа плееров (и кнопки «Вид карточки» на карте в ленте): rgba(14,20,26,.33), обводка белым .16. */
+/** The glass substrate of the player chip (and the "Card View" button on the card in the tape): rgba(14,20,26,.33), rim white .16. */
 val GlassBg = Color(14, 20, 26, 84)
 val GlassBorder = Color(1f, 1f, 1f, 0.16f)
 
-/** Фон без обложки (макет v2): диагональный градиент 150deg, поверх золотое и красно-оранжевое пятна. */
+/** Background without cover (v2 layout): diagonal gradient 150deg, on top of gold and red-orange spots. */
 private fun Modifier.musicBackground(): Modifier = drawBehind {
     val w = size.width
     val h = size.height
@@ -63,7 +63,7 @@ private fun Modifier.musicBackground(): Modifier = drawBehind {
     drawRect(Brush.linearGradient(
         0f to Color(0xFF6B5420), 1f to Color(0xFF3A2440),
         start = Offset(c.x - dx * len / 2, c.y - dy * len / 2), end = Offset(c.x + dx * len / 2, c.y + dy * len / 2)))
-    // CSS circle: радиус до дальнего угла, пятно гаснет на stop этого радиуса
+    // CSS circle: radius to far angle, spot goes out on stop this radius
     fun spot(fx: Float, fy: Float, color: Color, alpha: Float, stop: Float) {
         val cx = w * fx
         val cy = h * fy
@@ -77,8 +77,8 @@ private fun Modifier.musicBackground(): Modifier = drawBehind {
 }
 
 /**
- * Карточка музыки: фон или обложка, справа сверху чип плееров, внизу название и исполнитель,
- * под ними prev / play-pause / next. Без прогресса.
+ * Music card: background or cover, top right chip players, bottom name and artist,
+ * below them prev / play-pause / next. No progress.
  */
 @Composable
 fun MusicCard(modifier: Modifier) {
@@ -94,7 +94,7 @@ fun MusicCard(modifier: Modifier) {
     }
     val st = MusicController.state
     val player = st.pkg ?: model.musicPlayer
-    // играет онлайн-плеер - он и становится вторым слотом чипа
+    // plays online player - it becomes the second chip slot
     LaunchedEffect(st.pkg) { model.noteOnlinePlayer(st.pkg) }
     CardBox(modifier, background = Color.Transparent) {
         Box(Modifier.fillMaxSize().musicBackground())
@@ -105,10 +105,10 @@ fun MusicCard(modifier: Modifier) {
             }
         }
         st.art?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
-        // затемнение под текст: сверху .55, к 38% .25, внизу .82
+        // Darkening under text: top .55, to 38% .25, bottom .82
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
             0f to Color(8, 11, 15, 140), 0.38f to Color(8, 11, 15, 64), 1f to Color(8, 11, 15, 209))))
-        // тап по телу открывает приложение плеера на весь экран справа от рейки
+        // tap on the body opens the player application on the entire screen to the right of the rail
         Pressable(Modifier.fillMaxSize(), description = stringResource(R.string.l_music_players), onTap = { LauncherActions.openMusicApp() }) {}
         PlayerChipColumn(Modifier.align(Alignment.TopEnd).padding(end = m.dp(s.g8), top = m.dp(s.g8)))
         Column(
@@ -152,8 +152,8 @@ fun MusicCard(modifier: Modifier) {
 }
 
 /**
- * Чип плееров вертикально в правом верхнем углу: свой плеер («нота») и последний онлайн-плеер. Выбранный слот -
- * полупрозрачное золото, остальные - белый на 55%. Долгий тап по «ноте» - список всех плееров.
+ * The player chip is vertical in the top right corner: its player ("note") and the last online player. The selected slot -
+ * translucent gold, the rest - white on 55%. Long tap on "note" - a list of all players.
  */
 @Composable
 private fun PlayerChipColumn(modifier: Modifier) {
@@ -163,7 +163,7 @@ private fun PlayerChipColumn(modifier: Modifier) {
     val accent = LocalAccent.current
     val slots = PlayerChip.slots(model.installedPackages, model.musicPlayer, model.lastOnlinePlayer, model.localPlayer, model.onlinePlayer)
     val shape = RoundedCornerShape(m.dp(s.pcB))
-    // backdrop-blur макета в Compose не повторить (blur размывает своё содержимое, а не фон) - только стекло и обводка
+    // backdrop-blur layout in Compose do not repeat (blur blurs its contents, not the background) - only glass and cladding
     Column(
         modifier.clip(shape).background(GlassBg).border(m.dp(1), GlassBorder, shape).padding(m.dp(s.b4)),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(m.dp(s.b4)),
@@ -201,7 +201,7 @@ fun rememberPackageIcon(pkg: String): ImageBitmap? {
     return icon
 }
 
-/** Список медиаприложений: тап делает плеер текущим и запускает его; выбор запоминается. */
+/** List of media applications: tap makes the player current and starts it; the choice is remembered. */
 @Composable
 fun PlayersScreen() {
     val model = LauncherModel

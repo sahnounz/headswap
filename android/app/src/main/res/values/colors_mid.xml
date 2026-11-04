@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Палитра MEDIUM: нейтральная тёмно-серая (без синевы), светлее DARK; акценты и предупреждения приглушены, ok/err как в values-night/colors.xml.
-     Подставляется в ui/Kit.kt clr() через AppTheme.res(), а в теме Theme.Headswap.Medium - напрямую. -->
+<!-- MEDIUM: neutral dark gray (without blue), lighter DARK; accents and warnings muted, ok/err as in values-night/colors.xml.
+     Substituted in ui/Kit.kt clr() via AppTheme.res(), and in the topic Theme.Headswap.Medium - directly. -->
 <resources>
     <color name="bg_mid">#2A2A2A</color>
     <color name="surf_mid">#343434</color>

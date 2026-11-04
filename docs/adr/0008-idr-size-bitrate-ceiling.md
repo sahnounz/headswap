@@ -1,33 +1,36 @@
-# 0008. Потолок битрейта по размеру IDR включается по каналу ГУ
+# 0008. Channel-specific bitrate ceilings based on IDR size
 
-- Статус: принято
-- Дата: 2026-10-17 (PR #56), до 2026-10-30 (PR #113, #119)
-- Источники: PR #56, #66, #72, #89, #113, #119, кейсы h196, h242, `CarLifeSession.kt:912-930`, `:1452`, `aa/IdrBitrateCeiling.kt`, `aa/AaBridge.kt:682-690`, `:2658`
+- Status: accepted
+- Date: 2026-10-17 (PR #56), updated through 2026-10-30 (PR #113, #119)
+- Sources: PR #56, #66, #72, #89, #113, #119, cases h196/h242, `CarLifeSession.kt:912-930`, `:1452`, `aa/IdrBitrateCeiling.kt`, `aa/AaBridge.kt:682-690`, `:2658`
 
-## Контекст
+## Context
 
-VW ID (h196 и др.) рвёт USB после IDR около 600 КиБ и больше. Hyundai Tucson (Mobis CCNC, h242) делает то же после IDR
-больше 600 КБ. Размер IDR на карте с движением растёт каждую секунду, заранее битрейт не подобрать.
+VW ID head units (h196 and others) disconnect USB after IDR frames around 600 KiB or larger.
+Hyundai Tucson Mobis CCNC (h242) behaves similarly above 600 KB. IDR size grows as the map moves,
+so a safe bitrate cannot be selected reliably in advance.
 
-## Решение
+## Decision
 
-Обратная связь по размеру IDR после отправки кадра, только на ГУ из списка:
+Use feedback from IDR size after sending the frame, only on listed head units:
 
-- VW ID: старт 2 Мбит/с, IDR > 450 КБ (`VW_20082138_IDR_LIMIT`, `CarLifeSession.kt:1452`) — потолок ×0,75, не ниже
-  1,5 Мбит/с, не чаще раза в секунду. Включается на канале 20082138 (кроме «VW BT 1420»: у него 8 Мбит/с идёт без
-  обрывов), на паре 20082128 + «VW BT 9491» (`VW_ID_IDR_LIMIT_HUS`) и по пресету ID. UNYX.
-- Mobis NX4C: IDR > 300 КБ — ×0,7; 5 IDR подряд < 150 КБ — ×1,15 (`IdrBitrateCeiling.kt`).
-- Mazda 20622111: фиксированный потолок 1,5 Мбит/с (`MAZDA_20622111_CEILING_BPS`), чтобы IDR был мельче.
+- VW ID: start at 2 Mbit/s. Above 450 KB (`VW_20082138_IDR_LIMIT`, `CarLifeSession.kt:1452`), multiply the ceiling
+  by 0.75, no lower than 1.5 Mbit/s and no more often than once per second. Enable on channel 20082138,
+  except VW BT 1420, which works at 8 Mbit/s; on 20082128 plus VW BT 9491 (`VW_ID_IDR_LIMIT_HUS`);
+  and with the ID. UNYX preset.
+- Mobis NX4C: above 300 KB, multiply by 0.7. After five consecutive IDR frames below 150 KB,
+  multiply by 1.15 (`IdrBitrateCeiling.kt`).
+- Mazda 20622111: use a fixed 1.5 Mbit/s ceiling (`MAZDA_20622111_CEILING_BPS`) to reduce IDR size.
 
-## Альтернативы
+## Alternatives
 
-- Белый список BT-имён VW (первая версия PR #56/#66) — не масштабируется, заменён каналом в #113 (0006).
-- Один фиксированный битрейт для всех — нет: каждая ГУ ведёт себя по-разному (пример к 0006). Где фиксированного
-  хватило, он и стоит (Mazda 20622111).
+- VW Bluetooth-name allowlist, originally in PR #56/#66: did not scale; replaced by channel matching in #113 (0006).
+- One fixed bitrate for all head units: rejected because behaviour differs. Keep fixed values where sufficient, as on Mazda 20622111.
 
-## Последствия
+## Consequences
 
-- Пороги 450/300 КБ и факторы подобраны по логам конкретных ГУ; для нового ГУ нужен лог с размерами IDR.
-  На будущее — самоподстройка или настройка в «Для разработчиков» (план `docs/plans/adaptive-idr-ceiling.md`).
-- В пробросе (0004) битрейт не регулируется, потолок там не работает; защита — пропуск своего IDR > 560 КБ (0005).
-- Новый VW с тем же симптомом добавляется парой «канал + имя», а не только именем.
+- The 450/300 KB thresholds and multipliers come from specific head unit logs. New head units require IDR-size logs.
+  Automatic adjustment or a developer setting is a future option (`docs/plans/adaptive-idr-ceiling.md`).
+- Passthrough bitrate is not adjustable (0004), so these ceilings do not apply. Its protection is to skip locally generated
+  IDR frames larger than 560 KB (0005).
+- Add a new affected VW by channel plus name rather than name alone.

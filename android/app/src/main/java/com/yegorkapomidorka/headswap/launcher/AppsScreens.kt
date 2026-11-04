@@ -28,7 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import com.yegorkapomidorka.headswap.R
 
-/** Кнопка-«таблетка» высотой T в шапке экранов (первая кнопка «Главный», «Назад» и т.п.). */
+/** Button-"pill" height T in the cap of screens (the first button "Home", "Back" and so on.). */
 @Composable
 fun PillButton(text: String, onTap: () -> Unit, modifier: Modifier = Modifier, icon: List<String>? = null, filled: Boolean = true) {
     val m = LocalMetrics.current
@@ -50,7 +50,7 @@ fun PillButton(text: String, onTap: () -> Unit, modifier: Modifier = Modifier, i
     }
 }
 
-/** Шапка постраничного экрана: слева кнопки, справа «1 / 3» и стрелки ‹ ›. Скролла нигде нет. */
+/** The hat of the page-by-page screen: left button, right “1 / 3” and arrows ‹  › . Scroll nowhere. */
 @Composable
 fun PagerHeader(page: Int, pages: Int, onPage: (Int) -> Unit, leading: @Composable () -> Unit) {
     val m = LocalMetrics.current
@@ -78,8 +78,8 @@ private fun PageArrow(icon: List<String>, description: String, enabled: Boolean,
 }
 
 /**
- * Страницы приложений без скролла. [cell] рисует ячейку, null - пустое место.
- * Размер страницы считается по свободной области и крупной цели касания.
+ * The pages of applications without a scroll. [cell] draws a cell, null - an empty place.
+ * The size of the page is considered to be for free area and a large touch purpose.
  */
 @Composable
 internal fun <T> PagedApps(
@@ -118,7 +118,7 @@ internal fun <T> PagedApps(
     }
 }
 
-/** «Все приложения»: все установленные приложения страницами; тап открывает. Назад - кнопка рейки. */
+/** "All applications": all installed applications pages; tap opens. Back - Reiki button. */
 @Composable
 fun AllAppsScreen() {
     val model = LauncherModel
@@ -134,7 +134,7 @@ fun AllAppsScreen() {
     }
 }
 
-/** Выбор приложения для нижнего ряда главного из установленных (страницами со стрелками); выбранное уходит в избранное. */
+/** Selecting an application for the bottom row of the main one installed (pages with arrows); the selected one goes to the favorites. */
 @Composable
 fun PickerScreen() {
     val model = LauncherModel
@@ -151,7 +151,7 @@ fun PickerScreen() {
     }
 }
 
-/** Подтверждение «Убрать?» после долгого тапа по приложению. */
+/** Confirmation of "Remove?" after a long tap on the application. */
 @Composable
 fun RemoveConfirm() {
     val ref = LauncherModel.confirmRemove ?: return

@@ -7,7 +7,7 @@ import com.yegorkapomidorka.headswap.PbText
 import com.yegorkapomidorka.headswap.Schema
 import java.io.ByteArrayOutputStream
 
-/** Protobuf (proto2) руками для AAP: varint, строки и вложенные сообщения; поля пишутся в порядке вызова. */
+/** Protobuf (proto2) hands for AAP: varint, lines and nested messages; fields are written in call order. */
 class AapPb {
     private val out = ByteArrayOutputStream()
 
@@ -25,7 +25,7 @@ class AapPb {
 
     private fun tag(field: Int, wire: Int) = raw(((field shl 3) or wire).toLong())
 
-    /** Любой varint-тип (int32/enum/bool/uint). Отрицательный Int расширяется знаком: 10 байт, как в protoc. */
+    /** Any varint-type (int32/enum/bool/uint). Negative Int expands with sign: 10 bytes as in protoc. */
     fun v(field: Int, value: Long): AapPb {
         tag(field, 0)
         raw(value)
@@ -50,21 +50,21 @@ class AapPb {
     fun toByteArray(): ByteArray = out.toByteArray()
 }
 
-/** Канал, тип и protobuf-байты исходящего сообщения. */
+/** Channel, type and protobuf-bytes of outgoing message. */
 class AapOut(val chan: Int, val type: Int, val payload: ByteArray)
 
-/** Параметры ServiceDiscoveryResponse; по умолчанию как в pc-headunit (доказано на AA 17.7). */
+/** ServiceDiscoveryResponse options; default as in pc-headunit (proven on AA 17.7). */
 data class AapSdOptions(
     val resolution: String = "1280x720",
     val fps: Int = 30,
     val density: Int = 160,
-    /** margin_width / margin_height VideoConfiguration: AA оставляет такие поля (пополам по краям), интерфейс только внутри. */
+    /** margin_width/margin_height VideoConfiguration: AA leaves such fields (in half around the edges), interface only inside. */
     val marginW: Int = 0,
     val marginH: Int = 0,
     /**
-     * h529: поля целиком справа и снизу через ui_config.margins (поле 11 VideoConfiguration, Insets top/bottom/left/right),
-     * margin_width = margin_height = 0. Интерфейс встаёт в левый верхний угол кадра: декодеры ГУ, которые режут только
-     * справа/снизу (Vezel), покажут его ровно. Отступы по сторонам AA берёт, только если ui_config задан (has-бит поля 11).
+     * h529: field entirely right and bottom via ui_config.margins (11 field VideoConfiguration, Insets top/bottom/left/right),
+     * margin_width = margin_height = 0. The interface stands in the upper left corner of the frame: decoder head unit which cut only
+     * right/bottom (Vezel), will show it exactly. Indents on the sides of AA take only if ui_config is specified (has-bit fields 11).
      */
     val marginsAtBottom: Boolean = false,
     val mic: Boolean = true,
@@ -72,12 +72,12 @@ data class AapSdOptions(
     val fullAudio: Boolean = false,
     val extraServices: Boolean = true,
     val vehicleId: String = "headlessunit-001",
-    /** Марка автомобиля вместо «Google» (поле 2 и 17.1; производитель ГУ и модель не трогаем); null = по умолчанию. Эксперимент: логотип на кнопке выхода AA. */
+    /** Car brand instead of "Google" (2 and 17.1 field; manufacturer head unit and model do not touch); null = default. Experiment: logo on exit button AA. */
     val carMake: String? = null,
 )
 
 object AapMessages {
-    // --- каналы (headunit-revived Channel.kt) ---
+    // --- channels (headunit-revived Channel.kt) ---
     const val CH_CONTROL = 0
     const val CH_SENSOR = 1
     const val CH_VIDEO = 2
@@ -151,7 +151,7 @@ object AapMessages {
         0x8009 to "UPDATE_UI_CONFIG_REQUEST", 0x800A to "UPDATE_UI_CONFIG_REPLY", 0x800B to "AUDIO_UNDERFLOW",
     )
 
-    // --- sensor / input (те же 0x80xx, смысл по каналу) ---
+    // --- sensor / input (the same 0x80xx, channel meaning) ---
     const val SENSOR_START_REQUEST = 0x8001
     const val SENSOR_START_RESPONSE = 0x8002
     const val SENSOR_EVENT = 0x8003
@@ -166,7 +166,7 @@ object AapMessages {
         0x8007 to "NAVIGATION_CURRENT_POSITION",
     )
 
-    /** Статус плеера (ch9), состояние/дистанция/позиция навигации (ch10) идут примерно раз в секунду: в UI-лог не пишем (смену трека и манёвра громко пишет MetaRelay). */
+    /** The status of the player (ch9), the state/distance/navigation position (ch10) are about once a second: in UI-log do not write (change track and maneuver loudly writes MetaRelay). */
     fun isPeriodicMeta(chan: Int, type: Int) =
         (chan == CH_MEDIA_PLAYBACK && type == AaMeta.MEDIA_STATUS) ||
             (chan == CH_NAVIGATION && (type == AaMeta.NAV_DISTANCE || type == AaMeta.NAV_STATE || type == AaMeta.NAV_POSITION))
@@ -178,7 +178,7 @@ object AapMessages {
 
     fun messageName(chan: Int, type: Int): String {
         if (type in CONTROL_NAMES && (type <= 26 || type == 0x00FF || type == 0xFFFF)) {
-            // 1 на медиа-каналах = CODEC_CONFIG
+            // 1 on media channels = CODEC_CONFIG
             if (!(type == 1 && isMediaChan(chan))) return CONTROL_NAMES.getValue(type)
         }
         if (chan == CH_SENSOR) SENSOR_NAMES[type]?.let { return it }
@@ -190,27 +190,27 @@ object AapMessages {
         return "UNKNOWN_0x%04x".format(type)
     }
 
-    // --- сырые (нешифрованные) сообщения ---
+    // --- raw (unencrypted) messages ---
     const val VERSION_MAJOR = 1
     const val VERSION_MINOR = 2
 
-    /** [type=1][major=1][minor=2]; в кадре: 00 03 00 06 00 01 00 01 00 02. */
+    /** [type=1][major=1][minor=2]; in frame: 00 03 00 06 00 01 00 01 00 02. */
     fun versionRequestBody(): ByteArray =
         byteArrayOf(0, VERSION_REQUEST.toByte(), 0, VERSION_MAJOR.toByte(), 0, VERSION_MINOR.toByte())
 
-    /** AuthResponse{status = 0}; в кадре: 00 03 00 04 00 04 08 00. */
+    /** AuthResponse{status = 0 = ; in frame: 00 03 00 04 00 04 08 00. */
     val AUTH_COMPLETE_DATA = byteArrayOf(0x08, 0x00)
 
     class VersionResponse(val major: Int, val minor: Int, val status: Int, val options: ByteArray)
 
-    /** Тело после type: major u16, minor u16, status i16, опции. */
+    /** Body after type: major u16, minor u16, status i16, options. */
     fun parseVersionResponse(body: ByteArray): VersionResponse? {
         if (body.size < 6) return null
         fun u16(i: Int) = ((body[i].toInt() and 0xFF) shl 8) or (body[i + 1].toInt() and 0xFF)
         return VersionResponse(u16(0), u16(2), u16(4).toShort().toInt(), body.copyOfRange(6, body.size))
     }
 
-    // --- билдеры: что шлёт головное устройство ---
+    // --- billers: what sends the head device ---
     fun channelOpenResponse(chan: Int) = AapOut(chan, CHANNEL_OPEN_RESPONSE, AapPb().v(1, 0).toByteArray())
 
     fun pingResponse(timestamp: Long) = AapOut(CH_CONTROL, PING_RESPONSE, AapPb().v(1, timestamp).toByteArray())
@@ -220,7 +220,7 @@ object AapMessages {
     fun navFocusNotification(chan: Int = CH_CONTROL) =
         AapOut(chan, NAV_FOCUS_NOTIFICATION, AapPb().v(1, NAV_FOCUS_PROJECTED).toByteArray())
 
-    /** Всегда выдаём фокус: AapControl.kt:450-455. request: 1 GAIN, 2 TRANSIENT, 3 MAY_DUCK, 4 RELEASE. */
+    /** Always give out focus: AapControl.kt:450-455. request: 1 GAIN, 2 TRANSIENT, 3 MAY_DUCK, 4 RELEASE. */
     fun audioFocusResponse(request: Int, chan: Int = CH_CONTROL): AapOut? {
         val state = when (request) {
             1 -> 1      // STATE_GAIN
@@ -232,7 +232,7 @@ object AapMessages {
         return AapOut(chan, AUDIO_FOCUS_NOTIFICATION, AapPb().v(1, state).toByteArray())
     }
 
-    /** Сразу после Config на аудио-канале (AapControl.kt:123-131). */
+    /** Right after Config on the audio channel (AapControl.kt:123-131). */
     fun audioFocusGainUnsolicited() =
         AapOut(CH_CONTROL, AUDIO_FOCUS_NOTIFICATION, AapPb().v(1, 1).bool(2, true).toByteArray())
 
@@ -253,7 +253,7 @@ object AapMessages {
     fun micResponse(success: Boolean, sessionId: Int = 0) =
         AapOut(CH_MIC, MEDIA_MIC_RESPONSE, AapPb().v(1, if (success) 0 else -7).v(2, sessionId).toByteArray())
 
-    /** DATA микрофона HU -> телефон: канал MIC, type 0, [timestamp u64 BE мкс][PCM16 mono 16 кГц]; кадр шифрованный, флаги 0x0b. */
+    /** DATA Microphone HU -> Phone: Channel MIC, type 0, [timestamp u64 BE mx][PCM16 mono 16 kHz]; frame Encrypted, flags 0x0b. */
     fun micData(tsUs: Long, pcm: ByteArray) = AapOut(CH_MIC, MEDIA_DATA, AaMicFormat.dataPayload(tsUs, pcm))
 
     fun bindingResponse(chan: Int = CH_INPUT) = AapOut(chan, INPUT_BINDING_RESPONSE, AapPb().v(1, 0).toByteArray())
@@ -274,13 +274,13 @@ object AapMessages {
     const val TOUCH_POINTER_DOWN = 5
     const val TOUCH_POINTER_UP = 6
 
-    /** Один палец: InputReport{timestamp ns, touch_event{pointer, action_index 0, action}}. */
+    /** One finger: InputReport{timestamp ns, touch_event{pointer, action_index 0, action}}. */
     fun touchEvent(action: Int, x: Int, y: Int, timestampNs: Long, pointerId: Int = 0): AapOut =
         touchEvent(action, 0, listOf(TouchPoint(pointerId, x, y)), timestampNs)
 
     /**
-     * InputReport{timestamp ns, touch_event{pointer x N, action_index, action}}: все активные пальцы в одном событии,
-     * action_index = позиция в [points] пальца, вызвавшего POINTER_DOWN/UP (как MotionEvent.getActionIndex).
+     * InputReport{timestamp ns, touch_event{pointer x N, action_index, action }} : all active fingers in one event,
+     * action_index = Position in [points] The finger that caused POINTER_DOWN/UP (How to MotionEvent.getActionIndex).
      */
     fun touchEvent(action: Int, actionIndex: Int, points: List<TouchPoint>, timestampNs: Long): AapOut {
         val touch = AapPb()
@@ -295,17 +295,17 @@ object AapMessages {
         return AapOut(CH_INPUT, INPUT_EVENT, AapPb().v(1, timestampNs).msg(4, AapPb().msg(1, key)).toByteArray())
     }
 
-    /** Android KEYCODE_ROTARY_CONTROLLER (AA): шайба, двигает фокус по элементам интерфейса. */
+    /** Android KEYCODE_ROTARY_CONTROLLER (AA): washer, moves focus on interface elements. */
     const val KEYCODE_ROTARY_CONTROLLER = 65536
 
-    /** InputReport{timestamp ns, relative_event{data=[{keycode ROTARY_CONTROLLER, delta}]}}; delta > 0 по часовой. */
+    /** InputReport{timestamp ns, relative_event{data=[{keycode ROTARY_CONTROLLER, delta}]}}; delta > 0 clockwise. */
     fun rotaryEvent(timestampNs: Long, delta: Int): AapOut {
         val rel = AapPb().v(1, KEYCODE_ROTARY_CONTROLLER).v(2, delta)
         return AapOut(CH_INPUT, INPUT_EVENT, AapPb().v(1, timestampNs).msg(6, AapPb().msg(1, rel)).toByteArray())
     }
 
     // --- ServiceDiscoveryResponse ---
-    /** KeyCode.supported из headunit-revived (input/KeyCode.kt:9-61), номера Android KeyEvent. */
+    /** KeyCode.supported of headunit-revived (input/KeyCode.kt:9-61), numbers Android KeyEvent. */
     val KEYCODES_SUPPORTED: List<Int> = listOf(
         1, 2, 4, 19, 20, 21, 22, 23, 126, 127, 85, 87, 88, 84, 5, 209, 24, 25, 61, 62, 66, 3, 79, 86,
         6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
@@ -330,7 +330,7 @@ object AapMessages {
         val vehicleType = o.vehicleType ?: if (o.mic) VEHICLE_TYPE_CAR else VEHICLE_TYPE_MOTORCYCLE
         val carMake = o.carMake?.takeIf { it.isNotBlank() }
         var vehicleId = if (vehicleType == VEHICLE_TYPE_MOTORCYCLE) o.vehicleId + "-moto" else o.vehicleId
-        // другой vehicleId - AA заводит новый профиль машины, а не берёт закешированный с «Google»
+        // another vehicleId - AA starts a new profile of the machine, and does not take cached with "Google"
         if (carMake != null) vehicleId += "-" + carMake.lowercase().filter { it.isLetterOrDigit() }
         val make = carMake ?: "Google"
         val (width, height) = o.resolution.split("x").map { it.toInt() }
@@ -390,14 +390,14 @@ object AapMessages {
         r.str(2, make).str(3, "Desktop Head Unit").str(4, "2025").str(5, vehicleId)
             .v(6, 0)                                                // DRIVER_POSITION_LEFT
             .str(7, "Google").str(8, "Desktop Head Unit").str(9, "1").str(10, "0.1.0")
-            .bool(11, false).bool(12, false).v(13, 0).str(14, carMake ?: "Open Headunit")   // подпись плитки выхода в лаунчере AA
+            .bool(11, false).bool(12, false).v(13, 0).str(14, carMake ?: "Open Headunit")   // Signature Tile Output in launcher AA
         r.msg(17, AapPb()
             .str(1, make).str(2, "Desktop Head Unit").str(3, "2025").str(4, vehicleId)
             .str(5, "Google").str(6, "Desktop Head Unit").str(7, "1").str(8, "0.1.0").v(9, vehicleType))
         return AapOut(CH_CONTROL, SERVICE_DISCOVERY_RESPONSE, r.toByteArray())
     }
 
-    // --- разбор входящих (для логики и лога) ---
+    // --- parsing incoming (for logic and log) ---
     private fun s(name: String, vararg f: Pair<Int, FieldDef>) = Schema(name, f.toMap())
     private fun i(n: String) = FieldDef(n, Kind.INT)
     private fun b(n: String) = FieldDef(n, Kind.BOOL)
@@ -483,7 +483,7 @@ object AapMessages {
         ),
     )
 
-    /** Одна строка: протобуф-тело с именами полей, если схема известна, иначе hex-префикс. */
+    /** One line: a protobuff body with field names, if the scheme is known, otherwise hex-prefix. */
     fun describe(chan: Int, type: Int, payload: ByteArray, maxLen: Int = 600): String {
         val schema = when {
             type == MEDIA_CODEC_CONFIG && isMediaChan(chan) -> null

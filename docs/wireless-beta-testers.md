@@ -1,40 +1,40 @@
-# Headswap: беспроводной режим (бета) — инструкция для тестеров
+# Headswap: wireless mode (beta) - instructions for testers
 
-Нужна машина, у которой в CarLife на ГУ есть **беспроводное подключение** (Wi-Fi / «WLAN» / «беспроводной CarLife»). Если в меню CarLife на ГУ только USB, беспровод не заработает, тестировать не нужно.
+Need a machine that has CarLife on head unit has **wireless connection** (Wi-Fi / "WLAN" / "wireless CarLife"). If in the menu CarLife on head unit only USB, do not test.
 
-Бета — отдельный APK. Он ставится поверх обычного Headswap, настройки сохраняются. Кабельный режим работает как раньше: если вставить кабель, побеждает USB.
+Beta - separate APK. It is placed on top of the usual Headswap, settings are saved. Cable mode works as before: if you insert a cable, USB. wins
 
-## Что сделать
+## What to do
 
-1. Установите бета-APK.
-2. На телефоне включите **точку доступа (хотспот)**. Если есть выбор диапазона, поставьте 5 ГГц. Отключите автоотключение точки доступа, если оно есть в настройках.
-3. На ГУ: подключите её к точке доступа телефона (в настройках Wi-Fi ГУ найдите сеть телефона и введите пароль). Не на всех ГУ есть такой пункт — если нет, напишите об этом в отчёте.
-4. Откройте CarLife на ГУ. Если в CarLife есть выбор типа подключения, выберите беспроводной (Wi-Fi).
-5. В Headswap: Настройки → «По воздуху» → «Ждать машину по Wi-Fi». На Android 17 разрешите доступ к «Устройствам поблизости».
-6. Ждите до 2–3 минут. Если на ГУ появился Android Auto — поездите 10–15 минут: тач, музыка, навигация, голос с кнопки руля.
-7. Получилось или нет — нажмите «Отправить беспроводной отчёт» и пришлите файл вместе с заполненным шаблоном ниже.
+1. Install Beta-APK.
+2. On the phone, turn on **access point (hotspot)**. If there is a range choice, put 5 GHz. Turn off the auto-disconnect of the access point if it is in the settings.
+3. On head unit: connect it to the phone access point (in the settings of Wi-Fi head unit find the phone network and enter a password). Not all head unit has such an item - if not, write about it in the report.
+4. Open CarLife on head unit. If CarLife has a choice of connection type, select Wireless (Wi-Fi).
+5. In Headswap: Settings → "By wireless connection" → "Waiting for the car by Wi-Fi". On Android 17, allow access to "Devices nearby".
+6. Wait until 2–3 minutes. If head unit appeared Android Auto - train 10–15 minutes: touch, music, navigation, voice from the steering button.
+7. Whether or not it works, click on "Send Wireless Report" and send the file along with the template below.
 
-**Если ГУ подключается к телефону сама по Bluetooth и Wi-Fi Direct (например, Mazda):** хотспот на телефоне не нужен. Включите на телефоне Bluetooth и Wi-Fi, телефон должен быть спарен с машиной. Нажмите «Ждать машину по Wi-Fi», разрешите «Устройства поблизости» (на старых Android — геолокацию). Потом выберите беспроводное подключение в CarLife на ГУ. В строке «Bluetooth carlife» на экране отчёта видно, до какого шага дошло: «ГУ подключилась», «вхожу в группу», «телефон в группе ГУ», «отдал ГУ IP, жду TCP от ГУ».
+**If head unit Connects to the phone itself Bluetooth and Wi-Fi Direct (e.g. Mazda):** hotspot on the phone is not needed. Turn on the phone Bluetooth and Wi-Fi. The phone should be paired with the machine. Click “Wait for the machine on Wi-FiAllow “Devices nearby” (on old ones) Android - geolocation). Then select the wireless connection in CarLife on head unit. In the line "Bluetooth carlife" on the report screen you can see what step it came to: "head unit “I’m in a group,” “I’m in a group.” head unit“He gave head unit IP, waiting TCP from head unit».
 
-Остановить режим: кнопка «Остановить» там же.
+Stop mode: the "Stop" button is the same.
 
-## Шаблон отчёта
+## Report Template
 
 ```
-Машина: марка, модель, год, рынок (Китай / другой)
-ГУ: название и версия ПО, если видно в меню
-Как ГУ подключилась к Wi-Fi: (к точке доступа телефона / ГУ сама раздаёт Wi-Fi / не нашёл пункта)
-Тип подключения в меню CarLife на ГУ (дословно, как написано):
-Была ли открыта вкладка CarLife на ГУ перед кнопкой в Headswap: да / нет
-Телефон: модель, версия Android / прошивки
-Диапазон точки доступа: 2,4 / 5 ГГц / не знаю
-Результат: AA на экране ГУ — да / нет; если нет, что было на экране Headswap (строка «Беспровод: …»)
-Что работало: тач / музыка / навигация / голос / звонки
-Обрывы: были ли, через сколько минут
-Нагрев и заряд: % в начале и в конце, телефон заряжался или нет
-Приложен отчёт (zip): да
+Machine: Make, Model, Year, Market (China / Other)
+head unit: name and version of the software, if visible in the menu
+How head unit connected to Wi-Fi: (to the phone access point / head unit itself distributes Wi-Fi / could not find a point)
+Connection type in the menu CarLife on head unit (literally, as it says):
+Whether the CarLife tab on the head unit was opened before the button in the Headswap: yes / no
+Phone: model, version Android / firmware
+Range of access point: 2,4/5 GHz/I don't know
+Result: AA on the screen head unit - yes / no; if not, what was on the screen Headswap (line "Wireless: ...")
+What worked: touch / music / navigation / voice / calls
+Breaks: were, after how many minutes
+Heating and charging: % at the beginning and end, phone charged or not
+Attached report (zip): yes
 ```
 
-## Что в отчёте
+## What's in the report
 
-Логи приложения, файл `wireless.log` (шаги беспроводного подключения) и сведения о телефоне. Пароль и имя точки доступа в отчёт не попадают. Попадают: модель телефона, название ГУ, адреса в локальной сети точки доступа.
+Application logs, `wireless.log` file (wireless connection steps) and phone information. Password and access point name do not fall into the report. The following are: phone model, name head unit, addresses in the local network of the access point.

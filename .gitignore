@@ -1,4 +1,4 @@
-# не входит в репо
+# Not tracked in the repository
 /re/
 /refs/
 /logs/
@@ -22,7 +22,7 @@ build/
 .kotlin/
 local.properties
 
-# артефакты, ключи, сертификаты
+# artifacts, keys, certificates
 *.h264
 *.log
 !tools/logdiag_cases/*.log
@@ -32,12 +32,12 @@ local.properties
 *.keystore
 *.apk
 
-# редакторы, ОС, инструменты
+# Editors, operating systems, tools
 .idea/
 .vscode/
 Thumbs.db
 desktop.ini
 .claude/
 /research/
-# метки проверенных APK (verify-apk.ps1), по ним хук пускает деплой
+# Verified APK markers (verify-apk.ps1); the hook requires these before deployment
 /.release/

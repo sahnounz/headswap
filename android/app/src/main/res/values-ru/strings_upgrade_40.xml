@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Одноразовое окно после обновления до 4.0: режим «Свой лаунчер» -->
+<!-- Single window after upgrading to 4.0: "Your launcher" mode -->
 <resources>
     <string name="u40_title">Свой лаунчер на магнитоле</string>
     <string name="u40_lead">Новый режим: вместо Android Auto на экране машины свой рабочий стол. Android Auto остаётся по умолчанию, у вас ничего не поменялось.</string>

@@ -81,7 +81,7 @@ class ForeignDesktopTest {
         val catalog = listOf(entry("a.b"), entry("c.d"), entry("e.f"))
         val stub = ForeignDesktop.recents(emptyList(), known = false, launcherPkg = "c.d", catalog = catalog)
         assertEquals(listOf("a.b", "e.f"), stub.map { it.pkg })
-        // с историей заглушка не нужна
+        // with history stub not needed
         val withHistory = ForeignDesktop.recents(listOf("e.f"), known = false, launcherPkg = "c.d", catalog = catalog)
         assertEquals(listOf("e.f"), withHistory.map { it.pkg })
     }

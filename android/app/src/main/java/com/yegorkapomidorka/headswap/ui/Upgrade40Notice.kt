@@ -16,8 +16,8 @@ import com.yegorkapomidorka.headswap.MainActivity
 import com.yegorkapomidorka.headswap.R
 
 /**
- * Одноразовое окно «Свой лаунчер на магнитоле» для тех, кто обновился до 4.0: новый режим, Android Auto по умолчанию.
- * Новички выбирают режим в онбординге, им окно не нужно. Когда показывать - см. [UpgradeNotice.onLaunch].
+ * One-time window "Your launcher on the magnetol" for those who have upgraded to 4.0: new mode, Android Auto by default.
+ * Beginners choose onboarding mode, they do not need a window. When to show - see [UpgradeNotice.onLaunch].
  */
 object Upgrade40Notice {
     fun show(act: MainActivity) {
@@ -32,7 +32,7 @@ object Upgrade40Notice {
         dialog.show()
     }
 
-    /** Поля вокруг панели: по бокам 16 dp, сверху и снизу 24 dp, чтобы на коротком экране панель не липла к краям. */
+    /** Fields around the panel: on the sides of the 16 dp, at the top and bottom of the 24 dp, so that on the short screen the panel does not stick to the edges. */
     private fun content(act: MainActivity, dialog: Dialog): View {
         val c: Context = act
         val panel = object : LinearLayout(c) {
@@ -70,7 +70,7 @@ object Upgrade40Notice {
         )
         body.addView(whereBlock(c), lp(MATCH, WRAP))
 
-        // Прокручивается всё содержимое, кнопки остаются внизу панели, вне прокрутки.
+        // Scrolls all the content, the buttons remain at the bottom of the panel, out of scrolling.
         val scroll = ScrollView(c).apply {
             isVerticalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
@@ -85,7 +85,7 @@ object Upgrade40Notice {
             c.linkButton(c.getString(R.string.u40_try), 44, 15f).apply {
                 setOnClickListener {
                     dialog.dismiss()
-                    // то же, что `--es cmd onboarding --es step mode`: онбординг сразу с выбора режима
+                    // same as `--es cmd onboarding --es step mode`: onboarding immediately with mode selection
                     act.showOnboarding(rerun = true, startAt = StepId.MODE)
                 }
             },
@@ -98,7 +98,7 @@ object Upgrade40Notice {
         }
     }
 
-    /** Плашка «4.0» и заголовок. */
+    /** Cover «4.0» and header. */
     private fun titleRow(c: Context): View = c.hbox(12).apply {
         addView(
             FrameLayout(c).apply {
@@ -119,7 +119,7 @@ object Upgrade40Notice {
         )
     }
 
-    /** Блок с заголовком секции и пунктами в кружках с иконкой; цвет заголовка тот же, что у кружков. */
+    /** Block with header section and items in circles with icon; color of header is the same as that of circles. */
     private fun section(c: Context, head: Int, fg: Int, bg: Int, icon: Int, items: List<Int>): View {
         val box = c.vbox(6)
         box.addView(heading(c, head, fg), lp(MATCH, WRAP))
@@ -143,7 +143,7 @@ object Upgrade40Notice {
         addView(c.text(text, 14f).apply { lineHeight = c.dp(19) }, lp(0, WRAP, 1f))
     }
 
-    /** Путь в настройках и картинка переключателя режима. */
+    /** The path in the settings and the mode switch picture. */
     private fun whereBlock(c: Context): View {
         val box = c.vbox(6)
         box.addView(c.text(c.getString(R.string.u40_where), 12f, 400, c.clr(R.color.on2)), lp(MATCH, WRAP))
@@ -151,7 +151,7 @@ object Upgrade40Notice {
         return box
     }
 
-    /** Картинка: переключатель «Режим» из настроек (Segmented) с выбранным Android Auto. Только для вида, нажатий нет. */
+    /** Picture: "Mode" switch from settings (Segmented) with selected Android Auto. Only for view, no taps. */
     private fun modeSwitchPicture(c: Context): View = c.hbox().apply {
         background = c.shape(0, 22, c.clr(R.color.line), 1.5f)
         clipToOutline = true

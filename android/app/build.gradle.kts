@@ -21,7 +21,7 @@ android {
         targetSdk = 37
         versionCode = 67
         versionName = "4.0.0-beta6"
-        // «По воздуху» (беспровод): с 2.0.0 включён во всех сборках; выключить для проверки: gradlew assembleRelease -Pwlbeta=false
+        // "By wireless connection" (wireless): with 2.0.0 included in all assemblies; turn off to check: gradlew assembleRelease -Pwlbeta=false
         buildConfigField("boolean", "WIRELESS_BETA", (project.findProperty("wlbeta") != "false").toString())
     }
 
@@ -50,7 +50,7 @@ android {
             isMinifyEnabled = false
             signingConfig = signingConfigs.findByName("release")
         }
-        // smoke-тест перед релизом: debug-сборка с другим applicationId, ставится на телефон рядом с release (настройки release не трогаем)
+        // smoke-test before release: debug-assembly with another applicationId, placed on the phone next to release (release settings do not touch)
         create("smoke") {
             initWith(getByName("debug"))
             applicationIdSuffix = ".smoke"
@@ -60,7 +60,7 @@ android {
     }
 
     sourceSets {
-        // debug-транспорт для эмулятора ГУ (DebugTransport) и exported BridgeService; в smoke берём debug-набор целиком
+        // debug-transport for the emulator head unit (DebugTransport) and exported BridgeService; in smoke take debug-set as a whole
         getByName("smoke") {
             kotlin.srcDir("src/debug/java")
             manifest.srcFile("src/debug/AndroidManifest.xml")
@@ -73,7 +73,7 @@ android {
     }
 
     packaging {
-        // Bouncy Castle из Kadb кладёт одинаковые уведомления в несколько модулей; сохраняем их, а не падаем на дубликатах.
+        // Bouncy Castle from Kadb puts the same notifications in multiple modules; save them instead of falling on duplicates.
         resources.merges += setOf("META-INF/LICENSE.md", "META-INF/NOTICE.md")
     }
 
@@ -82,7 +82,7 @@ android {
     }
 }
 
-// Правила диагностики подключения общие с tools/logdiag.py: лежат в tools/, в APK копируются как assets/logdiag_rules.json
+// Connection diagnostic rules common with tools/logdiag.py: lie in tools/, in APK are copied as assets/logdiag_rules.json
 abstract class CopyLogdiagRules : DefaultTask() {
     @get:InputFile
     @get:PathSensitive(PathSensitivity.NONE)
@@ -112,24 +112,24 @@ androidComponents {
 
 dependencies {
     implementation("androidx.annotation:annotation:1.8.1")
-    // активация Headswap Desktop с самого телефона: пейринг и подключение к своему adbd по беспроводной отладке
+    // activation of Headswap Desktop from the phone itself: pairing and connecting to your adbd wireless debugging
     implementation("com.flyfishxu:kadb:2.1.5")
-    // Kadb.pair - suspend; зовём из рабочего потока через runBlocking
+    // Kadb.pair - suspend; calling from the workflow via runBlocking
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
-    // лаунчер Headswap Desktop: без material3 и иконок, свой дизайн на foundation
+    // launcher Headswap Desktop: without material3 and icons, own design on foundation
     implementation(platform("androidx.compose:compose-bom:2025.10.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.runtime:runtime")
     implementation("androidx.activity:activity-compose:1.11.0")
     testImplementation("junit:junit:4.13.2")
-    // В unit-тестах android.jar — заглушки (isReturnDefaultValues), настоящий org.json нужен LogDiag
+    // In unit-tests android.jar - stub (isReturnDefaultValues), the real org.json needs LogDiag
     testImplementation("org.json:json:20240303")
 }
 
-// Сертификаты head unit AA (assets/aa/<профиль>/cert.pem, key.pem) не в git, в свежем worktree их нет.
-// Подтягиваем из основного checkout (родитель git common dir) или из HEADSWAP_AA_CERTS / -Pheadswap.aaCertsDir.
-// Release без них не собираем: APK без сертификатов падает у юзера с «Нет сертификата head unit».
+// Certificates head unit AA (assets/aa/<profile>/cert.pem, key.pem) are not in git, there are none in fresh worktree.
+// Pull from main checkout (parent git common dir) or from HEADSWAP_AA_CERTS / -Pheadswap.aaCertsDir.
+// Release without them we do not collect: APK without certificates falls at the user with "No certificate head unit".
 val syncAaCerts = tasks.register("syncAaCerts") {
     val dst = file("src/main/assets/aa")
     val root = projectDir
@@ -159,7 +159,7 @@ val syncAaCerts = tasks.register("syncAaCerts") {
         }
         val left = missing()
         if (left.isNotEmpty()) {
-            // по-английски: консоль Windows в cp1251/cp866 превращает кириллицу в кашу
+            // Windows in cp1251/cp866 turns Cyrillic into porridge
             val msg = "AA head unit certs missing in $dst: ${left.joinToString()}. " +
                 "Put them there or point HEADSWAP_AA_CERTS / -Pheadswap.aaCertsDir to a directory with them"
             if (release) throw GradleException(msg) else logger.warn("syncAaCerts: $msg")

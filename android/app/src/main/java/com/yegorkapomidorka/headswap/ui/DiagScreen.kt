@@ -15,8 +15,8 @@ import com.yegorkapomidorka.headswap.diag.DiagRunner
 import com.yegorkapomidorka.headswap.diag.LogDiag
 
 /**
- * «Почему не подключается»: вероятные причины по логу приложения, анализ на телефоне (diag/LogDiag).
- * Первая причина раскрыта, у каждой шаги решения с кнопками-действиями (diag/DiagActions) и отметка «Помогло / Не помогло».
+ * "Why not connect": probable reasons for the application log, analysis on the phone (diag/LogDiag).
+ * The first reason is disclosed, each step of the solution with buttons-actions (diag/DiagActions) and the mark “Helped / Did not help”.
  */
 class DiagScreen(host: MainActivity) : Screen(host) {
     override val view: View
@@ -93,7 +93,7 @@ class DiagScreen(host: MainActivity) : Screen(host) {
         addSend(top.isEmpty() || notHelped.isNotEmpty())
     }
 
-    // ------------------------------------------------------------ карточки
+    // ---------------------------------------------- Cards
 
     private fun chip(text: String, fill: Int, fg: Int): TextView = ctx.text(text, 12f, 600, fg).apply {
         background = ctx.shape(fill, 12)
@@ -136,8 +136,8 @@ class DiagScreen(host: MainActivity) : Screen(host) {
     }
 
     /**
-     * Что случилось, шаги, «Что в логе». Общее для причин и заметки works. Шагов в правиле нет -
-     * совет показывается одним шагом без номера (adviceFallback).
+     * What happened, steps, "What's in the log". Common to the reasons and note works. Steps in the rule no -
+     * the advice is shown in one step without a number (adviceFallback).
      */
     private fun addDetails(box: LinearLayout, cause: LogDiag.Cause, withLog: Boolean = true, adviceFallback: Boolean = true) {
         val c = ctx
@@ -232,7 +232,7 @@ class DiagScreen(host: MainActivity) : Screen(host) {
         }
     }
 
-    /** Кнопка «Помогло»: заливка ok-цветом (pill из Kit приватный, строим тем же способом). */
+    /** Button "Helped": pouring ok-color (pill from Kit private, build in the same way). */
     private fun okButton(label: String): LinearLayout {
         val c = ctx
         return c.hbox().apply {
@@ -277,7 +277,7 @@ class DiagScreen(host: MainActivity) : Screen(host) {
         }
     }
 
-    /** Нет причин: «Явных сбоев нет» с описанием заметки works или «Причина не найдена». */
+    /** There is no reason: “There are no obvious failures” with the description of the note works or “The cause is not found”. */
     private fun emptyCard(): View {
         val c = ctx
         val works = note("works")
@@ -302,7 +302,7 @@ class DiagScreen(host: MainActivity) : Screen(host) {
         }
     }
 
-    /** Заметка old_version: версия старая, у многих причин «лечение» уже в релизе. */
+    /** Note old_version: version is old, for many reasons "treatment" is already in the release. */
     private fun oldVersionNote(): View {
         val c = ctx
         return c.hbox(12).apply {

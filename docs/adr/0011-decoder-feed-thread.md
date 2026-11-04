@@ -1,32 +1,32 @@
-# 0011. Кадры в декодер перекодировщика подаёт отдельная нить (FeedQueue)
+# 0011. frame in decoder encoder provides a separate thread (FeedQueue)
 
-- Статус: принято
-- Дата: 2026-10-24
-- Источники: PR #106, #65 (закрыт), #63, #55, `aa/FeedQueue.kt:98`, `aa/AaTranscoder.kt:24-37`, `:70`, `:168`
+- Status: adopted
+- Date: 2026-10-24
+- Sources: PR #106, #65 (closed), # 63, #55, `aa/FeedQueue.kt:98`, `aa/AaTranscoder.kt:24-37`, `:70`, `:168`
 
-## Контекст
+## Context
 
-В перекодировщике возникала цепочка зависания: энкодер не сливает выход, Surface встаёт, GL-реле встаёт, декодер не
-отдаёт выход, `dequeueInputBuffer(15 мс)` ждёт под монитором моста, энкодер по-прежнему не сливает. Добавлялись
-`createDecoder` (50–740 мс) под тем же монитором и инверсия замков.
+In the transcoder, there was a hang chain: encoder does not drain the output, Surface gets up, GL-gets up, decoder does not
+gives way, `dequeueInputBuffer(15 мс)` waiting under the bridge monitor, encoder still not draining. Added
+`createDecoder` (50–740 ms) under the same monitor and lock inversion.
 
-## Решение
+## Decision
 
-`feedFrame`, `feedConfig`, `resetDecoder` только кладут работу в `FeedQueue`; с декодером работает нить `aa-trans-feed`
-(`AaTranscoder.kt:168`). Колбэки `out.*` вызываются вне `lock`. При переполнении кадр теряется, очередь закрыта до IDR,
-мост получает один `onNeedAaKeyFrame`. Глубина очереди 16 кадров (`FeedQueue.DEFAULT_MAX_FRAMES`, ~0,5 с при 30 fps):
-декодер создаётся 80–300 мс (на 60 fps это до 18 кадров), и эти кадры должны дождаться его, а не выбить IDR-запрос к AA.
-Откат — `tuning="nofeedthread"` (`AaTranscoder.kt:37`, `:70`), оставлен на один релиз.
+`feedFrame`, `feedConfig`, `resetDecoder` only put work in `FeedQueue`; decoder works with thread `aa-trans-feed`
+(`AaTranscoder.kt:168`). The `out.*` callbacks are called out of `lock`. When overflowing frame is lost, queue closed to IDR,
+The bridge gets one. `onNeedAaKeyFrame`. Depth of queue 16 frame (`FeedQueue.DEFAULT_MAX_FRAMES`, ~0,5 at 30 fps):
+decoder is created by 80–300 ms (on 60 fps it's up to 18 frame) and these frame should wait for it, not knock out IDR-request to AA.
+Rollback - `tuning="nofeedthread"` (`AaTranscoder.kt:37`, `:70`), left for one release.
 
-## Альтернативы
+## Alternatives
 
-- Внешний PR #65 (закрыт 29.10): подача кадра вне блокировки одним куском. Не взят, сделали по-своему (PR #106).
-- PR #63 (AlohaMoscow) автор закрыл сам 17.10 и в ту же минуту открыл вместо него #65.
-- Лимит 32 кадра отвергнут Егором 23.10 в пользу 16. Расхождение: описание PR #106 говорит «4 кадра»; на 4 кадрах
-  пачка из 10 кадров переполняла очередь во время `createDecoder` (`transcode_test` burst 23.10), поэтому в коде 16.
+- External PR #65 (closed) 29.10): feed frame out of the lock in one piece. Not taken, made in their own way (PR #106).
+- PR #63 (AlohaMoscowThe author closed himself. 17.10 And at the same time opened instead of him65.
+- Limit 32 frame Egor 23.10 in favor 16I. Distinction: description PR #106 " The World4 frame> ; on 4 frame
+  a pack of 10 frame overflowed the queue during `createDecoder` (`transcode_test` burst 23.10), so in the code 16.
 
-## Последствия
+## Consequences
 
-- При правках перекодировщика не звать декодер из потока вызывающего и не держать `lock` при колбэках `out.*`.
-- Флаг `nofeedthread` оставлен как откат на один релиз, потом его можно убрать.
-- Потеря кадров при переполнении = лишний IDR от AA; на 60 fps очередь в 16 кадров короче 0,5 с.
+- When editing the transcoder, do not call decoder from the caller stream and do not hold `lock` when calling `out.*`.
+- The `nofeedthread` flag is left as a rollback to one release, then it can be removed.
+- Loss of frame when overflowing = extra IDR from AA; on 60 fps queue in 16 frame shorter than 0,5 s.

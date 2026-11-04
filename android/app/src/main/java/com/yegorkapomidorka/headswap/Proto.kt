@@ -3,8 +3,8 @@ package com.yegorkapomidorka.headswap
 import java.io.ByteArrayOutputStream
 
 /**
- * Минимальный protobuf (proto2) руками: нужные сообщения CarLife простые (varint и строки),
- * поэтому без protobuf-javalite и плагина. Чистая JVM-логика, без android.*.
+ * Minimum protobuf (proto2) hands: the desired messages of CarLife are simple (varint and lines),
+ * therefore without protobuf-javalite and plugin. Pure JVM-logic, without android.*.
  */
 class PbWriter {
     private val out = ByteArrayOutputStream()
@@ -23,7 +23,7 @@ class PbWriter {
 
     private fun tag(field: Int, wire: Int) = rawVarint(((field shl 3) or wire).toLong())
 
-    /** int32: отрицательные кодируются 10-байтным varint (знак расширяется), как в protoc. */
+    /** int32: negative encoded by 10-byte varint (sign expands) as in protoc. */
     fun int32(field: Int, v: Int): PbWriter {
         tag(field, 0)
         rawVarint(v.toLong())
@@ -44,11 +44,11 @@ class PbWriter {
     fun toByteArray(): ByteArray = out.toByteArray()
 }
 
-/** Одно поле разобранного сообщения. wire: 0 varint, 1 fixed64, 2 len-delimited, 5 fixed32. */
+/** One field of the disassembled message. wire: 0 varint, 1 fixed64, 2 len-delimited, 5 fixed32. */
 class PbField(val number: Int, val wire: Int, val num: Long, val data: ByteArray?)
 
 object PbReader {
-    /** null, если байты не похожи на protobuf (обрыв, неизвестный wire type). */
+    /** null if the bytes are not similar to protobuf (a break unknown to wire type). */
     fun parse(b: ByteArray): List<PbField>? {
         val res = ArrayList<PbField>()
         var p = 0
@@ -96,7 +96,7 @@ object PbReader {
         return res
     }
 
-    /** Поле как int32 (первое с таким номером). */
+    /** Field as int32 (first with this number). */
     fun int(fields: List<PbField>, number: Int): Int? =
         fields.firstOrNull { it.number == number && it.wire == 0 }?.num?.toInt()
 
@@ -107,12 +107,12 @@ object PbReader {
         fields.filter { it.number == number }
 }
 
-/** BYTES: двоичное поле (картинка), в лог только размер и формат. */
+/** BYTES: binary field (picture), in log only size and format. */
 enum class Kind { INT, BOOL, STR, MSG, BYTES }
 
 class FieldDef(val name: String, val kind: Kind, val sub: Schema? = null)
 
-/** Описание сообщения только для красивого вывода в лог (имена полей). */
+/** Description of the message only for a beautiful output to the log (field names). */
 class Schema(val name: String, val fields: Map<Int, FieldDef>)
 
 private fun int(n: String) = FieldDef(n, Kind.INT)
@@ -188,14 +188,14 @@ object Schemas {
     )
     val mediaProgressBar = schema("CarlifeMediaProgressBar", 1 to int("progressBar"))
 
-    /** Поле 6: в 8.6.7 bytes turnIconData, в refs (apollo/CarProjection) int32 time; рендер по wire-type. */
+    /** Field 6: in 8.6.7 bytes turnIconData, in refs (apollo/CarProjection) int32 time; render by wire-type. */
     val naviNextTurnInfo = schema(
         "CarlifeNaviNextTurnInfo",
         1 to int("action"), 2 to int("nextTurn"), 3 to str("roadName"), 4 to int("totalDistance"),
         5 to int("remainDistance"), 6 to FieldDef("time|turnIconData", Kind.BYTES)
     )
 
-    /** type сообщения -> схема тела. */
+    /** type message -> body schema. */
     val byType: Map<Int, Schema> = mapOf(
         Msg.HU_PROTOCOL_VERSION to protocolVersion,
         Msg.PROTOCOL_VERSION_MATCH_STATUS to matchStatus,
@@ -247,7 +247,7 @@ object Schemas {
     )
 }
 
-/** Текстовое представление protobuf-тела для лога. */
+/** Text representation of protobuf-body for log. */
 object PbText {
     fun render(body: ByteArray, schema: Schema?, depth: Int = 0): String {
         if (body.isEmpty()) return "{}"
@@ -273,7 +273,7 @@ object PbText {
         return sb.append('}').toString()
     }
 
-    /** "<N Б PNG>": размер и формат по сигнатуре. */
+    /** "<N B PNG>": size and format by signature. */
     fun blob(d: ByteArray): String {
         val kind = when {
             d.isEmpty() -> "пусто"
@@ -284,7 +284,7 @@ object PbText {
         return "<${d.size} Б $kind>"
     }
 
-    /** Строка в кавычках; непечатные байты как \xNN. */
+    /** Line in quotes; unprintable bytes as \ xNN. */
     fun quote(d: ByteArray): String {
         val sb = StringBuilder("\"")
         for (b in d) {
@@ -297,17 +297,17 @@ object PbText {
 }
 
 /**
- * Тач ГУ в виде CarlifeTouchAction: action как у MotionEvent (action&255 - код, action>>8 - индекс пальца),
- * второй палец в px/py (0,0 = нет). Жестовые коды сводятся к тем же action, как у Baidu CarlifeTouchManager.
+ * touch head unit in the form of CarlifeTouchAction: action as in MotionEvent (action&255 - code, action>>8 - finger index),
+ * second finger in px/py (0,0 = no). The pin codes are reduced to the same action, as in Baidu CarlifeTouchManager.
  */
 data class CarlifeTouch(val action: Int, val x: Int, val y: Int, val px: Int = 0, val py: Int = 0) {
     val masked: Int get() = action and 0xFF
 
-    /** Пальцев в событии: 2, если есть координаты второго или это POINTER_DOWN/UP. */
+    /** Fingers in event: 2 if there are coordinates of the second or it is POINTER_DOWN/UP. */
     val fingers: Int get() = if (px != 0 || py != 0 || masked == 5 || masked == 6) 2 else 1
 
     companion object {
-        /** null - не тач (кнопки руля и пр.) или тело не разобралось. Клики/долгое нажатие -> action 3 (в AA не уходят). */
+        /** null - not touch (drive buttons, etc.) or the body is not understood. Clicks / long press -> action 3 (in AA do not go away). */
         fun parse(type: Int, body: ByteArray): CarlifeTouch? {
             val f = PbReader.parse(body) ?: return null
             if (type == Msg.TOUCH_ACTION) {

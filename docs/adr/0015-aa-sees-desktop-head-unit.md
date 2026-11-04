@@ -1,30 +1,30 @@
-# 0015. AA видит ГУ как «Google / Desktop Head Unit»; марка машины не входит в идентичность ГУ
+# 0015. AA sees head unit as "Google / Desktop Head Unit"; the make of the machine is not part of the identity of head unit
 
-- Статус: принято
-- Дата: 2026-10-16
-- Источники: PR #39, #70, `aa/AapMessages.kt:331-335`, `:388-394`, тест `AapProtocolTest.serviceDiscoveryResponseHeadUnitIdentityIgnoresCarMake` (`AapProtocolTest.kt:219`), `ui/HuApps.kt:13`
+- Status: adopted
+- Date: 2026-10-16
+- Sources: PR #39, #70, `aa/AapMessages.kt:331-335`, `:388-394`, test `AapProtocolTest.serviceDiscoveryResponseHeadUnitIdentityIgnoresCarMake` (`AapProtocolTest.kt:219`), `ui/HuApps.kt:13`
 
-## Контекст
+## Context
 
-На pc-headunit 16.10 с выбранной маркой Fermata и зеркало пропали из сетки AA. Без марки (`make = Google`) они на месте.
-С чужой маркой AA перестаёт считать ГУ девелоперским и не показывает сторонние видеоприложения.
+On the pc-headunit 16.10 with the selected brand Fermata and mirror disappeared from the grid AA. Without brand (`make = Google`) they are in place.
+With someone else's brand AA ceases to consider head unit developer and does not show third-party video applications.
 
-## Решение
+## Decision
 
-В `ServiceDiscoveryResponse` поля `head_unit_make`/`head_unit_model` всегда «Google» / «Desktop Head Unit»
-(`AapMessages.kt:390`, `:393-394`); их не меняет ни марка, ни пресет «Мой автомобиль» (PR #70). Выбранная пользователем
-марка попадает только в поле `make` (по умолчанию `Google`, `:335`), в `vehicleId` и в подпись плитки выхода в лаунчере AA.
-Выбор марки оставлен и подписан в настройках («Без марки (видео и YouTube через Fermata работают)»). Поведение закреплено тестом.
+In `ServiceDiscoveryResponse` field `head_unit_make`/`head_unit_model` always "Google" / "Desktop Head Unit"
+(`AapMessages.kt:390`, `:393-394`); they are not changed by the brand or presets "My car" (PR #70). Selected by user
+the mark only falls in the `make` field (default `Google`, `:335`), in `vehicleId` and in the exit tile signature in launcher AA.
+The choice of the brand is left and signed in the settings ("Without a brand (video and YouTube via Fermata work)". The behavior is fixed by the test.
 
-## Альтернативы
+## Alternatives
 
-- Представляться ГУ реальной машины целиком — отвергнуто: пропадают приложения «dev-ГУ» (Fermata, зеркало), проверено
-  на pc-headunit.
-- Убрать выбор марки совсем — не сделано: его просил пользователь. По умолчанию марки нет.
+- Present head unit real machine completely rejected: missing applications «dev-head unit» (Fermata, mirror), checked
+  the pc-headunit.
+- Remove the choice of the brand at all - not done: it was requested by the user. By default, there is no brand.
 
-## Последствия
+## Consequences
 
-- Список приложений на «dev-ГУ» (`ui/HuApps.kt`) зависит от этой идентичности: менять поля `head_unit_*` нельзя без
-  проверки в живом AA.
-- Тест `serviceDiscoveryResponseHeadUnitIdentityIgnoresCarMake` должен оставаться зелёным.
-- Если пользователь выберет марку, часть видеоприложений в AA пропадёт — это известная цена, а не баг.
+- The list of applications on dev-head unit (`ui/HuApps.kt`) depends on this identity: you can not change the fields of `head_unit_*` without
+  AA. Live Inspection
+- The `serviceDiscoveryResponseHeadUnitIdentityIgnoresCarMake` test should remain green.
+- If the user chooses a brand, part of the video applications in AA will disappear - this is a known price, not a bug.

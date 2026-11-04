@@ -4,13 +4,13 @@ import java.util.concurrent.Callable
 import java.util.concurrent.ExecutorService
 
 /**
- * Свой IDR со сжатием: I16x16 с квантованным остатком (CAVLC), когда I_PCM без потерь не помещается в буфер ГУ.
- * Картинка на ГУ отличается от опорной AA на ошибку квантования; в статичных местах она держится до следующего IDR
- * (своего или от AA). Реконструкция считается ровно как у декодера (8.5.10-8.5.12 H.264, без деблокинга), от неё же
- * идёт intra-предсказание следующих блоков. Кадр режется на слайсы по строкам макроблоков, слайсы кодируются параллельно.
+ * Its IDR with compression: I16x16 with quantized residue (CAVLC), when I_PCM is not placed in the buffer head unit. without loss
+ * The image on the head unit differs from the reference AA for quantization error; in static places it holds up to the next IDR
+ * (its own or from AA). Reconstruction is considered exactly like decoder (8.5.10-8.5.12 H.264, without deblocking), from it
+ * intra- is a prediction of the following blocks. frame is cut into slices on the lines of macroblocks, slices are encoded in parallel.
  */
 internal object IdrIntra {
-    /** Слайсы кадра (NAL без стартового кода, с эмуляцией) и реконструкция до деблокинга, если её просили. */
+    /** frame slides (NAL without start code, with emulation) and reconstruction to deblocking if requested. */
     class Coded(val slices: List<ByteArray>, val cbpMbs: Int)
 
     fun encode(
@@ -30,7 +30,7 @@ internal object IdrIntra {
         return Coded(out.map { it.first }, out.sumOf { it.second })
     }
 
-    /** TotalCoeff блоков 4x4 (AC) для nC соседей: luma 16 на макроблок, chroma 4 на компоненту. */
+    /** TotalCoeff 4x4 (AC) blocks for nC neighbors: luma 16 per macroblock, chroma 4 per component. */
     private class Totals(mbs: Int) {
         val luma = IntArray(mbs * 16)
         val cb = IntArray(mbs * 4)
@@ -38,7 +38,7 @@ internal object IdrIntra {
     }
 
     private val ZIGZAG = intArrayOf(0, 1, 4, 8, 5, 2, 3, 6, 9, 12, 13, 10, 7, 11, 14, 15)
-    /** luma4x4BlkIdx -> (x, y) блока 4x4 в макроблоке. */
+    /** luma4x4BlkIdx -> (x, y) block 4x4 in the macroblock. */
     private val BLK_X = intArrayOf(0, 1, 0, 1, 2, 3, 2, 3, 0, 1, 0, 1, 2, 3, 2, 3)
     private val BLK_Y = intArrayOf(0, 0, 1, 1, 0, 0, 1, 1, 2, 2, 3, 3, 2, 2, 3, 3)
     private val MF = arrayOf(
@@ -50,7 +50,7 @@ internal object IdrIntra {
         intArrayOf(14, 23, 18), intArrayOf(16, 25, 20), intArrayOf(18, 29, 23),
     )
     private val QPC = intArrayOf(29, 30, 31, 32, 32, 33, 34, 34, 35, 35, 36, 36, 37, 37, 37, 38, 38, 38, 39, 39, 39, 39)
-    private const val MAX_LEVEL = 2000           // Baseline: level_prefix не больше 15
+    private const val MAX_LEVEL = 2000           // Baseline: level_prefix no more than 15
 
     private fun posClass(i: Int) = if (i / 4 % 2 == 0 && i % 4 % 2 == 0) 0 else if (i / 4 % 2 == 1 && i % 4 % 2 == 1) 1 else 2
 
@@ -66,10 +66,10 @@ internal object IdrIntra {
         val w = sps.wMbs
         val qpc = chromaQp(qp, pps.chromaQpOffset)
         val out = IdrSplice.BitOut((mbEnd - mbStart) * 64 + 64)
-        // рабочие массивы макроблока
+        // macroblock working arrays
         val pred = IntArray(256)
         val tmp = IntArray(256)
-        val coef = Array(16) { IntArray(16) }      // [blkRaster][i*4+j] уровни AC (позиция 0 не используется)
+        val coef = Array(16) { IntArray(16) }      // [blkRaster][i*4+j] Levels AC (position 0 not used)
         val dc = IntArray(16)
         val cpred = Array(2) { IntArray(64) }
         val ccoef = Array(2) { Array(4) { IntArray(16) } }
@@ -81,7 +81,7 @@ internal object IdrIntra {
         fun encode(idrPicId: Int): Pair<ByteArray, Int> {
             out.u(8, 0x65)
             out.ue(mbStart)
-            out.ue(7)                                   // I, все слайсы картинки
+            out.ue(7)                                   // I, all slides pictures
             out.ue(pps.id)
             out.u(sps.log2Fn, 0)
             out.ue(idrPicId)
@@ -99,7 +99,7 @@ internal object IdrIntra {
             out.u(2, 0)                                 // no_output_of_prior_pics_flag, long_term_reference_flag
             out.se(qp - pps.initQp)
             if (pps.dbkCtrl) {
-                out.ue(0)                               // деблокинг включён: на сжатом кадре он к лучшему
+                out.ue(0)                               // deblocking included: on compressed frame it is for the best
                 out.se(0)
                 out.se(0)
             }
@@ -117,7 +117,7 @@ internal object IdrIntra {
             val my = a / w
             val left = availLeft(a)
             val top = availTop(a)
-            // --- luma: режим по SAD от реконструкции соседей
+            // --- luma: mode by SAD from reconstruction of neighbors
             var bestMode = 2
             var bestSad = Int.MAX_VALUE
             for (m in 0..3) {
@@ -152,11 +152,11 @@ internal object IdrIntra {
             }
             val cbpL = if (anyAc) 15 else 0
             if (!anyAc) for (b in 0 until 16) coef[b].fill(0)
-            // luma DC: Адамар 4x4, квант
+            // luma DC: Adamar 4x4, quantum
             hadamard4(dc)
             val dcLevels = IntArray(16)
             for (p in 0 until 16) dcLevels[p] = quant(dc[p] / 2, MF[qp % 6][0], 2 * f, qbits + 1)
-            // реконструкция luma
+            // luma
             val dcY = dcLevels.copyOf()
             hadamard4(dcY)
             val ls = 16 * V[qp % 6][0]
@@ -173,7 +173,7 @@ internal object IdrIntra {
                     rec.y[(my * 16 + by * 4 + i) * rec.width + mx * 16 + bx * 4 + j] = px.coerceIn(0, 255).toByte()
                 }
             }
-            // --- chroma: режим по сумме SAD Cb + Cr
+            // --- chroma: mode by sum SAD Cb + Cr
             val cw = pic.width / 2
             var cMode = 0
             var cBest = Int.MAX_VALUE
@@ -249,7 +249,7 @@ internal object IdrIntra {
                     }
                 }
             }
-            // --- синтаксис макроблока
+            // --- macroblock syntax
             if (cbpL != 0 || cbpC != 0) cbpMbs++
             out.ue(1 + bestMode + 4 * cbpC + if (cbpL == 15) 12 else 0)
             out.ue(cMode)
@@ -335,7 +335,7 @@ internal object IdrIntra {
             return true
         }
 
-        /** Предсказание chroma 8x8 (8.3.4) в p[y * 8 + x]; false - режим недоступен. */
+        /** Prediction chroma 8x8 (8.3.4) in p[y * 8 + x]; false - mode not available. */
         fun chromaPred(m: Int, r: ByteArray, s: Int, mx: Int, my: Int, left: Boolean, top: Boolean, p: IntArray): Boolean {
             val x0 = mx * 8
             val y0 = my * 8
@@ -391,7 +391,7 @@ internal object IdrIntra {
             return sum
         }
 
-        /** residual_block_cavlc (7.3.5.3.2, 9.2) для n коэффициентов list; возвращает TotalCoeff. */
+        /** residual_block_cavlc (7.3.5.3.2, 9.2) for n coefficients list; returns TotalCoeff. */
         fun residual(c: IntArray, n: Int, nC: Int): Int {
             val idx = IntArray(16)
             var tc = 0
@@ -441,7 +441,7 @@ internal object IdrIntra {
             out.u(CavlcTables.COEFF_LEN[t][i], CavlcTables.COEFF_BITS[t][i])
         }
 
-        /** level_prefix / level_suffix (9.2.2.1) для levelCode при suffixLength sl. */
+        /** level_prefix/level_suffix (9.2.2.1) for levelCode at suffixLength sl. */
         fun level(code: Int, sl: Int) {
             val prefix: Int
             val suffixLen: Int
@@ -473,7 +473,7 @@ internal object IdrIntra {
         return if (v < 0) -z else z
     }
 
-    /** Прямое целочисленное преобразование 4x4 (b[i * 4 + j], i - строка). */
+    /** Direct integer conversion 4x4 (b[i * 4 + j], i - string). */
     private fun forward(b: IntArray) {
         for (i in 0 until 4) {
             val o = i * 4
@@ -498,7 +498,7 @@ internal object IdrIntra {
         }
     }
 
-    /** Обратное преобразование 8.5.12.2 с округлением (x + 32) >> 6. */
+    /** Inverse 8.5.12.2 conversion with rounding (x + 32) >> 6. */
     private fun inverse(d: IntArray) {
         for (i in 0 until 4) {
             val o = i * 4
@@ -523,7 +523,7 @@ internal object IdrIntra {
         }
     }
 
-    /** Адамар 4x4 на месте (матрица симметрична: и прямой, и обратный). */
+    /** Adamar 4x4 in place (matrix is symmetrical: both straight and reverse). */
     private fun hadamard4(m: IntArray) {
         for (i in 0 until 4) {
             val o = i * 4

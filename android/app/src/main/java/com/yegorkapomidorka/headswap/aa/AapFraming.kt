@@ -3,9 +3,9 @@ package com.yegorkapomidorka.headswap.aa
 import java.io.ByteArrayOutputStream
 
 /**
- * Кадры AAP (порт pc-headunit/aap/framing.py):
- *   [chan][flags][len BE16] ; FIRST без LAST: ещё [total BE32] ; тело = TLS-record (после handshake)
- *   или [type BE16][data] (до него). Чистая JVM-логика.
+ * frame AAP (pc-headunit/aap/framing.py port):
+ *   [chan][flags][len BE16] ; FIRST without LAST: more [total BE32] ; body = TLS-record (after handshake)
+ *   or [type BE16][data] (before him). Clean JVM-logic.
  */
 object AapFraming {
     const val FLAG_FIRST = 0x01
@@ -22,11 +22,11 @@ object AapFraming {
 
     const val CHANNEL_CONTROL = 0
 
-    /** Один TLS-record несёт до 16384 байт plaintext; сообщение больше режется на кадры такого размера. */
+    /** One TLS-record carries up to 16384 bytes of plaintext; the message is cut more into frames of this size. */
     const val MAX_FRAGMENT = 0x4000
     const val MAX_BODY = 0xFFFF
 
-    /** FIRST-кадр, который не LAST, несёт 4-байтный total. */
+    /** FIRST-frame, which is not LAST, carries 4 byte total. */
     fun hasTotalSize(flags: Int) = (flags and (FLAG_FIRST or FLAG_LAST)) == FLAG_FIRST
 
     fun buildFrame(chan: Int, flags: Int, body: ByteArray, total: Int? = null): ByteArray {
@@ -47,7 +47,7 @@ object AapFraming {
         return out.toByteArray()
     }
 
-    /** Нешифрованное сообщение: [chan][flags][len = 2 + data][type BE16][data]. */
+    /** Unencrypted message: [chan][flags][len = 2 + data][type BE16][data]. */
     fun buildPlain(chan: Int, msgType: Int, data: ByteArray = ByteArray(0), flags: Int = FLAGS_PLAIN_BULK): ByteArray =
         buildFrame(chan, flags, typed(msgType, data))
 
@@ -59,7 +59,7 @@ object AapFraming {
         return b
     }
 
-    /** headunit-revived AapMessage.flags(): control-типы 1..26 на не-control канале получают 0x04. */
+    /** headunit-revived AapMessage.flags(): control-Types 1..26 on non-control channel get 0x04. */
     fun controlFlagNeeded(chan: Int, msgType: Int) = chan != CHANNEL_CONTROL && msgType in 1..26
 
     fun messageFlags(chan: Int, msgType: Int) =
@@ -68,8 +68,8 @@ object AapFraming {
     class Fragment(val flags: Int, val chunk: ByteArray, val total: Int?)
 
     /**
-     * Кадры одного сообщения. Влезает - один bulk-кадр (total null). Иначе FIRST (0x09, с total),
-     * MIDDLE (0x08)* и LAST (0x0a). Каждый chunk шифруется отдельно, по порядку.
+     * frame one message. Climbs - one bulk-frame (total null). Otherwise FIRST (0x09, with total),
+     * MIDDLE (0x08)* and LAST (0x0a). Each chunk is encrypted separately, in order.
      */
     fun splitMessage(plaintext: ByteArray, chan: Int, msgType: Int, maxFragment: Int = MAX_FRAGMENT): List<Fragment> {
         if (plaintext.size <= maxFragment) return listOf(Fragment(messageFlags(chan, msgType), plaintext, null))
@@ -95,7 +95,7 @@ object AapFraming {
         val encrypted get() = (flags and FLAG_ENCRYPTED) != 0
     }
 
-    /** Поток байт -> кадры. TCP границ не даёт, feed() принимает любые куски. */
+    /** Byte flow -> frame. TCP does not give boundaries, feed() accepts any pieces. */
     class Parser {
         private var buf = ByteArray(0)
         private var len = 0
@@ -131,10 +131,10 @@ object AapFraming {
     }
 
     /**
-     * Склейка расшифрованных тел FIRST/MIDDLE/LAST в целые сообщения, по каналам. push() возвращает
-     * целый plaintext ([type BE16][payload]) или null, пока серия открыта. Нарушения порядка идут в warn:
-     * одинокий MIDDLE/LAST отбрасывается, FIRST поверх открытой серии заменяет её, несовпадение
-     * размера с total возвращается как есть.
+     * The stack of decrypted FIRST/MIDDLE/LAST bodies into whole messages, over channels. push() returns
+     * whole plaintext ([type BE16][payload]) or nullwhile the series is open. Disorders of order go to warn:
+     * Single MIDDLE/LAST is discarded, FIRST over open series replaces it, mismatch
+     * The total comes back as is.
      */
     class Reassembler(private val warn: (String) -> Unit = {}) {
         private val runs = HashMap<Int, ByteArrayOutputStream>()

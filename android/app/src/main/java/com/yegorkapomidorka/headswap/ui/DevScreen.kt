@@ -34,7 +34,7 @@ import com.yegorkapomidorka.headswap.aa.TouchDecimation
 import com.yegorkapomidorka.headswap.aa.TtsPreroll
 import com.yegorkapomidorka.headswap.aa.VoiceChunk
 
-/** «Для разработчиков» (Dev.dc.html): отладочные флажки, кнопки, статус и живой лог (последние ~200 строк). */
+/** Developer screen (Dev.dc.html): debug switches, buttons, status, and live log, retaining about 200 recent lines. */
 class DevScreen(host: MainActivity) : Screen(host) {
     private val aa = AaPrefs(ctx)
     private lateinit var statusView: TextView
@@ -58,7 +58,7 @@ class DevScreen(host: MainActivity) : Screen(host) {
     private val ttsPrerollRows = LinkedHashMap<TtsPreroll, RadioRow>()
     private val touchDecimationRows = LinkedHashMap<TouchDecimation, RadioRow>()
 
-    /** AVC-энкодеры телефона (null = список получить не удалось, тогда размер не проверяем). Список не меняется, считаем один раз. */
+    /** AVC-encoder phone (null = list could not be obtained, then the size is not checked). The list does not change, we believe once. */
     private val avcEncoders: List<MediaCodecInfo.VideoCapabilities>? by lazy {
         try {
             MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos
@@ -277,7 +277,7 @@ class DevScreen(host: MainActivity) : Screen(host) {
     private fun row(title: String, sub: String, checked: Boolean, onChange: (Boolean) -> Unit) =
         ToggleRow(ctx, title, sub, checked, 64, false, 16f, 13f, onChange)
 
-    /** Карточка из строк-переключателей с разделителями. */
+    /** A card of switch strings with separators. */
     private fun group(rows: List<ToggleRow>): LinearLayout {
         val c = ctx
         val card = c.card()
@@ -288,7 +288,7 @@ class DevScreen(host: MainActivity) : Screen(host) {
         return card
     }
 
-    /** Карточка «Своё разрешение»: переключатель и, когда включено, поля ширины/высоты с живым расчётом. */
+    /** "Your resolution" card: switch and, when enabled, width/height fields with live calculation. */
     private fun customResCard(): LinearLayout {
         val c = ctx
         val card = c.card()
@@ -374,7 +374,7 @@ class DevScreen(host: MainActivity) : Screen(host) {
         return card
     }
 
-    /** Поле ввода числа: как wifiField в настройках, но 18sp/500; высота 52dp задаётся при добавлении. */
+    /** Number input field: as wifiField in settings, but 18sp/500; height 52dp is specified when added. */
     private fun customField(): EditText = EditText(ctx).apply {
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
         setTextColor(ctx.clr(R.color.on))
@@ -387,14 +387,14 @@ class DevScreen(host: MainActivity) : Screen(host) {
         filters = arrayOf(InputFilter.LengthFilter(4))
     }
 
-    /** Кнопка «Как просит ГУ» видна, только когда ГУ уже называла размер. */
+    /** The button “As requested by head unit” is visible only when head unit has already called the size. */
     private fun refreshCustomFromHu() {
         val ok = aa.lastHuW > 0 && aa.lastHuH > 0
         customFromHu?.visibility = if (ok) View.VISIBLE else View.GONE
         if (ok) customFromHuText?.text = ctx.getString(R.string.dev_custom_from_hu, aa.lastHuW, aa.lastHuH)
     }
 
-    /** Проверка введённого размера: ошибка = не сохраняем, предупреждения сохранению не мешают. */
+    /** Checking the entered size: error = not save, save warnings do not interfere. */
     private fun validateCustom() {
         val c = ctx
         val w = customWField?.text?.toString()?.toIntOrNull() ?: 0
@@ -480,7 +480,7 @@ class DevScreen(host: MainActivity) : Screen(host) {
         if (atBottom) logScroll.post { logScroll.fullScroll(View.FOCUS_DOWN) }
     }
 
-    /** Время приглушено, ошибки/предупреждения/успех окрашены. */
+    /** Time is muted, errors/warnings/success are colored. */
     private fun colorize(lines: List<String>): CharSequence {
         val c = ctx
         val dim = (c.clr(R.color.on2) and 0x00FFFFFF) or 0xBF000000.toInt()

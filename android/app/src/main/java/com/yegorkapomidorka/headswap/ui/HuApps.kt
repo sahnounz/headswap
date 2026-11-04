@@ -10,33 +10,33 @@ import com.yegorkapomidorka.headswap.AppLog
 import com.yegorkapomidorka.headswap.R
 
 /**
- * Чужие приложения, которые Android Auto показывает на «dev-ГУ» (Headswap представляется как Desktop Head Unit,
- * в AA включены «Неизвестные источники»). Установленные находим сами (HuApps.detect), каталог - только рекомендации
- * со ссылкой на релизы. Ничего не скачиваем и не ставим сами.
- * Пакет каталога должен быть и в `<queries>` манифеста, иначе на API 30+ его не видно (остальные находит `<intent>` там же).
+ * The foreign applications that the Android Auto shows on the "dev-head unit" (Headswap is represented as the Desktop Head Unit,
+ * in AA included "Unknown sources"). Installed find themselves (HuApps.detect), catalog - only recommendations
+ * with reference to releases. We do not download or put anything ourselves.
+ * The directory package must also be in the `<queries>` manifest, otherwise it is not visible on the API 30+ (the rest find `<intent>` there).
  */
 class HuApp(
     val name: String,
     val pkg: String,
     val url: String,
     val descRes: Int,
-    /** Строка-требование («Нужен Android 15+») или null. */
+    /** String-requirement ("Need Android 15+") or null. */
     val reqRes: Int? = null,
-    /** Минимальный SDK_INT телефона; 0 - без ограничения. */
+    /** Minimum SDK_INT phone; 0 - unlimited. */
     val minSdk: Int = 0,
 )
 
-/** Что показать про приложение: стоит ли оно и пойдёт ли на этом телефоне. */
+/** What to show about the application: whether it is worth it and will go on this phone. */
 data class HuAppStatus(val installed: Boolean, val unsupported: Boolean)
 
-/** Кандидат из запросов к PackageManager: пакет, системный ли он и кто его поставил (null - adb, браузер, пакетный установщик). */
+/** Candidate of queries to the PackageManager: package, whether it is system and who supplied it (null - adb, browser, batch installer). */
 data class AppCandidate(val pkg: String, val isSystem: Boolean, val installer: String?)
 
-/** Итог отбора: пакеты для «Установлено на телефоне» (порядок обнаружения) и записи каталога для «Рекомендуем». */
+/** The result of the selection: packages for "Set on the phone" (detection order) and catalog entries for "Recommended". */
 class AppsSelection(val installed: List<String>, val recommended: List<HuApp>)
 
 object HuApps {
-    /** Приложения из Play Android Auto показывает и так, их не перечисляем. */
+    /** Applications from Play Android Auto show and so, they are not listed. */
     const val PLAY_INSTALLER = "com.android.vending"
 
     private const val CATEGORY_PROJECTION = "com.google.android.gms.car.category.CATEGORY_PROJECTION"
@@ -59,13 +59,13 @@ object HuApps {
         ),
     )
 
-    /** Чистая логика статуса: проверка установки и SDK_INT приходят снаружи (в тестах - фейки). */
+    /** Pure status logic: Installation check and SDK_INT come from the outside (in tests - fakes). */
     fun status(app: HuApp, isInstalled: (String) -> Boolean, sdkInt: Int): HuAppStatus =
         HuAppStatus(isInstalled(app.pkg), sdkInt < app.minSdk)
 
     /**
-     * Чистая логика отбора, без Android. В «Установлено» попадает кандидат, который не мы сами, не системный и не из Play;
-     * плюс всё из каталога, что стоит на телефоне (даже если запросы его не нашли). В «Рекомендуем» - каталожное, чего нет.
+     * Pure selection logic, without Android. In "Installed" gets a candidate who is not ourselves, not system and not from Play;
+     * plus everything from the catalog that is on the phone (even if requests are not found). In "Recommend" - catalog, which is not.
      */
     fun select(
         candidates: List<AppCandidate>,
@@ -82,7 +82,7 @@ object HuApps {
         return AppsSelection(installed.toList(), catalog.filter { it.pkg !in installed })
     }
 
-    /** Ищем приложения для AA на телефоне: сервисы-плееры (CATEGORY_PROJECTION) и полноэкранные activity (CAR_LAUNCHER). */
+    /** We are looking for applications for AA on the phone: player services (CATEGORY_PROJECTION) and full-screen activity (CAR_LAUNCHER). */
     fun detect(ctx: Context): AppsSelection =
         select(scan(ctx.packageManager), ctx.packageName, CATALOG) { isInstalled(ctx, it) }
 
@@ -131,7 +131,7 @@ object HuApps {
 
     fun status(ctx: Context, app: HuApp): HuAppStatus = status(app, { isInstalled(ctx, it) }, Build.VERSION.SDK_INT)
 
-    /** Intent запуска или null: у приложения может не быть своей иконки (тогда кнопку «Открыть» не показываем). */
+    /** Intent startup or null: application may not have its own icon (then the button "Open" is not shown). */
     fun launchIntent(ctx: Context, pkg: String): Intent? =
         ctx.packageManager.getLaunchIntentForPackage(pkg)?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 

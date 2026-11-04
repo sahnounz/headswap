@@ -27,7 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import com.yegorkapomidorka.headswap.R
 import kotlin.math.roundToInt
 
-/** Панель и оверлей чужого лаунчера всегда тёмные и светлые по тексту: тема лаунчера Headswap их не касается. */
+/** The panel and overlay of someone else's launcher are always dark and light in text: the theme of launcher Headswap does not concern them. */
 private val BAR_BG = Color(0xFF0E1419)
 private val BAR_FG = Color(0xFFF2F5F7)
 private val BAR_PRESSED = Color(0x38FFFFFF)
@@ -35,8 +35,8 @@ private val BAR_ACTIVE = Color(0x24FFFFFF)
 private val RECENTS_SCRIM = Color(0xF00A0F14)
 
 /**
- * Режим чужого лаунчера: окно [EmbedHost.app] на всю ширину над нашей панелью «Назад / Домой / Недавние». Рейки, главного
- * экрана и наших оверлеев (входящий звонок) здесь нет. Окно живёт в корне, как и у наших приложений.
+ * Alien Mode launcher: window [EmbedHost.app] all width above our back / home / recent panel. Reiki, main
+ * the screen and our overlays (incoming call) are not here. The window lives at the root, like our applications.
  */
 @Composable
 internal fun ForeignRoot() {
@@ -47,7 +47,7 @@ internal fun ForeignRoot() {
     val appKey = model.appKey
     CompositionLocalProvider(LocalPalette provides Palettes.DARK) {
         val solid = Palettes.DARK.bgSolid
-        // окно навигатора здесь не нужно, а держит одну из двух аренд
+        // the window of the navigator is not needed here, but holds one of the two leases
         LaunchedEffect(Unit) { EmbedHost.want(EmbedHost.nav, null, 0, 0) }
         LaunchedEffect(appKey, rect?.width, rect?.height) {
             EmbedHost.want(EmbedHost.app, appKey, rect?.width?.roundToInt() ?: 0, rect?.height?.roundToInt() ?: 0)
@@ -59,7 +59,7 @@ internal fun ForeignRoot() {
             ForeignBar()
         }
         if (appKey != null) {
-            // пока открыты «Недавние», касания в дочернее окно не идут
+            // while the "Recent" is open, the touches to the child window do not go
             EmbedLayer(EmbedHost.app, rect, shown = true, interactive = !model.recentsOpen, rounded = false, background = solid,
                 starting = stringResource(R.string.l_starting, model.starting ?: ""), onCardTap = null)
         }
@@ -67,7 +67,7 @@ internal fun ForeignRoot() {
     }
 }
 
-/** Тёмная полоса высотой [LauncherSpec.barH] с тремя кнопками по центру: ◀ ● ■, как трёхкнопочная навигация Android. */
+/** Dark stripe height [LauncherSpec.barH] with three buttons in the center: ◀  ●  ■ , like three-button navigation Android. */
 @Composable
 private fun ForeignBar() {
     val m = LocalMetrics.current
@@ -88,7 +88,7 @@ private fun ForeignBar() {
     }
 }
 
-/** Цель касания: высота панели на две высоты в ширину, подсветка на DOWN. */
+/** Purpose of touch: panel height two heights wide, backlight on DOWN. */
 @Composable
 private fun BarButton(icon: List<String>, description: String, active: Boolean, onTap: () -> Unit) {
     val m = LocalMetrics.current
@@ -103,7 +103,7 @@ private fun BarButton(icon: List<String>, description: String, active: Boolean, 
     }
 }
 
-/** «Недавние» поверх окна: иконки и названия, тап открывает приложение, тап мимо закрывает. */
+/** "Recent" on top of the window: icons and names, tap opens the application, tap closes by. */
 @Composable
 private fun RecentsOverlay() {
     val model = LauncherModel

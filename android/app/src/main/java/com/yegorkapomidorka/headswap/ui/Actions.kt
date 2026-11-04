@@ -24,14 +24,14 @@ import com.yegorkapomidorka.headswap.aa.ProbeResult
 import com.yegorkapomidorka.headswap.aa.TranscodeSelfCheck
 
 /**
- * Действия, которые раньше жили прямо в MainActivity (кнопки UI и команды intent):
- * сканирование USB, старт/стоп сервиса моста, запуск сервера ГУ, диагностика.
+ * Actions that used to live right in MainActivity (buttons UI and command intent):
+ * scanning USB, start/stop of bridge service, launch of head unit server, diagnostics.
  */
 object Actions {
     private const val AA_PACKAGE = "com.google.android.projection.gearhead"
     private const val AA_SETTINGS_ACTIVITY = "com.google.android.projection.gearhead.companion.settings.DefaultSettingsActivity"
 
-    /** Сканировать: показать и залогировать все поля аксессуара; без разрешения запросить; с разрешением запустить сервис. */
+    /** Scan: show and pledge all the fields of the accessory; without permission to request; with permission to run the service. */
     fun scan(ctx: Context, reason: String) {
         val usb = ctx.getSystemService(UsbManager::class.java)
         AppLog.i("сканирование ($reason)")
@@ -71,7 +71,7 @@ object Actions {
         ctx.startForegroundService(Intent(ctx, BridgeService::class.java).setAction(BridgeService.ACTION_STOP))
     }
 
-    /** Самопроверка сертификатов AA и TLS без сети: результат в лог и AaState.selftest. */
+    /** Self-checking certificates AA and TLS without network: result in log and AaState.selftest. */
     fun aaSelftest(ctx: Context) {
         val app = ctx.applicationContext
         Thread({ AaCreds.selfTest(app) }, "aa-selftest").start()
@@ -79,7 +79,7 @@ object Actions {
 
     fun transcodeTest(ctx: Context, opts: String) = TranscodeSelfCheck.run(ctx, opts)
 
-    /** Настройки Android Auto (сервер ГУ): HyperOS прячет их из системных настроек. */
+    /** Settings Android Auto (server head unit): HyperOS hides them from system settings. */
     fun openAaSettings(ctx: Context) {
         try {
             ctx.startActivity(
@@ -94,8 +94,8 @@ object Actions {
     }
 
     /**
-     * Кнопка «Открыть Android Auto» на главном экране и в онбординге: сервер ГУ включает пользователь сам
-     * (⋮ → «Вкл. сервер головного устр-ва»), поэтому только снимаем «Машина отключена» и открываем настройки AA.
+     * Button «Open Android Auto" On the Main Screen and in onboarding: server head unit Includes the user himself
+     * (⋮ → Start head unit server), so only clear the Car disconnected state and open AA settings.
      */
     fun startServerFromUi(ctx: Context) {
         HeadswapStatus.markServerRequested()
@@ -103,8 +103,8 @@ object Actions {
     }
 
     /**
-     * Ручная проба сервера ГУ («Для разработчиков»): одна попытка полным рукопожатием, итог тостом и строками SRVCHECK в лог.
-     * Только без моста и USB: проба сбивает Android Auto. На состояние главного экрана не влияет.
+     * Manually sample the head unit ("For Developers") server: one attempt at full handshake, total toast and strings of SRVCHECK into a log.
+     * Only without the bridge and USB: sample knocks down Android Auto. The main screen condition does not affect.
      */
     fun checkServer(ctx: Context) {
         val app = ctx.applicationContext
@@ -134,7 +134,7 @@ object Actions {
         }
     }
 
-    /** Проверка микрофона телефона без машины: 2 с AudioRecord, в лог сколько байт (ждём около 64000) и пик. */
+    /** Checking the microphone of the phone without a machine: 2 with AudioRecord, in log how many bytes (waiting about 64000) and peak. */
     fun micTest(ctx: Context) {
         val app = ctx.applicationContext
         Thread({

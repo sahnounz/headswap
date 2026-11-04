@@ -1,31 +1,31 @@
-# 0002. Отказ от службы спецвозможностей: сервер ГУ пользователь включает вручную
+# 0002. No accessibility service: the user starts the head unit server manually
 
-- Статус: принято
-- Дата: 2026-10-24 (2.6.0)
-- Источники: PR #108, #109, #118, `docs/aa-headunit.md` §10 (автозапуск убран 2026-10-24)
+- Status: accepted
+- Date: 2026-10-24 (2.6.0)
+- Sources: PR #108, #109, #118, `docs/aa-headunit.md` §10 (automatic startup removed 2026-10-24)
 
-## Контекст
+## Context
 
-Раньше специальная служба (autosrv) сама нажимала в AA «⋮ → Остановить/Запустить сервер ГУ». Для этого пользователю
-приходилось разблокировать экран, снимать «ограниченные настройки» и выдавать спецвозможности. Сервер 5277
-одноразовый (0003): любое закрытие сессии его глушит, службе приходилось перезапускать его после каждой сессии.
+The old autosrv accessibility service tapped AA's menu to stop/start the head unit server. Users had to unlock
+the screen, allow restricted settings, and grant accessibility access. Because server 5277 is single-use (0003),
+the service had to restart it after every session.
 
-Решающей оказалась не техника, а распространение: пользователи не хотели выдавать приложению права
-спецвозможностей, и это отпугивало от установки.
+Distribution, rather than a technical limitation, drove the decision: users were reluctant to grant accessibility
+access, which discouraged installation.
 
-## Решение
+## Decision
 
-Служба удалена (PR #108). В манифесте остаётся только `BridgeService` (`AndroidManifest.xml:124`), accessibility-службы нет.
-Пользователь включает сервер ГУ в AA один раз вручную. Смена видео-режима и DPI не закрывает тёплую AA-сессию.
-Кнопка «Остановить» убрана с главного экрана (PR #118). Для обновившихся есть одноразовое окно с объяснением (PR #109).
+Remove the service (PR #108). The manifest retains `BridgeService` (`AndroidManifest.xml:124`) but no accessibility service.
+The user manually enables AA's head unit server. Changing video mode or DPI does not close the warm AA session.
+Remove Stop from the home screen (PR #118); show existing users a one-time explanation after upgrading (PR #109).
 
-## Альтернативы
+## Alternatives
 
-- Вернуть службу тумблером: похоронено 26.10, потому что `<service>` всё равно остаётся в манифесте.
-- Отдельный flavor-APK со службой: не делали.
-- Хотспот или LocalOnlyHotspot, чтобы лечить молчащий 5277: 24.10 Егор сказал чинить USB-сторону.
+- An optional switch to restore the service: rejected on 26 October because `<service>` would remain in the manifest.
+- A separate flavor APK containing the service: not implemented.
+- A hotspot or LocalOnlyHotspot to recover a silent server 5277: on 24 October, Yegor chose to fix the USB side instead.
 
-## Последствия
+## Consequences
 
-- Если сервер ГУ упал, перезапустить его некому; приложение только сообщает об этом (0003).
-- Нельзя добавлять функции, которым снова нужны спецвозможности.
+- If the server stops, the app can only report it; it cannot restart it (0003).
+- Do not add features that require accessibility access again.

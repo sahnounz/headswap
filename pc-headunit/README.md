@@ -1,54 +1,69 @@
 # pc-headunit
 
-Минимальный эмулятор головного устройства Android Auto для ПК. Нужен для отладки: подключается к «серверу головного устройства» AA на телефоне (TCP 5277), проходит Version -> TLS -> Auth -> Service Discovery, принимает H.264-видео в `out/video.h264` и пишет весь обмен в консоль и `out/session.log`. Работает без телефона-ГУ и без CarLife, поэтому удобен, чтобы проверить сторону AA отдельно от приложения Headswap.
+A minimal Android Auto head unit emulator for PC debugging. It connects to the phone's AA head unit server
+(TCP 5277), completes Version → TLS → Auth → Service Discovery, saves H.264 video to `out/video.h264`,
+and logs the exchange to the console and `out/session.log`. It requires neither a second phone acting as a head unit
+nor CarLife, so it can test the AA side independently of Headswap.
 
-Протокол описан в [../docs/aa-headunit.md](../docs/aa-headunit.md).
+See the [protocol reference](../docs/aa-headunit.md).
 
-## Зависимости
+## Dependencies
 
 - Python 3.10+
-- `pip install -r requirements.txt` (пакет `protobuf` 5.x; сгенерированные `proto/*_pb2.py` требуют runtime >= 5.27.2)
-- для тестов: `pytest`; тест с проверкой потока через `ffprobe` пропускается, если `ffmpeg`/`ffprobe` нет в PATH
-- для перегенерации `proto/*_pb2.py` (не нужно для запуска): `pip install grpcio-tools==1.67.1`, затем `python proto/gen.py`
+- `pip install -r requirements.txt` (`protobuf` 5.x; generated `proto/*_pb2.py` files require runtime >=5.27.2).
+- Tests require `pytest`. Stream validation with `ffprobe` is skipped if `ffmpeg`/`ffprobe` is absent from PATH.
+- To regenerate `proto/*_pb2.py`, which is unnecessary for normal use: `pip install grpcio-tools==1.67.1`, then `python proto/gen.py`.
 
-## Сертификат
+## Certificates
 
-Эмулятор, как и настоящая ГУ, обязан предъявить телефону клиентский сертификат, подписанный Google Automotive Link. В репозиторий сертификаты не входят (`certs/` в `.gitignore`). Положите PEM-файлы в одну из папок:
+Like a real head unit, the emulator must present a client certificate signed by Google Automotive Link.
+Certificates are not tracked (`certs/` is ignored). Place PEM files in either directory:
 
-```
-pc-headunit/certs/jvc/cert.pem   # JVC Kenwood, из aasdk: src/Messenger/Cryptor.cpp, cert/headunit.crt и headunit.key
+```text
+pc-headunit/certs/jvc/cert.pem   # JVC Kenwood, from aasdk: src/Messenger/Cryptor.cpp, cert/headunit.crt and headunit.key
 pc-headunit/certs/jvc/key.pem
-pc-headunit/certs/hur/cert.pem   # из headunit-revived: app/src/main/res/raw/cert и privkey
+pc-headunit/certs/hur/cert.pem   # From headunit-revived: app/src/main/res/raw/cert and privkey
 pc-headunit/certs/hur/key.pem
 ```
 
-Источники: [opencardev/aasdk](https://github.com/opencardev/aasdk) (продолжение [f1xpl/aasdk](https://github.com/f1xpl/aasdk)), [andreknieriem/headunit-revived](https://github.com/andreknieriem/headunit-revived). Набор выбирается флагом `--cert jvc|hur` (по умолчанию `jvc`). Для тестов нужны оба набора.
+Sources: [opencardev/aasdk](https://github.com/opencardev/aasdk), a continuation of
+[f1xpl/aasdk](https://github.com/f1xpl/aasdk), and
+[andreknieriem/headunit-revived](https://github.com/andreknieriem/headunit-revived).
+Select a set with `--cert jvc|hur` (default `jvc`). Tests require both sets.
 
-## Запуск
+## Run the AA emulator
 
-```
+```sh
 adb forward tcp:5277 tcp:5277
 python hu.py --duration 30 --cert jvc
 ```
 
-На телефоне перед этим: Android Auto -> Настройки -> 10 тапов по «Версия» -> меню «три точки» -> «Start head unit server». Сервер принимает одно соединение за запуск и зависает после грубого обрыва, поэтому останавливайте скрипт через Ctrl+C или `--duration`: он закроет сессию корректно.
+First, on the phone: Android Auto → Settings → tap Version ten times → three-dot menu → Start head unit server.
+The server accepts one connection per launch and can hang after an abrupt disconnect. Stop the script with Ctrl+C
+or `--duration` so it closes the session cleanly.
 
-Полезные флаги: `--check` (локальная проверка сертификата и TLS без подключения), `--touch-test` (тап в центр через 10 с после первого кадра), `--resolution`, `--fps`, `--moto`, `--full-audio`, `--minimal`. Полный список: `python hu.py --help`.
+Useful flags: `--check` (local certificate/TLS check without connecting), `--touch-test` (tap the centre ten seconds
+after the first frame), `--resolution`, `--fps`, `--moto`, `--full-audio`, and `--minimal`.
+Run `python hu.py --help` for the full list.
 
-## Эмулятор ГУ CarLife (`carlife_hu.py`)
+## CarLife head unit emulator (`carlife_hu.py`)
 
-Только стандартная библиотека. По умолчанию (`--transport stream`) это TCP-сервер: мост Headswap на телефоне подключается к нему одним соединением через `adb reverse tcp:7240 tcp:7240`, весь обмен идёт с внешним заголовком канала. Лог и видео пишутся в `out/carlife_hu.log` и `out/carlife_video.h264`.
+Uses only the standard library. By default (`--transport stream`), it is a TCP server. Headswap connects from the phone
+over one connection through `adb reverse tcp:7240 tcp:7240`. Messages include the outer channel header.
+Logs and video go to `out/carlife_hu.log` and `out/carlife_video.h264`.
 
-```
+```sh
 adb reverse tcp:7240 tcp:7240
 python carlife_hu.py --duration 120
 ```
 
-## Режим 6 сокетов (беспроводной формат)
+## Six-socket mode (wireless format)
 
-В беспроводном формате CarLife у каждого канала свой TCP-сокет и нет внешнего заголовка. Телефон слушает шесть портов, эмулятор подключается к ним как клиент (CMD 7240, VIDEO 8240, MEDIA 9240, TTS 9241, VR 9242, TOUCH 9340). Порты достаём с телефона через `adb forward`, поэтому хост по умолчанию 127.0.0.1:
+Wireless CarLife uses one TCP socket per channel, with no outer header. The phone listens; the emulator connects
+as a client. Ports: CMD 7240, VIDEO 8240, MEDIA 9240, TTS 9241, VR 9242, TOUCH 9340.
+Forward the phone's ports with `adb forward`; the default host is therefore 127.0.0.1:
 
-```
+```sh
 adb forward tcp:7240 tcp:7240
 adb forward tcp:8240 tcp:8240
 adb forward tcp:9240 tcp:9240
@@ -59,55 +74,80 @@ adb shell am start-foreground-service -n com.yegorkapomidorka.headswap/.BridgeSe
 python carlife_hu.py --transport tcp6 --touch-test
 ```
 
-Сначала запускается мост на телефоне (он открывает порты), потом эмулятор. Логика сессии та же: HU_PROTOCOL_VERSION, init burst после MD_INFO, авторизация, heartbeat раз в секунду, тап через 15 с после первого кадра, итог в конце. Для Data-канала (порт 9440, телефон его принимает и игнорирует) есть `--extra-data-socket`.
+Start the bridge first so it opens the ports, then start the emulator. Session behaviour is unchanged:
+HU_PROTOCOL_VERSION, an initialization burst after MD_INFO, authentication, a heartbeat every second,
+a tap fifteen seconds after the first frame, and a final summary. `--extra-data-socket` adds the Data channel
+on port 9440; the phone accepts that connection and ignores it.
 
-Проверка реакции моста на потерю канала: эмулятор закрывает один сокет и ждёт, закроет ли мост остальные.
+To test channel loss, close one socket and wait for the bridge to close the others:
 
-```
+```sh
 python carlife_hu.py --transport tcp6 --kill-chan VIDEO --kill-after 10
 ```
 
-`--kill-chan` принимает CMD, VIDEO, MEDIA, TTS, VR, TOUCH; `--kill-after` считается от первого видеокадра. В итоге будет строка `kill: VIDEO at 12.3 s, bridge closed others after 0.4 s` или `bridge did NOT close others within 10 s` (последнее значит, что мост остался висеть с частью каналов).
+`--kill-chan` accepts CMD, VIDEO, MEDIA, TTS, VR, or TOUCH. `--kill-after` is measured from the first video frame.
+The result is either `kill: VIDEO at 12.3 s, bridge closed others after 0.4 s` or
+`bridge did NOT close others within 10 s`. The latter means the bridge retained some channels after losing another.
 
-## Циклы паузы
+## Pause cycles
 
-Сценарий «ГУ ставит видео на паузу и снова запускает» (на START мост сбрасывает декодер и ждёт новый IDR). Работает в обоих режимах:
+Test a head unit pausing and resuming video. On START, the bridge resets the decoder and waits for a new IDR.
+This works with both transports:
 
-```
+```sh
 python carlife_hu.py --pause-cycles 20 --pause-every 10 --pause-for 3 --duration 300
 ```
 
-`--pause-cycles N` (по умолчанию 0 = выключено), `--pause-every S` (по умолчанию 10: секунд от первого видеокадра до первого PAUSE, дальше от каждого START до следующего PAUSE), `--pause-for S` (по умолчанию 3: между PAUSE и START). `--duration` должен покрывать N * (every + for), иначе сессия кончится раньше. Эмулятор шлёт `VIDEO_ENCODER_PAUSE` (0x0001800A, пустое тело, как у START), ждёт, шлёт `VIDEO_ENCODER_START` и меряет от START: время до первого видеокадра и до первого ключевого кадра (в Annex-B буфере есть NAL типа 5). Кадры во время паузы считаются отдельно: мост на PAUSE слать их не должен, первый такой кадр попадает в лог с задержкой от PAUSE (несколько мс = кадр «в пути», десятки и сотни = мост не остановился). В итоге:
+- `--pause-cycles N`: default 0, disabled.
+- `--pause-every S`: default 10 seconds, from the first video frame to the first PAUSE, then from each START to the next PAUSE.
+- `--pause-for S`: default 3 seconds between PAUSE and START.
+- `--duration` must cover `N * (every + for)` or the session ends before all cycles complete.
 
-```
+The emulator sends `VIDEO_ENCODER_PAUSE` (0x0001800A, empty body as with START), waits, sends `VIDEO_ENCODER_START`,
+and measures time from START to the first video frame and first key frame (NAL type 5 in the Annex-B buffer).
+It counts frames received during PAUSE separately; the bridge should not send any. The first such frame is logged
+with its delay from PAUSE. A few milliseconds can mean a frame was already in flight; tens or hundreds suggest
+the bridge did not stop.
+
+```text
 pause #1: paused_frames=0, start->first_frame=120 ms, start->idr=480 ms
 pause cycles: 20, worst start->idr 910 ms, frames during pause total 0
 ```
 
-`none` вместо времени значит, что кадра или IDR после START так и не пришло до следующего PAUSE или конца сессии; в сводной строке это отмечено как `(no IDR in K cycles)`. Если сессия кончилась посреди паузы, этот цикл в счёт не идёт, в логе будет строка `session ended during pause`.
+`none` means no frame or IDR arrived between START and the next PAUSE or session end. The summary reports
+`(no IDR in K cycles)`. A cycle interrupted during PAUSE is excluded from the count and logged as `session ended during pause`.
 
-## Ветка B: хотспот телефона
+## Branch B: phone hotspot
 
-Телефон раздаёт хотспот, ПК подключается к нему как ГУ-клиент. Адрес телефона вручную не нужен: эмулятор слушает UDP-маяк (`CarlifeHost` раз в 2 с), берёт адрес отправителя первой датаграммы как host и дальше работает как в режиме 6 сокетов.
+The phone provides a hotspot; the PC joins as a head unit client. No manual phone IP is required. The emulator listens
+for the UDP beacon (`CarlifeHost` every two seconds), uses the first datagram's sender as the host, and continues in six-socket mode.
 
-1. Включить хотспот на телефоне, подключить ПК к нему.
-2. На телефоне запустить ветку B:
-   ```
+1. Enable the phone hotspot and connect the PC to it.
+2. Start branch B on the phone:
+
+   ```sh
    adb shell am start-foreground-service -n com.yegorkapomidorka.headswap/.BridgeService --ez debug_wifi_b true
    ```
-3. На ПК:
-   ```
+
+3. On the PC:
+
+   ```sh
    python carlife_hu.py --transport tcp6 --discover --probe-8999 --touch-test
    ```
 
-На Windows разрешите python входящий UDP 7999 в брандмауэре (частная сеть), иначе маяк не дойдёт. Если у ПК несколько сетевых карт, укажите карту хотспота: `--bind-ip <ip ПК в сети хотспота>`.
+On Windows, allow Python to receive UDP 7999 on private networks in the firewall. If the PC has multiple network
+adapters, select the hotspot adapter with `--bind-ip <PC-IP-on-hotspot>`.
 
-Флаги: `--discover` (только с `--transport tcp6`), `--beacon-port` (по умолчанию 7999), `--bind-ip` (по умолчанию 0.0.0.0), `--discover-timeout` (по умолчанию 60 с; без маяка сессия завершается с `no beacon within 60 s`), `--probe-8999` (после маяка одна UDP-датаграмма на порт 8999 телефона, ответ ждётся до 2 с и необязателен). В итоге выводятся `discovered_host`, число маяков и результат пробы.
+Flags: `--discover` (requires `--transport tcp6`), `--beacon-port` (default 7999), `--bind-ip` (default 0.0.0.0),
+`--discover-timeout` (default 60 seconds; exits with `no beacon within 60 s` if none arrives), and `--probe-8999`
+(sends one UDP datagram to the phone's port 8999 after discovery; waits up to two seconds for an optional reply).
+The summary includes `discovered_host`, beacon count, and probe result.
 
-## Тесты
+## Tests
 
-```
+```sh
 python -m pytest tests -q
 ```
 
-Тесты автономные: «телефон» написан прямо в тесте и общается с сессией через `socket.socketpair()`. Порт 5277 и телефон не нужны.
+Tests are self-contained. A scripted phone in the test communicates through `socket.socketpair()`.
+No physical phone or port 5277 is needed.

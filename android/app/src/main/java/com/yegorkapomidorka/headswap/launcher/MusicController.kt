@@ -22,7 +22,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 data class LikeInfo(val action: MusicLogic.Action, val liked: Boolean)
 
 data class MusicState(
-    /** Есть ли у процесса право читать сессии (MEDIA_CONTENT_CONTROL после активации с ПК). */
+    /** Does the process have the right to read sessions (MEDIA_CONTENT_CONTROL after activation with a PC). */
     val access: Boolean = true,
     val hasSession: Boolean = false,
     val pkg: String? = null,
@@ -34,8 +34,8 @@ data class MusicState(
 )
 
 /**
- * Музыка телефона через MediaSession. Читает активные сессии раз в секунду (пока карточка на экране);
- * без MEDIA_CONTENT_CONTROL - пустое состояние, ничего не падает.
+ * Phone music via MediaSession. Reads active sessions once a second (while the card is on the screen);
+ * without MEDIA_CONTENT_CONTROL - empty state, nothing falls.
  */
 internal object MusicController {
     private const val TAG = "HeadSwapLauncher"
@@ -86,7 +86,7 @@ internal object MusicController {
         return lastArtImage
     }
 
-    // --- управление: вызывать не с главного потока нельзя ограничивать, это короткие Binder-вызовы ---
+    // --- Control: call not with main thread can not be limited, these are short Binder-calls ---
 
     fun previous() { runCatching { controller?.transportControls?.skipToPrevious() } }
     fun next() { runCatching { controller?.transportControls?.skipToNext() } }
@@ -104,7 +104,7 @@ internal object MusicController {
         runCatching { controller?.transportControls?.sendCustomAction(l.action.id, null) }
     }
 
-    /** Медиаприложения: сервисы MediaBrowserService и пакеты с активной сессией, без самого Headswap. */
+    /** Media applications: MediaBrowserService services and active session packages, without the Headswap. itself */
     fun players(ctx: Context): List<String> {
         val pm = ctx.packageManager
         val fromServices = runCatching {
@@ -117,9 +117,9 @@ internal object MusicController {
         return (fromSessions + fromServices).filter { it != ctx.packageName }.distinct()
     }
 
-    /** Сделать плеер текущим: если сессия уже есть - играть, иначе разбудить его MediaBrowserService и нажать play. */
+    /** Make the player current: if the session is already there - play, otherwise wake it up MediaBrowserService and press play. */
     fun startPlayer(ctx: Context, pkg: String) {
-        // Только главный поток (у MediaBrowser Handler); любое исключение здесь убило бы весь процесс моста.
+        // Only the main thread (in the MediaBrowser Handler); any exception here would kill the entire bridge process.
         try {
             controller?.takeIf { it.packageName == pkg }?.let { it.transportControls.play(); return }
             val svc = ctx.packageManager.queryIntentServices(Intent(MediaBrowserService.SERVICE_INTERFACE), 0)

@@ -1,6 +1,6 @@
-# Файлы, без которых APK не выпускается. Путь внутри APK от assets/, по одному на строку.
-# Проверяет .claude/skills/headswap-release/scripts/verify-apk.ps1: файл есть, не пустой, .pem начинается с -----BEGIN.
-# Сертификаты head unit AA: без них приложение падает у юзера с «Нет сертификата head unit».
+# Files without which APK is not released. The path inside APK from assets/, one per line.
+# Checks .claude/skills/headswap-release/scripts/verify-apk.ps1: file is not empty, .pem starts with -----BEGIN.
+# Certificates head unit AA: without them the application drops at the user with "No certificate head unit".
 aa/hur/cert.pem
 aa/hur/key.pem
 aa/jvc/cert.pem

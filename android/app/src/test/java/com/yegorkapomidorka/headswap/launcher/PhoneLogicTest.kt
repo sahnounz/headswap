@@ -43,7 +43,7 @@ class PhoneLogicTest {
 
     @Test fun ringingIsStateG() {
         assertEquals(PhoneCardModel.Incoming("Сергей"), model(state = CallState.RINGING))
-        // звонок идёт и без разрешений на журнал
+        // Call goes without permission for the magazine
         assertEquals(PhoneCardModel.Incoming("Сергей"), model(state = CallState.RINGING, permitted = false))
     }
 
@@ -98,12 +98,12 @@ class PhoneLogicTest {
     @Test fun sessionPickPrefersPlayingThenChosen() {
         data class S(val pkg: String, val playing: Boolean)
         val list = listOf(S("a", false), S("b", true), S("c", false))
-        // играет b, выбран c: показываем играющий
+        // Plays b, selected c: showing player
         assertEquals("b", MusicLogic.pickSession(list, { it.pkg }, { it.playing }, "c")?.pkg)
         assertEquals("b", MusicLogic.pickSession(list, { it.pkg }, { it.playing }, "zzz")?.pkg)
-        // среди играющих выбранный первым
+        // The first player selected
         assertEquals("c", MusicLogic.pickSession(listOf(S("b", true), S("c", true)), { it.pkg }, { it.playing }, "c")?.pkg)
-        // ничего не играет: выбранный
+        // nothing plays: selected
         assertEquals("c", MusicLogic.pickSession(list.map { it.copy(playing = false) }, { it.pkg }, { it.playing }, "c")?.pkg)
         assertEquals("a", MusicLogic.pickSession(list.map { it.copy(playing = false) }, { it.pkg }, { it.playing }, null)?.pkg)
         assertNull(MusicLogic.pickSession(emptyList<S>(), { it.pkg }, { it.playing }, "a"))

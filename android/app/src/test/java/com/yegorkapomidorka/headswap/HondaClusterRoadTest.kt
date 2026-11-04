@@ -68,7 +68,7 @@ class HondaClusterRoadTest {
 
     @Test
     fun trailingSpaceOfPrefixTrimmed() {
-        // префикс из 14 символов кончается на пробеле: пробел отрезается, S пересчитывается по 13 символам
+        // prefix of 14 characters ends on a gap: space is cut off, S is recalculated by 13 characters
         val r = HondaClusterRoad.fit("abcdefghijklm nop")
         assertEquals("abcdefghijklm" + " ".repeat(15), r)
         assertEquals(28, bytes(r))

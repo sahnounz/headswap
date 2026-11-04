@@ -38,9 +38,9 @@ class TransportTest {
         WLog.sink = { wl += it }
     }
 
-    // ---------------- StreamTransport: то, что уходит в USB, не меняется ни на байт ----------------
+    // --------------- StreamTransport: what goes into USB does not change by a single byte -------------
 
-    /** Пишет каждый write() отдельной записью, flush отмечает отдельно. */
+    /** Writes each write() separately, flush notes separately. */
     private class RecordingOut : OutputStream() {
         val calls = Collections.synchronizedList(ArrayList<ByteArray>())
         @Volatile var flushes = 0
@@ -92,7 +92,7 @@ class TransportTest {
 
     @Test
     fun streamDropQueuedRemovesOnlyMatchingMediaData() {
-        // писатель не запущен: всё лежит в очереди. h425: из неё уходит только MEDIA_DATA, остальное на месте
+        // writer is not running: everything lies in line. h425: only leaves MEDIA_DATA, the rest is in place
         val out = RecordingOut()
         val t = StreamTransport(BlockingIn(), out, TransportCaps.USB_AOA, "test", clock = clock)
         val data = Wire.dataInner(0x00030006, 1, ByteArray(4096))
@@ -124,7 +124,7 @@ class TransportTest {
         val ver = Wire.cmdInner(Msg.HU_PROTOCOL_VERSION, byteArrayOf(8, 2, 16, 0))
         val hb = Wire.dataInner(Msg.VIDEO_HEARTBEAT, 0, null)
         val wire = Wire.outerHeader(Ch.CMD, ver.size) + ver + Wire.outerHeader(Ch.VIDEO, hb.size) + hb
-        for (b in wire) pout.write(b.toInt())   // по байту: границы чтения не важны
+        for (b in wire) pout.write(b.toInt())   // Byte: Reading limits are not important
         pout.close()
         assertTrue(closedLatch.await(5, TimeUnit.SECONDS))
         assertEquals("EOF чтения (ГУ отключилось)", reason.get())
@@ -149,9 +149,9 @@ class TransportTest {
         assertEquals(0, calls)
     }
 
-    // ---------------- InnerCodec: inner без внешнего заголовка ----------------
+    // ---------------- InnerCodec: inner without external header -----------
 
-    /** Отдаёт по одному байту за read: проверка сборки заголовка и тела из кусков. */
+    /** Gives one byte per read: to test the assembly of header and body pieces. */
     private class Trickle(private val b: ByteArray) : InputStream() {
         private var p = 0
         override fun read(): Int = if (p < b.size) b[p++].toInt() and 0xFF else -1
@@ -187,7 +187,7 @@ class TransportTest {
 
     @Test
     fun codecRejectsForeignType() {
-        // CMD-тип на TOUCH-сокете: заголовок чужого канала = разрыв, а не резинк
+        // CMD-type on TOUCH-socket: header alien channel = gap, not rubber band
         val wrong = Wire.cmdInner(Msg.HU_INFO, byteArrayOf(1, 2))
         try {
             readInners(Ch.TOUCH, ByteArrayInputStream(wrong))
@@ -199,7 +199,7 @@ class TransportTest {
 
     @Test
     fun codecSkipsHeartbeatOnCmd() {
-        // h129, VW CNS3 Tiguan L Pro: 0x20002 с длиной 0 в CMD-сокете, CMD-кадр 8 байт
+        // h129, VW CNS3 Tiguan L Pro: 0x20002 with length 0 in CMD-socket, CMD-frame 8 byte
         val hb = Wire.cmdInner(Msg.VIDEO_HEARTBEAT, null)
         val a = Wire.cmdInner(0x0001800F, ByteArray(12) { 3 })
         val b = Wire.cmdInner(Msg.VIDEO_ENCODER_START, null)
@@ -208,7 +208,7 @@ class TransportTest {
         for (s in listOf<InputStream>(ByteArrayInputStream(wire), Trickle(wire))) {
             assertEquals(want, readInners(Ch.CMD, BufferedInputStream(s)).map { it.toList() })
         }
-        // 12-байтный видео-heartbeat [0][тип][метка] в CMD-сокете: хвост метки пропущен, поток не сбит
+        // 12 byte video-heartbeat [0][type][tag] in CMD-socket: tail mark omitted, stream not downed
         val hb12 = ByteArray(12)
         Wire.putU32(hb12, 4, Msg.VIDEO_HEARTBEAT)
         Wire.putU32(hb12, 8, 0x12345678)
@@ -261,7 +261,7 @@ class TransportTest {
         }
     }
 
-    // ---------------- Tcp6Listener + MultiSocketTransport на loopback ----------------
+    // --------------- Tcp6Listener + MultiSocketTransport on loopback -----------
 
     private val zeroPorts = Tcp6Ports.DEFAULT.mapValues { 0 }
 
@@ -296,7 +296,7 @@ class TransportTest {
         try {
             val ver = Wire.cmdInner(Msg.HU_PROTOCOL_VERSION, byteArrayOf(8, 2, 16, 0))
             val touch = Wire.cmdInner(Msg.TOUCH_ACTION, byteArrayOf(8, 0, 16, 10, 24, 20))
-            hu.send(Ch.VIDEO, Wire.dataInner(Msg.VIDEO_HEARTBEAT, 0, null))   // вычитывается и не доходит до протокола
+            hu.send(Ch.VIDEO, Wire.dataInner(Msg.VIDEO_HEARTBEAT, 0, null))   // is not read and does not reach the protocol
             hu.send(Ch.CMD, ver)
             hu.send(Ch.TOUCH, touch)
             assertTrue(two.await(5, TimeUnit.SECONDS))
@@ -329,7 +329,7 @@ class TransportTest {
             dup.soTimeout = 3000
             assertEquals("второй CMD закрыт сразу", -1, try { dup.getInputStream().read() } catch (_: java.net.SocketException) { -1 })
             dup.close()
-            // первый CMD жив
+            // The first CMD is alive
             t.send(Ch.CMD, Wire.cmdInner(Msg.FOREGROUND, null))
             assertEquals(8, hu.readExactly(Ch.CMD, 8).size)
             assertTrue(wl.any { it.startsWith("WL tcp reject") && "why=dup" in it })
@@ -350,7 +350,7 @@ class TransportTest {
             hu.socks.getValue(Ch.TOUCH).close()
             assertTrue("сессия не зависла", done.await(5, TimeUnit.SECONDS))
             assertTrue(reason.get(), reason.get().startsWith("tcp6 TOUCH("))
-            // остальные сокеты транспорт закрыл сам
+            // socket transport closed itself
             val cmd = hu.socks.getValue(Ch.CMD)
             cmd.soTimeout = 3000
             assertEquals(-1, try { cmd.getInputStream().read() } catch (_: java.net.SocketException) { -1 })
@@ -370,7 +370,7 @@ class TransportTest {
         val done = CountDownLatch(1)
         t.start({ _, _ -> }, { _, _ -> }, { reason.set(it); done.countDown() })
         try {
-            hu.send(Ch.MEDIA, Wire.dataInner(Msg.VIDEO_DATA, 0, ByteArray(4)))   // тип видео на MEDIA-сокете
+            hu.send(Ch.MEDIA, Wire.dataInner(Msg.VIDEO_DATA, 0, ByteArray(4)))   // video type on MEDIA-socket
             assertTrue(done.await(5, TimeUnit.SECONDS))
             assertTrue(reason.get(), reason.get().startsWith("tcp6 MEDIA(") && "плохой заголовок" in reason.get())
         } finally {
@@ -397,7 +397,7 @@ class TransportTest {
 
     @Test
     fun tcp6PeerFilterRejectsForeignSubnet() {
-        // ветка B: пускаем только адреса из подсетей маяка; loopback сюда не входит
+        // branch B: let only addresses from the subnets of the lighthouse; loopback is not included here
         val l = Tcp6Listener(InetAddress.getLoopbackAddress(), zeroPorts, dataPort = null, clock = clock, peerOk = { false }).open()
         val s = Socket()
         try {
@@ -427,7 +427,7 @@ class TransportTest {
 
     @Test
     fun wlogHasNoHexDumps() {
-        // транспортные WL-строки не содержат байтов рукопожатия: ни одной последовательности из 4+ hex-пар
+        // transport WL- strings do not contain any handshake: bytes of 4+ hex- pairs
         tcp6RoundTripWithoutOuterHeader()
         val hex = Regex("""(\b[0-9a-fA-F]{2}\s){4,}""")
         for (line in wl) assertTrue(line, !hex.containsMatchIn(line))

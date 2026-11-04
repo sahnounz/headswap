@@ -7,16 +7,16 @@ import com.yegorkapomidorka.headswap.AppLog
 import com.yegorkapomidorka.headswap.dex.DexPrefs
 
 /**
- * Режим чужого лаунчера: окно [EmbedHost.app] над нашей панелью навигации. Дисплей ГУ по-прежнему отдан
- * LauncherActivity, поэтому смена выбора и кнопка HOME доходят до неё как onNewIntent. Всё на главном потоке.
+ * Alien Mode launcher: window [EmbedHost.app] above our navigation panel. Display head unit still given
+ * LauncherActivity, so the change of choice and button HOME reach it as onNewIntent. All on main thread.
  */
 internal object ForeignActions {
     private val model get() = LauncherModel
 
     /**
-     * Перечитать DexPrefs.desktopComponent (onCreate, onNewIntent, onResume, стенд). [goHome] - это ещё и «Домой»
-     * (HOME ГУ, смена выбора в настройках); без него лаунчер уже запущенного режима не трогаем.
-     * [displayId] - дисплей ГУ: откат и история действуют в пределах одного сеанса.
+     * Reread DexPrefs.desktopComponent (onCreate, onNewIntent, onResume, stand). [goHome] is also Home
+     * (HOME head unit, change of choice in the settings); without it, launcher is already running mode do not touch.
+     * [displayId] - head display unit: rollback and history are valid within one session.
      */
     fun reload(ctx: Context, displayId: Int, goHome: Boolean) {
         if (displayId != model.foreignDisplay) {
@@ -28,7 +28,7 @@ internal object ForeignActions {
         val changed = component != model.foreignSeen
         if (changed) {
             model.foreignSeen = component
-            model.foreignBroken = null // новый выбор: пробуем заново
+            model.foreignBroken = null // New choice: try again
             model.recentsHistory = emptyList()
         }
         val ref = component?.let(AppRef::parse)
@@ -46,13 +46,13 @@ internal object ForeignActions {
         if (resolved != previous) {
             AppLog.i("LAUNCHER чужой лаунчер ${resolved.key} в окне над панелью навигации", false)
             model.foreign = resolved
-            model.areaRect = null // окно считается заново по новой раскладке
+            model.areaRect = null // The window is considered anew according to the new layout
             model.area = Area.Home
             home()
         } else if (goHome) home()
     }
 
-    /** Пакет есть, включён и открывается так же, как запустит реестр окна: exported-вход под LAUNCHER именно этого класса. */
+    /** The package is included and opens in the same way as running the registry window: exported-Log in under LAUNCHER of this class. */
     private fun desktopUsable(ctx: Context, ref: AppRef): Boolean = runCatching {
         ctx.packageManager.queryIntentActivities(
             Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setPackage(ref.pkg), 0,
@@ -64,15 +64,15 @@ internal object ForeignActions {
     }.getOrDefault(false)
 
     /**
-     * ● : лаунчер поверх всего, что открыто в окне. Если в окне сейчас другое приложение, меняется ключ окна и запуск
-     * идёт обычным путём (слот следит уже за лаунчером); если лаунчер и так в окне - проверка его задачи, перезапуск
-     * только когда он не сверху. refresh вместе со сменой ключа не зовём: на рабочем потоке он прочитал бы старый ключ.
+     *  ● : launcher on top of everything that is open in the window. If there is another application in the window now, change the key of the window and start
+     * goes the usual way (the slot is already following launcher); if launcher and so in the window - check its task, restart
+     * Only when it's not on top. refresh, along with the key change, is not called: on the workflow, he would read the old key.
      */
     fun home() {
         val ref = model.foreign ?: return
         model.recentsOpen = false
         if (EmbedHost.app.status == EmbedStatus.FAILED) {
-            // прежний FAILED не должен сразу откатить новую попытку: статус сбрасываем до того, как слой его увидит
+            // The former FAILED should not immediately roll back a new attempt: the status is reset before the layer sees it
             EmbedHost.app.status = EmbedStatus.CONNECTING
             EmbedHost.retry(EmbedHost.app)
         }
@@ -82,7 +82,7 @@ internal object ForeignActions {
         } else EmbedHost.refresh(EmbedHost.app)
     }
 
-    /** Нажатие кнопки панели или аппаратный Back ГУ. */
+    /** Pressing the panel button or hardware Back head unit. */
     fun press(key: ForeignDesktop.NavKey) {
         AppLog.i("LAUNCHER панель: $key, недавние=${model.recentsOpen}, окно=${EmbedHost.app.pkg}", false)
         when (ForeignDesktop.press(key, model.recentsOpen)) {
@@ -93,20 +93,20 @@ internal object ForeignActions {
         }
     }
 
-    /** Back вывел задачу из корня: если это был лаунчер или открытое из «Недавних» приложение - лаунчер заново, один раз на нажатие. */
+    /** The Back took the problem out of the root: if it was a launcher or an open-source application from the "Recent" - launcher again, once to press. */
     fun backClosed() {
         model.launchLock.finish()
         model.starting = null
         home()
     }
 
-    /** Задача в окне пропала сама (процесс убит, Back не наш): лаунчер перезапускается, откат не нужен. */
+    /** The task in the window is lost itself (process killed, Back is not ours): launcher restarts, rollback is not needed. */
     fun gone() {
         AppLog.i("LAUNCHER задача в окне пропала (${EmbedHost.app.pkg}), поднимаю лаунчер", false)
         home()
     }
 
-    /** Слот ушёл в FAILED: не стартовавший лаунчер заменяем нашим столом, неудачное приложение из «Недавних» - лаунчером. */
+    /** Slot went to FAILED: not starting launcher replace our table, unsuccessful application from "Recent" - launcher. */
     fun windowFailed() {
         val ref = model.foreign ?: return
         when (ForeignDesktop.afterWindowFailed(EmbedHost.app.pkg == ref.pkg)) {
@@ -119,7 +119,7 @@ internal object ForeignActions {
         }
     }
 
-    /** Уйти в наш рабочий стол: окно чужого лаунчера освобождается (оно держит одну из двух аренд). */
+    /** Go to our desktop: someone else's launcher window is free (it holds one of two leases). */
     private fun leave(why: String) {
         AppLog.i("LAUNCHER выход из режима чужого лаунчера: $why", false)
         model.foreign = null
@@ -132,7 +132,7 @@ internal object ForeignActions {
         model.home()
     }
 
-    // --- «Недавние» ---
+    // --- "Recent" ---
 
     private fun openRecents() {
         val ref = model.foreign ?: return
@@ -146,9 +146,9 @@ internal object ForeignActions {
     }
 
     /**
-     * Приложение из «Недавних» в том же окне. Запуск идёт сменой ключа окна, а не прямым launch реестра: слот следит
-     * за пакетом, запущенным последним, и тогда задача открытого приложения не считается пропавшей лаунчером, а ●
-     * возвращает лаунчер тем же путём.
+     * The application from "Recent" in the same window. The launch is a change of the key of the window, not a direct launch registry: the slot follows
+     * for the last packet running, and then the open application task is not considered missing launcher, but ●
+     * returns launcher in the same way.
      */
     fun openRecent(ref: AppRef) {
         model.recentsOpen = false

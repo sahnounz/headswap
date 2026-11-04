@@ -13,11 +13,11 @@ import java.net.NetworkInterface
 import java.net.SocketTimeoutException
 
 /**
- * Отладочная проба локальной сети (команда `cmd=net_probe`): пускает ли платформа маяк и ответчик ветки B.
- * Шлёт UDP «CarlifeHost» на 7999 (broadcast каждого IPv4-интерфейса с broadcast-адресом и, если задан, unicast),
- * слушает UDP 8999 и отвечает JSON готовности. Всё в WL-лог: состояние ACCESS_LOCAL_NETWORK, интерфейсы, исход
- * каждой отправки (ok или класс исключения), принятые датаграммы (адрес, длина, есть ли строка carlifehost).
- * Входящий TCP проверяется отдельно: debug tcp6 с `--es debug_tcp6_bind 0.0.0.0`.
+ * Local Area Network Debugging (command `cmd=net_probe`): Does the Platform Lighthouse and Responder Branch B.
+ * UDP «CarlifeHost» on 7999 (broadcast of each IPv4-interface with broadcast-address and, if given, unicast),
+ * listens to UDP 8999 and answers JSON readiness. Everything in WL-log: state of ACCESS_LOCAL_NETWORK, interfaces, outcome
+ * each send (ok or exclusion class), received datagrams (address, length, whether there is a string carlifehost).
+ * The incoming TCP is checked separately: debug tcp6 with `--es debug_tcp6_bind 0.0.0.0`.
  */
 object NetProbe {
     const val BEACON_PORT = 7999
@@ -25,7 +25,7 @@ object NetProbe {
     private val BEACON = "CarlifeHost".toByteArray()
     private val READY = """{"carlifehost":"carlife","status":"ready"}""".toByteArray()
 
-    /** Есть ли ACCESS_LOCAL_NETWORK (до Android 17 разрешения нет, доступ к LAN открыт). */
+    /** Is there a ACCESS_LOCAL_NETWORK (Android 17 resolution is not available, access to LAN is open). */
     fun localNetworkGranted(ctx: Context): String =
         if (Build.VERSION.SDK_INT < 37) "n/a(api ${Build.VERSION.SDK_INT})"
         else if (ctx.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED) "granted"

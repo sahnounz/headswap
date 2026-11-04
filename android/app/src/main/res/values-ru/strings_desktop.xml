@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- BridgeService, режим Headswap Desktop -->
+    <!-- BridgeService, mode Headswap Desktop -->
     <string name="desk_not_activated">Headswap Desktop не активирован: откройте Настройки > Режим и нажмите «Активировать»</string>
     <string name="desk_cert_na">не требуется (рабочий стол)</string>
     <string name="desk_connecting">Подключаю рабочий стол…</string>
@@ -10,7 +10,7 @@
     <string name="desk_recovery_stopped">Восстановление остановлено. Проверьте USB, доступ к рабочему столу и разблокировку телефона</string>
     <string name="desk_recovery_screen_busy">Предыдущий экран ещё не освобождён; автоматический запуск отменён</string>
 
-    <!-- Активация с самого телефона (беспроводная отладка), Настройки - Режим -->
+    <!-- Activation from the phone itself (wireless debugging), Settings - Mode -->
     <string name="pa_title">Активируйте Headswap</string>
     <string name="pa_step_1">Откройте «Для разработчиков» → «Отладка по Wi-Fi» и включите её.</string>
     <string name="pa_step_2">Нажмите «Подключить устройство с кодом сопряжения».</string>

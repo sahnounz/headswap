@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Одноразовое окно после обновления до 2.6.0: службы спецвозможностей нет, сервер ГУ включают вручную -->
+<!-- Single window after upgrading to 2.6.0: no special features, head unit server is manually enabled -->
 <resources>
     <string name="upg_title">Отказ от спецвозможностей!!!</string>
     <string name="upg_lead">Headswap больше не просит спецвозможности и не перезапускает сервер ГУ автоматически.</string>

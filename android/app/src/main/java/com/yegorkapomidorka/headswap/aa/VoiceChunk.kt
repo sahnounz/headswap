@@ -3,10 +3,10 @@ package com.yegorkapomidorka.headswap.aa
 import com.yegorkapomidorka.headswap.R
 
 /**
- * Экспериментальная настройка «Размер пакета голоса» (раздел для разработчиков): на какие куски мост режет PCM речи
- * (ответ ассистента в VR, навигационные подсказки в TTS) перед CarLife. Авто = 1024 Б на VW CNS2 Delphi (h425),
- * на остальных ГУ как отдаёт Android Auto (до CarlifeAudio.MAX_CHUNK). Размеры кратны 2 (моно PCM16).
- * Мост читает значение на каждый пакет речи, смена действует сразу.
+ * Experimental configuration of the Voice Pack Size (developer section): which pieces of the bridge the PCM speech cuts into
+ * (assistant reply in VR, navigation prompts in TTS) before CarLife. Auto = 1024 B on VW CNS2 Delphi (h425),
+ * on the rest of head unit as gives Android Auto (up to CarlifeAudio.MAX_CHUNK). Dimensions multiples of 2 (mono PCM16).
+ * The bridge reads the value on each speech packet, the change is effective immediately.
  */
 enum class VoiceChunk(val titleRes: Int, val bytes: Int?) {
     AUTO(R.string.vchunk_auto, null),
@@ -17,7 +17,7 @@ enum class VoiceChunk(val titleRes: Int, val bytes: Int?) {
     companion object {
         val DEFAULT = AUTO
 
-        /** По имени из prefs; неизвестное/пустое = по умолчанию. */
+        /** By name from prefs; unknown/empty = by default. */
         fun parse(key: String?): VoiceChunk = values().firstOrNull { it.name == key } ?: DEFAULT
     }
 }

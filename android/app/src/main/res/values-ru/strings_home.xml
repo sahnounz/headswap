@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Главный экран: заголовки -->
+    <!-- Main screen: header -->
     <string name="home_title_no_bridge">Мост не запущен</string>
     <string name="home_title_reconnecting">Восстанавливаю связь</string>
     <string name="home_title_ok">Всё работает</string>
@@ -12,7 +12,7 @@
     <string name="home_title_unknown">Проверьте сервер ГУ</string>
     <string name="home_title_checking">Проверяю сервер ГУ</string>
 
-    <!-- Главный экран: подзаголовки -->
+    <!-- Main screen: subheadings -->
     <string name="home_err_no_cert">Нет сертификата head unit: положите cert.pem и key.pem в app/src/main/assets/aa/jvc/ (см. README)</string>
     <string name="home_sub_start_chain">Включите один раз: дальше сервер работает в фоне, и для подключения телефон можно не разблокировать.</string>
     <string name="home_sub_reconnecting">USB отключился. Сессия Android Auto ждёт до %1$d с.</string>
@@ -28,19 +28,19 @@
     <string name="home_sub_checking">Пара секунд: Headswap коротко подключается к Android Auto.</string>
     <string name="home_sub_parked_unknown">Следующая поездка — подключите кабель. Если Android Auto не появится, проверьте сервер ГУ: Android Auto → ⋮.</string>
 
-    <!-- Главный экран: как запустить сервер ГУ (жирное - то, что нажать) -->
+    <!-- Main screen: how to run the server head unit (fat - what to press) -->
     <string name="home_chain_label">Как запустить сервер ГУ</string>
     <string name="home_chain_1">Нажмите <b>«Открыть Android Auto»</b></string>
     <string name="home_chain_2">Три точки <b>⋮</b> вверху справа</string>
     <string name="home_chain_3"><b>«Вкл. сервер головного устр-ва»</b></string>
 
-    <!-- Главный экран: названия этапов -->
+    <!-- Main screen: stage names -->
     <string name="home_stage_server">Сервер ГУ</string>
     <string name="home_stage_headunit">Магнитола</string>
     <string name="home_stage_video">Видео</string>
     <string name="home_stage_audio">Звук</string>
 
-    <!-- Главный экран: состояние этапов -->
+    <!-- Main screen: stage status -->
     <string name="home_stage_no_cert">нет сертификата</string>
     <string name="home_stage_holds">держит сессию</string>
     <string name="home_stage_reconnecting">переподключаю</string>
@@ -58,13 +58,13 @@
     <string name="home_stage_unknown">не проверен</string>
     <string name="home_stage_checking">проверяю</string>
 
-    <!-- Главный экран: элементы -->
+    <!-- Main screen: elements -->
     <string name="home_settings">Настройки</string>
     <string name="home_btn_open_aa">Открыть настройки AA</string>
     <string name="home_grace_waiting">Жду переподключения</string>
     <string name="home_grace_left">ещё %1$d с</string>
 
-    <!-- Уведомление -->
+    <!-- Notification -->
     <string name="notif_reconnecting">USB отключился · ещё %1$d с</string>
     <string name="notif_video_usb">Видео · звук по USB</string>
     <string name="notif_video_wifi">Видео · звук по Wi-Fi</string>
@@ -77,7 +77,7 @@
     <string name="notif_parked_unknown">Машина отключена</string>
     <string name="notif_server_unknown">Проверьте, что сервер ГУ запущен</string>
 
-    <!-- Иллюстрации онбординга (нарисованные макеты системного UI) -->
+    <!-- Illustrations of onboarding (drawn models of the system UI) -->
     <string name="mock_aa_version">Версия</string>
     <string name="mock_aadev_title">Для разработчиков</string>
     <string name="mock_aadev_unknown">Неизвестные источники</string>

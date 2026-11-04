@@ -2,28 +2,28 @@ package com.yegorkapomidorka.headswap.aa
 
 import com.yegorkapomidorka.headswap.PbWriter
 
-/** Куда падает звук от AA: чистый PCM16 LE без AAP-заголовков и timestamp. chan = канал AAP (4 SPEECH, 5 SYSTEM, 6 MEDIA). */
+/** Where does the sound from AA: pure PCM16 LE without AAP-header and timestamp. chan = channel AAP (4 SPEECH, 5 SYSTEM, 6 MEDIA). */
 interface AaAudioSink {
-    /** Телефон открыл аудио-канал (MEDIA_START). */
+    /** The phone opened an audio channel (MEDIA_START). */
     fun onAudioStart(chan: Int)
 
     fun onAudioData(chan: Int, pcm: ByteArray, ptsUs: Long)
 
-    /** Телефон закрыл аудио-канал (MEDIA_STOP). */
+    /** The phone closed the audio channel (MEDIA_STOP). */
     fun onAudioStop(chan: Int)
 
-    /** VOICE_SESSION_NOTIFICATION телефона (голосовая сессия Ассистента): status 1 = началась, 2 = закончилась. */
+    /** VOICE_SESSION_NOTIFICATION Phone (Voice Session Assistant): status 1 = started, 2 = finished. */
     fun onVoiceSession(status: Int) {}
 }
 
 /**
- * Аудио CarLife (MD -> HU), по коду MD Baidu CarLife 8.6.7 (re/carlife-8.6.7/sources/com/baidu/carlife/core):
- *  - каналы: 3 MEDIA, 4 TTS; заголовок 12 байт [len u32][time u32][type u32] (audio/PCMPackageHead.java:33-65);
+ * Audio CarLife (MD -> HU), by code MD Baidu CarLife 8.6.7 (re/carlife-8.6.7/sources/com/baidu/carlife/core):
+ *  - channels: 3 MEDIA, 4 TTS; header 12 byte [len u32][time u32][type u32] (audio/PCMPackageHead.java:33-65);
  *  - MEDIA: INIT 0x30001 (CommonParams.java:428), STOP 0x30002 (:432), PAUSE 0x30003 (:429), RESUME 0x30004 (:430), DATA 0x30006 (:426);
  *  - TTS: INIT 0x40001 (:538), END/STOP 0x40002 (:537), DATA 0x40003 (:536);
- *  - тело INIT: CarlifeMusicInit / CarlifeTTSInit {sampleRate=1, channelConfig=2 (число каналов), sampleFormat=3 (разрядность)}
+ *  - body INIT: CarlifeMusicInit / CarlifeTTSInit {sampleRate=1, channelConfig=2 (Number of channels) sampleFormat=3 (bit rate) }
  *    (PCMPackageHead.java:62-92; audio/PCMMediaManager.java:188-211, audio/NaviAudioManager.java:36-57);
- *  - в DATA time = System.currentTimeMillis() & 0xFFFFFFFF (PCMPackageHead.java:49-56), в INIT/STOP время не ставится.
+ *  - in DATA time = System.currentTimeMillis() & 0xFFFFFFFF (PCMPackageHead.java:49-56), there is no time in INIT/STOP.
  */
 object CarlifeAudio {
     const val CH_MEDIA = 3
@@ -38,28 +38,28 @@ object CarlifeAudio {
     const val TTS_STOP = 0x00040002
     const val TTS_DATA = 0x00040003
 
-    /** Канал VR MD->HU: звук ответа голосового помощника (docs/carlife-protocol.md §7.2), INIT как у MEDIA. */
+    /** Channel VR MD->HU: the Voice Assistant 'sdocs/carlife-protocol.md §7.2), INIT U - ( s MEDIA. */
     const val CH_VR = 5
     const val VR_INIT = 0x00050002
     const val VR_DATA = 0x00050003
     const val VR_STOP = 0x00050004
 
-    /** moduleID в MODULE_STATUS (ModuleStatusManage): 2 NAVI (перед TTS), 3 MUSIC (MEDIA играет). */
+    /** moduleID in MODULE_STATUS (ModuleStatusManage): 2 NAVI (before TTS), 3 MUSIC (MEDIA plays). */
     const val MODULE_NAVI = 2
     const val MODULE_MUSIC = 3
     const val MODULE_VR = 4
 
-    /** MAX_MUSIC_DATA_SIZE / MAX_TTS_DATA_SIZE (audio/AudioUtil.java:14-15); кратно 4, не рвёт PCM-кадр. */
+    /** MAX_MUSIC_DATA_SIZE/MAX_TTS_DATA_SIZE (audio/AudioUtil.java:14-15); multiple of 4, does not rip PCM-frame. */
     const val MAX_CHUNK = 10240
 
-    /** Режим AUDIO_TRANSMISSION_MODE = 1 -> звук по Bluetooth (AudioUtil.java:109-112,152-154; FeatureConfigManager.java:254-258). */
+    /** AUDIO_TRANSMISSION_MODE = 1 -> sound by Bluetooth (AudioUtil.java:109-112,152-154; FeatureConfigManager.java:254-258). */
     const val AUDIO_MODE_BT = 1
 
     fun initType(carlifeChan: Int) = if (carlifeChan == CH_MEDIA) MEDIA_INIT else TTS_INIT
     fun stopType(carlifeChan: Int) = if (carlifeChan == CH_MEDIA) MEDIA_STOP else TTS_STOP
     fun dataType(carlifeChan: Int) = if (carlifeChan == CH_MEDIA) MEDIA_DATA else TTS_DATA
 
-    /** peak (макс. |сэмпл|) и RMS PCM16 LE: для диагностики, не нули ли в данных. */
+    /** peak (max. |sample |) and RMS PCM16 LE: to diagnose whether there are zeros in the data. */
     fun pcm16Stats(pcm: ByteArray): Pair<Int, Double> {
         val n = pcm.size / 2
         if (n == 0) return 0 to 0.0

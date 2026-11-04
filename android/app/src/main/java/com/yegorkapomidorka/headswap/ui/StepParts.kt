@@ -8,9 +8,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.yegorkapomidorka.headswap.R
 
-/** Части шага «что где нажать» (Onboarding.dc.html): их собирают шаги онбординга и блок активации в «Режиме». */
+/** Parts of the "what to press" step (Onboarding.dc.html): these are collected by the onboarding steps and the activation block in the "Mode". */
 
-/** Карточка-иллюстрация шага: серая плашка с макетом экрана внутри. */
+/** Step illustration card: grey plate with screen layout inside. */
 fun Context.stepMockCard(mock: View, compact: Boolean): FrameLayout = FrameLayout(this).apply {
     background = shape(clr(R.color.surf2), 28)
     minimumHeight = dp(if (compact) 0 else 190)
@@ -18,7 +18,7 @@ fun Context.stepMockCard(mock: View, compact: Boolean): FrameLayout = FrameLayou
     addView(mock, FrameLayout.LayoutParams(MATCH, WRAP, Gravity.CENTER_VERTICAL))
 }
 
-/** Пронумерованный список: кружок pri с цифрой и текст шага. */
+/** Numbered list: pri circle with digit and step text. */
 fun Context.numberedList(items: List<String>): View {
     val c = this
     return vbox(12).apply {
@@ -41,14 +41,14 @@ fun Context.numberedList(items: List<String>): View {
     }
 }
 
-/** Пояснение под списком: зачем нужен шаг. */
+/** Explanation under the list: why you need a step. */
 fun Context.stepHint(body: String): TextView = text(body, 14f, 400, clr(R.color.onpric)).apply {
     lineHeight = dp(20)
     background = shape(clr(R.color.pric), 16)
     pad(this@stepHint, 14, 12, 14, 12)
 }
 
-/** Зелёная плашка «шаг выполнен». */
+/** The green “step” is done. */
 fun Context.doneChip(label: String): LinearLayout = hbox(6).apply {
     background = shape(clr(R.color.okc), 10)
     pad(this@doneChip, 10, 4, 12, 4)

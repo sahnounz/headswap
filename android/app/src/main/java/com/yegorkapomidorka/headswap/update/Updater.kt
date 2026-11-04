@@ -32,11 +32,11 @@ import java.net.URL
 import java.security.MessageDigest
 import java.util.Locale
 
-/** Настройки и кэш обновлений (отдельный файл prefs): последний найденный релиз переживает перезапуск. */
+/** Settings and update cache (separate prefs file): the last release found is experiencing a restart. */
 class UpdatePrefs(ctx: Context) {
     private val sp: SharedPreferences = ctx.getSharedPreferences("update", Context.MODE_PRIVATE)
 
-    /** Автопроверка при открытии приложения; по умолчанию вкл. */
+    /** Autocheck when opening the application; by default, on. */
     var enabled: Boolean
         get() = sp.getBoolean("enabled", true)
         set(v) = sp.edit().putBoolean("enabled", v).apply()
@@ -45,7 +45,7 @@ class UpdatePrefs(ctx: Context) {
         get() = sp.getLong("lastCheck", 0)
         set(v) = sp.edit().putLong("lastCheck", v).apply()
 
-    /** Версия, плашку которой закрыли на главном экране: до следующей версии не показываем. */
+    /** Version, the cover of which was closed on the main screen: until the next version is not shown. */
     var dismissed: String
         get() = sp.getString("dismissed", "") ?: ""
         set(v) = sp.edit().putString("dismissed", v).apply()
@@ -66,12 +66,12 @@ class UpdatePrefs(ctx: Context) {
 }
 
 /**
- * Обновление из приложения: последний релиз GitHub (UpdateLogic), APK в cacheDir/update, установка через PackageInstaller.
- * Подтверждение установки показывает система; подпись нового APK она же сверяет с установленным.
- * Состояние для экранов - поля [step], [progress], [error] (экраны опрашивают их в tick).
+ * Update from the app: latest release of GitHub (UpdateLogic), APK in cacheDir/update, installation via PackageInstaller.
+ * The confirmation of the installation shows the system; the signature of the new APK it also checks with the installed.
+ * Screen Status - Fields [step], [progress], [error] (The screens ask them in tick).
  */
 object Updater {
-    /** Ветка 4.0: тестовые сборки ставятся руками, публичные релизы 3.x им не предлагаем. */
+    /** 4.0 branch: test assemblies are put by hand, public releases of 3.x are not offered to them. */
     const val ENABLED = false
 
     enum class Step { IDLE, CHECKING, DOWNLOADING, INSTALLING }
@@ -80,12 +80,12 @@ object Updater {
     var step = Step.IDLE
         private set
 
-    /** 0..100, пока [step] = DOWNLOADING. */
+    /** 0..100, while [step] = DOWNLOADING. */
     @Volatile
     var progress = 0
         private set
 
-    /** Последняя ошибка проверки, скачивания или установки; сбрасывается следующим действием. */
+    /** Last error checking, downloading or installing; reset by the following action. */
     @Volatile
     var error: UiText? = null
         private set
@@ -94,7 +94,7 @@ object Updater {
     private var installed: String? = null
     private var cleaned = false
 
-    /** Ошибка с текстом для пользователя; message - для лога. */
+    /** Text error for user; message for log. */
     private class Fail(val text: UiText, message: String) : Exception(message)
 
     fun installedVersion(ctx: Context): String = installed ?: (
@@ -105,11 +105,11 @@ object Updater {
         } ?: "?"
         ).also { installed = it }
 
-    /** Сохранённый релиз, если он новее установленной версии. */
+    /** Saved release if it is newer than the installed version. */
     fun available(ctx: Context): UpdateLogic.Release? = if (!ENABLED) null else
         UpdatePrefs(ctx).release()?.takeIf { UpdateLogic.isNewer(it.version, installedVersion(ctx)) }
 
-    /** Плашка на главном экране: проверка включена, есть новее и её не закрыли. */
+    /** The patch on the main screen: check is enabled, there is a newer one and it has not been closed. */
     fun banner(ctx: Context): UpdateLogic.Release? {
         val p = UpdatePrefs(ctx)
         if (!p.enabled) return null
@@ -120,7 +120,7 @@ object Updater {
         UpdatePrefs(ctx).dismissed = version
     }
 
-    /** При открытии приложения: проверить, если включено и пора; заодно убрать APK уже установленных версий. */
+    /** When you open the application: check if it is time; at the same time remove APK already installed versions. */
     fun maybeCheck(ctx: Context) {
         if (!cleaned && step == Step.IDLE) {
             cleaned = true
@@ -133,7 +133,7 @@ object Updater {
         if (UpdateLogic.shouldCheck(p.enabled, p.lastCheck, System.currentTimeMillis())) check(ctx, manual = false)
     }
 
-    /** Запросить последний релиз в фоне. manual: ошибку показать тостом. */
+    /** Request the latest release in the background. manual: error show with toast. */
     fun check(ctx: Context, manual: Boolean) {
         if (!ENABLED) return
         synchronized(this) {
@@ -164,8 +164,8 @@ object Updater {
     }
 
     /**
-     * Кнопка «Обновить»: разрешение на установку, диалог с описанием релиза, затем скачивание и установка.
-     * confirm = false (кнопка в настройках) - без диалога: при крупном системном шрифте его кнопки бывают не видны.
+     * Update button: permission to install, dialogue with the release description, then download and install.
+     * confirm = false (button in settings) - without dialogue: with a large system font, its buttons are not visible.
      */
     fun start(act: Activity, confirm: Boolean = true) {
         val rel = available(act) ?: return
@@ -199,8 +199,8 @@ object Updater {
     }
 
     /**
-     * Тело диалога обновления: описание релиза в окошке со своим скроллом, под ним размер и прочее.
-     * Через setMessage длинное описание на части прошивок растягивает диалог и выталкивает кнопки за экран.
+     * The body of the update dialog: a description of the release in the window with its scroll, under it size and so on.
+     * Through setMessage, the long description on the firmware part stretches the dialog and pushes buttons behind the screen.
      */
     private fun dialogBody(ctx: Context, notes: String, footer: String): View {
         val pad = ctx.dp(24)
@@ -259,7 +259,7 @@ object Updater {
         }, "update-download").start()
     }
 
-    /** Итог сессии PackageInstaller (InstallReceiver). При успехе процесс обычно убит раньше, чем это придёт. */
+    /** The result of the PackageInstaller session (InstallReceiver). If successful, the process is usually killed before it comes. */
     fun onInstallStatus(ctx: Context, status: Int, message: String?, confirm: Intent?) {
         when (status) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
@@ -303,7 +303,7 @@ object Updater {
         main.post { Toast.makeText(app, text.get(AppLocale.wrap(app)), Toast.LENGTH_LONG).show() }
     }
 
-    // --- сеть ---
+    // --- network ---
 
     private fun open(url: String, app: Context): HttpURLConnection = (URL(url).openConnection() as HttpURLConnection).apply {
         connectTimeout = 15_000
@@ -325,7 +325,7 @@ object Updater {
         return fetchFromPage(app)
     }
 
-    /** Без API: github.com/.../releases/latest отвечает редиректом на страницу тега; APK по имени headswap-<версия>.apk. */
+    /** Without API:, github.com/.../releases/latest responds with a redirect to the tag page; APK named headswap-<version>.apk. */
     private fun fetchFromPage(app: Context): UpdateLogic.Release {
         val c = open(UpdateLogic.PAGE_LATEST, app)
         c.instanceFollowRedirects = false
@@ -359,7 +359,7 @@ object Updater {
         )
     }
 
-    /** APK в cacheDir/update; уже скачанный и совпавший по размеру и SHA-256 не качаем заново (установку могли отменить). */
+    /** APK in cacheDir/update; already downloaded and matching in size and SHA-256 not rocking again (installation could be canceled). */
     private fun fetchApk(app: Context, rel: UpdateLogic.Release): File {
         val dir = File(app.cacheDir, "update").apply { mkdirs() }
         val f = File(dir, "headswap-${rel.version}.apk")
@@ -401,7 +401,7 @@ object Updater {
         }
     }
 
-    /** Наш пакет и версия новее установленной: иначе система откажет уже после подтверждения пользователя. */
+    /** Our package and version are newer than installed: otherwise, the system will refuse after user confirmation. */
     @Suppress("DEPRECATION")
     private fun checkApk(app: Context, f: File) {
         val pm = app.packageManager
@@ -432,7 +432,7 @@ object Updater {
                     f.inputStream().use { it.copyTo(out) }
                     s.fsync(out)
                 }
-                // FLAG_MUTABLE: установщик дописывает в intent статус и intent подтверждения
+                // FLAG_MUTABLE: installer adds intent status and intent confirmations
                 val pi = PendingIntent.getBroadcast(
                     app, id, Intent(app, InstallReceiver::class.java),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
@@ -465,7 +465,7 @@ object Updater {
     private fun hex(b: ByteArray): String = b.joinToString("") { "%02x".format(it) }
 }
 
-/** Статус сессии PackageInstaller -> Updater (подтверждение установки, ошибки). */
+/** Session Status PackageInstaller -> Updater (install confirmation, errors). */
 class InstallReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)

@@ -3,10 +3,10 @@ package com.yegorkapomidorka.headswap.aa
 import com.yegorkapomidorka.headswap.R
 
 /**
- * Экспериментальная настройка «Тишина перед подсказкой» (раздел для разработчиков): сколько миллисекунд нулей мост
- * шлёт в CarLife сразу после TTS_INIT, чтобы ГУ успела открыть звук до начала речи. Авто = 400 мс на VW
- * (20082120/20082122/20082134, h222), на остальных ГУ нет. Явное значение действует на любой ГУ, «Нет» = выключено.
- * Мост читает значение на каждый TTS_INIT.
+ * Experimental setting "Silence before the hint" (section for developers): how many milliseconds of zero bridge
+ * send to CarLife immediately after TTS_INIT, so that head unit could open the sound before the speech. Auto = 400 ms on VW
+ * (20082120/20082122/20082134, h222), on the other head unit no. The explicit value is valid for any head unit, "No" = off.
+ * The bridge reads the value on each TTS_INIT.
  */
 enum class TtsPreroll(val titleRes: Int, val ms: Int?) {
     AUTO(R.string.tpreroll_auto, null),
@@ -18,7 +18,7 @@ enum class TtsPreroll(val titleRes: Int, val ms: Int?) {
     companion object {
         val DEFAULT = AUTO
 
-        /** По имени из prefs; неизвестное/пустое = по умолчанию. */
+        /** By name from prefs; unknown/empty = by default. */
         fun parse(key: String?): TtsPreroll = values().firstOrNull { it.name == key } ?: DEFAULT
     }
 }

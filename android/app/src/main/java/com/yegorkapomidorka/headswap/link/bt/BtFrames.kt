@@ -5,8 +5,8 @@ import com.yegorkapomidorka.headswap.PbWriter
 import com.yegorkapomidorka.headswap.Wire
 
 /**
- * Кадры Bluetooth-канала беспроводного CarLife (Baidu MD 8.6.7, CommonParams, BluetoothConnect.readData):
- * [длина тела u16 BE][резерв u16 = 0][тип u32 BE] + protobuf. Длина без заголовка.
+ * frame Bluetooth-Wireless Channel CarLife (Baidu MD 8.6.7, CommonParams, BluetoothConnect.readData):
+ * [body length u16 BE][reserve u16 = 0][type u32 BE] + protobuf. Length without header.
  */
 object BtMsg {
     const val MD_WIRELESS_INFO_REQUEST = 0x00100001
@@ -33,7 +33,7 @@ object BtMsg {
         else -> "0x%08X".format(type)
     }
 
-    /** wirlessType из INFO_RESPONSE: 2..4 запускают беспроводную ветку у Baidu, 1 (WIFI) нет. */
+    /** wirlessType of INFO_RESPONSE: 2..4 run wireless branch at Baidu, 1 (WIFI) is not. */
     fun wirelessTypeName(t: Int?): String = when (t) {
         null -> "-"
         1 -> "1(wifi)"
@@ -46,19 +46,19 @@ object BtMsg {
     fun frame(type: Int, body: ByteArray? = null): ByteArray = Wire.cmdInner(type, body)
 
     /**
-     * Тело MD_WIFI_IP: адрес телефона в P2P-группе ГУ строкой в поле 1. Формат не подтверждён исходником MD
-     * (у Baidu 8.6.7 мы его не читали, LifeAuto собирает тело в нативной части): по первому отчёту с машины сверить.
+     * MD_WIFI_IP: phone address in P2P-group head unit line in field 1. Format not confirmed by source MD
+     * (in Baidu 8.6.7 we did not read it, LifeAuto assembles the body in the native part): according to the first report from the machine to check.
      */
     fun wifiIp(ip: String): ByteArray = PbWriter().string(1, ip).toByteArray()
 }
 
-/** Реквизиты P2P-группы ГУ из TARGET_INFO: имя устройства Wi-Fi Direct и p2pNetInfo «ssid,пароль[,частота]». */
+/** P2P- group head unit props from TARGET_INFO: device name Wi-Fi Direct and p2pNetInfo "ssid, [ password, ] frequency". */
 class P2pTarget(val deviceName: String?, val ssid: String?, val passphrase: String?, val freqMhz: Int?) {
-    /** Можно ли войти в группу напрямую (WifiP2pConfig.Builder): ssid DIRECT-xy и пароль 8..63 символа. */
+    /** Is it possible to enter the group directly (WifiP2pConfig.Builder): ssid DIRECT-xy and password 8..63 characters. */
     val canJoinBySsid: Boolean
         get() = ssid != null && ssid.startsWith("DIRECT-") && ssid.length >= 9 && passphrase != null && passphrase.length in 8..63
 
-    /** Те же реквизиты: ГУ ответила на наш TARGET_INFO_REQUEST тем же, что уже прислала. */
+    /** Same details: head unit replied to our TARGET_INFO_REQUEST the same as it has already sent. */
     fun sameAs(o: P2pTarget): Boolean =
         deviceName == o.deviceName && ssid == o.ssid && passphrase == o.passphrase && freqMhz == o.freqMhz
 
@@ -78,11 +78,11 @@ class P2pTarget(val deviceName: String?, val ssid: String?, val passphrase: Stri
 
 class BtFrame(val type: Int, val body: ByteArray)
 
-/** Сборка кадров из кусков RFCOMM-потока. Мусор в заголовке (резерв != 0, длина > MAX_BODY): сдвиг на байт. */
+/** frame assembly from RFCOMM-th flow pieces. Garbage in header (reserve ! = 0, length > MAX_BODY): shift by byte. */
 class BtFrameParser {
     private var buf = ByteArray(0)
 
-    /** Сколько байт выброшено при ресинхронизации (для лога). */
+    /** How many bytes are ejected during resynchronization (for log). */
     var skipped = 0L
         private set
 
@@ -107,8 +107,8 @@ class BtFrameParser {
 }
 
 /**
- * Сводки ответов ГУ для WL-лога без секретов: имя сети и пароль из p2pNetInfo не выводятся, только число частей
- * и частота; scanRecord (зашифрованные реквизиты бокса) - только длина.
+ * Summary of answers head unit for WL-log without secrets: network name and password from p2pNetInfo are not displayed, only the number of parts
+ * and frequency; scanRecord (encrypted boxing requisites) - only length.
  */
 object BtSummary {
     fun wirelessInfo(body: ByteArray): List<Pair<String, Any?>> {
@@ -130,7 +130,7 @@ object BtSummary {
         ) + netInfo(net)
     }
 
-    /** p2pNetInfo = «ssid,пароль[,частота МГц]»: наличие, число частей, частота. */
+    /** p2pNetInfo = "ssid,[ password,MHz] frequency": presence, number of parts, frequency. */
     fun netInfo(net: String?): List<Pair<String, Any?>> {
         if (net == null) return listOf("p2pNetInfo" to "нет")
         val parts = net.split(',')
@@ -138,7 +138,7 @@ object BtSummary {
         return listOf("p2pNetInfo" to "есть", "netParts" to parts.size, "netFreq" to freq)
     }
 
-    /** Состав тела без значений строк: номер поля, тип, число или длина (формат IP_REQUEST и ответов ГУ не подтверждён). */
+    /** Body composition without line values: field number, type, number or length (IP_REQUEST format and head unit responses are not confirmed). */
     fun shape(body: ByteArray): String {
         val f = PbReader.parse(body) ?: return "parse-fail/${body.size}"
         if (f.isEmpty()) return "empty"

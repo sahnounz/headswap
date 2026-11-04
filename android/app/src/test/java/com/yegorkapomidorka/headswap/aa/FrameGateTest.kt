@@ -7,7 +7,7 @@ import org.junit.Test
 import java.util.Random
 
 class FrameGateTest {
-    /** Сколько кадров пропустит гейт за seconds секунд входа с частотой inFps (джиттер +-jitterMs). */
+    /** How many frame will miss the gate in seconds seconds of input with a frequency of inFps (jitter +-jitterMs). */
     private fun passed(gate: FrameGate, inFps: Int, seconds: Int, jitterMs: Int = 0): Int {
         val rnd = Random(42)
         val periodNs = 1_000_000_000L / inFps
@@ -28,7 +28,7 @@ class FrameGateTest {
     @Test
     fun input30Target30LosesNothing() {
         assertEquals(300, passed(FrameGate(30), 30, 10))
-        // джиттер входа +-5 мс: цель 30 пропускает всё
+        // jitter input +-5 ms: 30 target misses all
         assertEquals(300, passed(FrameGate(30), 30, 10, jitterMs = 5))
     }
 
@@ -41,7 +41,7 @@ class FrameGateTest {
 
     @Test
     fun slotsKeepRateWhenInputIsFasterThanTarget() {
-        // 30 -> 20 (слоты по 50 мс на входе 33.3 мс): средняя частота выхода 20
+        // 30 -> 20 (50 ms slots at the inlet of 33.3 ms): average frequency of output of 20
         assertEquals(200.0, passed(FrameGate(20), 30, 10).toDouble(), 3.0)
         assertEquals(200.0, passed(FrameGate(20), 30, 10, jitterMs = 4).toDouble(), 8.0)
     }
@@ -50,9 +50,9 @@ class FrameGateTest {
     fun unlimitedAndFirstFrame() {
         assertEquals(300, passed(FrameGate(0), 30, 10))
         val g = FrameGate(15)
-        assertTrue(g.shouldEmit(5L))                    // первый кадр - сразу, даже при нулевом времени
+        assertTrue(g.shouldEmit(5L))                    // first frame - immediately, even at zero time
         assertFalse(g.shouldEmit(5L + 10_000_000L))
-        assertFalse(g.shouldEmit(5L + 30_000_000L))     // слот 66.7 мс, берём с 33.3 мс
+        assertFalse(g.shouldEmit(5L + 30_000_000L))     // slot 66.7 ms, take with 33.3 ms
         assertTrue(g.shouldEmit(5L + 40_000_000L))
         g.reset()
         assertTrue(g.shouldEmit(5L + 61_000_000L))
@@ -62,8 +62,8 @@ class FrameGateTest {
     fun lagBeyondPeriodRestartsGrid() {
         val g = FrameGate(15)
         assertTrue(g.shouldEmit(0L))
-        assertTrue(g.shouldEmit(300_000_000L))          // пауза входа: кадр берётся, сетка с нового места
-        assertFalse(g.shouldEmit(310_000_000L))         // без серии догоняющих кадров
+        assertTrue(g.shouldEmit(300_000_000L))          // entry pause: frame is taken, grid from new location
+        assertFalse(g.shouldEmit(310_000_000L))         // without series of catching up frame
         assertFalse(g.shouldEmit(330_000_000L))
         assertTrue(g.shouldEmit(370_000_000L))
     }
@@ -75,7 +75,7 @@ class FrameGateTest {
         assertTrue(g.shouldEmit(33_000_000L))
         g.targetFps = 10
         assertEquals(100_000_000L, g.periodNs())
-        assertTrue(g.shouldEmit(66_000_000L))           // после перехода с пропуска всего сетка начинается с первого кадра
+        assertTrue(g.shouldEmit(66_000_000L))           // after switching from skipping the entire grid starts with the first frame
         assertFalse(g.shouldEmit(99_000_000L))
         assertTrue(g.shouldEmit(66_000_000L + 100_000_000L))
         g.targetFps = 30

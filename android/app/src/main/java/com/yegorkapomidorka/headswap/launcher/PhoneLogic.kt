@@ -8,7 +8,7 @@ enum class CallType {
     INCOMING, OUTGOING, MISSED, OTHER;
 
     companion object {
-        /** CallLog.Calls.TYPE: 1 входящий, 2 исходящий, 3 пропущенный, 5 отклонённый (для ГУ - входящий). */
+        /** CallLog.Calls.TYPE: 1 incoming, 2 outgoing, 3 omitted, 5 rejected (for head unit - incoming). */
         fun fromLog(type: Int): CallType = when (type) {
             1, 5 -> INCOMING
             2 -> OUTGOING
@@ -24,38 +24,38 @@ data class CallRecord(val number: String, val name: String?, val type: CallType,
 
 data class ContactRecord(val id: Long, val name: String, val number: String)
 
-/** Состояние звонка по TelephonyManager: CALL_STATE_IDLE/RINGING/OFFHOOK. */
+/** State of call by TelephonyManager: CALL_STATE_IDLE/RINGING/OFFHOOK. */
 object CallState { const val IDLE = 0; const val RINGING = 1; const val OFFHOOK = 2 }
 
-/** Что показывает карточка «Телефон» (PhoneStates.dc.html, состояния А-Ж). */
+/** What does the "Phone" card (PhoneStates.dc.html, A-Zh status) show? */
 sealed interface PhoneCardModel {
-    /** А: есть пропущенные. */
+    /** A: There are missing ones. */
     data class Missed(val count: Int, val last: CallRecord) : PhoneCardModel
-    /** Б: пропущенных нет, есть последний вызов. */
+    /** B: There are no missed ones, there is a final challenge. */
     data class LastCall(val last: CallRecord) : PhoneCardModel
-    /** В: звонков нет. */
+    /** Q: No calls. */
     data object Empty : PhoneCardModel
-    /** Г: нет доступа к журналу звонков - кнопка открывает запрос разрешений на телефоне. */
+    /** G: No access to call log - button opens permission request on phone. */
     data object NoAccess : PhoneCardModel
-    /** Д: входящий. */
+    /** D: Incoming. */
     data class Incoming(val title: String) : PhoneCardModel
-    /** Е: разговор. */
+    /** E: The conversation. */
     data class InCall(val title: String, val elapsedSec: Int) : PhoneCardModel
-    /** Ж: исходящий, ещё не ответили. */
+    /** Outbound, not answered yet. */
     data class Outgoing(val title: String) : PhoneCardModel
 }
 
 object PhoneLogic {
-    /** Исходящий без ответа показываем первые секунды: состояния «ответили» TelephonyManager не отдаёт. */
+    /** Outgoing unanswerable show the first seconds: the states “answered” TelephonyManager does not give. */
     const val OUTGOING_PHASE_SEC = 5
 
     /**
      * @param callState CallState.*
-     * @param callTitle имя или номер текущего звонка (может быть пустым, если неизвестен)
-     * @param ringed в этом звонке было RINGING (значит это входящий, а OFFHOOK после него - разговор)
-     * @param offhookSec секунд с начала OFFHOOK
-     * @param calls недавние вызовы, новые первыми
-     * @param missedSeenMs пропущенные не новее этого момента уже просмотрены (тап по карточке)
+     * @param callTitle name or number of the current call (may be empty if unknown)
+     * @param ringed This call was RINGING (This is an entry, and OFFHOOK After that, the conversation.
+     * @param offhookSec seconds from start OFFHOOK
+     * @param calls Recent challenges, new firsts
+     * @param missedSeenMs Missed not newer than this moment already viewed (tap on card)
      */
     fun model(
         permitted: Boolean, callState: Int, callTitle: String, ringed: Boolean, offhookSec: Int,
@@ -74,7 +74,7 @@ object PhoneLogic {
         return PhoneCardModel.LastCall(last)
     }
 
-    /** «14:02» сегодня, «вчера», иначе «31.10». */
+    /** "14:02" today, "yesterday", otherwise "31.10". */
     fun whenLabel(nowMs: Long, thenMs: Long, zone: ZoneId = ZoneId.systemDefault(), yesterday: String = "вчера"): String {
         val now = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
         val then = Instant.ofEpochMilli(thenMs).atZone(zone)
@@ -88,7 +88,7 @@ object PhoneLogic {
     fun timer(sec: Int): String = "%02d:%02d".format(sec / 60, sec % 60)
 }
 
-/** Лайк в MediaSession: custom action с именем или иконкой «нравится» (Яндекс Музыка, Spotify, YT Music). */
+/** Like in MediaSession: custom action with the name or icon "like" (Yandex Music, Spotify, YT Music). */
 object MusicLogic {
     data class Action(val id: String, val name: String)
 
@@ -96,7 +96,7 @@ object MusicLogic {
     private val UNLIKE = listOf("unlike", "unfavorite", "unfavourite", "remove", "убрать", "удалить")
     private val DISLIKE = listOf("dislike", "дизлайк", "не нрав")
 
-    /** Действие «нравится» среди custom actions, если плеер его отдаёт. */
+    /** The action is "liked" among custom actions if the player gives it away. */
     fun findLike(actions: List<Action>): Action? = actions.firstOrNull { isLike(it) }
 
     fun isLike(a: Action): Boolean {
@@ -105,13 +105,13 @@ object MusicLogic {
         return LIKE.any { it in s }
     }
 
-    /** Действие уже включено (сердечко закрашено): по имени вида unlike / «убрать из избранного». */
+    /** The action is already included (the heart is colored): by the name of the type unlike / "remove from the favorites". */
     fun isLiked(a: Action): Boolean {
         val s = "${a.id} ${a.name}".lowercase()
         return UNLIKE.any { it in s }
     }
 
-    /** Подбор сессии: играющая (выбранный плеер среди играющих первым), иначе выбранный плеер, иначе первая. */
+    /** Selection of the session: player (selected player among the players first), otherwise selected player, otherwise the first. */
     fun <T> pickSession(sessions: List<T>, pkgOf: (T) -> String, playing: (T) -> Boolean, preferred: String?): T? {
         val live = sessions.filter(playing)
         return live.firstOrNull { pkgOf(it) == preferred } ?: live.firstOrNull()

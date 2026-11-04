@@ -1,29 +1,30 @@
-# 0017. Ограничения ГУ закрываются как «не чинить»; реестр
+# 0017. Head unit limitations: registry of issues the app cannot fix
 
-- Статус: принято (реестр пополняется)
-- Дата: 2026-10-19 (закрыты PR #40, #41)
-- Источники: PR #40, #41 (оба про h177, закрыты: «со стороны приложения не решить»), кейсы h177, h100, h291
+- Status: accepted (registry remains open for additions)
+- Date: 2026-10-19 (PR #40 and #41 closed)
+- Sources: PR #40 and #41 (both h177, closed as not solvable in the app), cases h177, h100, h291
 
-## Контекст
+## Context
 
-Часть жалоб идёт не от ошибок Headswap, а от ограничений самого ГУ. Чтобы такие жалобы не разбирать заново,
-ограничения фиксируются здесь. Подробности каждого случая — в карточках hNN.
+Some reports reflect head unit limitations rather than Headswap defects. Record them here to avoid repeating
+unsuccessful investigations. Details remain in the individual hNN case records.
 
-## Решение
+## Decision
 
-Закрываем как ограничение ГУ, в приложении не чиним:
+Treat the following as head unit limitations:
 
-- Mazda G6S не шлёт тач в движении (h177); у LifeAuto то же. Клики как тапы (PR #40) и модули без 8/9 (PR #41) не помогли.
-- HSAE вертикальные: ГУ рисует CarLife в окне 16:9, портрет не сделать. Совет пользователю: R720.
-- Honda e:NS1 без музыки (h100): Baidu играет, мы нет. Закрыто без решения; для продолжения нужен лог самого Baidu.
-- Приборка Tharu XR (CNS3): навигацию без подписки ГУ не показывает.
-- Honda Vezel (20832125, ГУ Егора): на приборке не показываются обложка и название песни.
+- Mazda G6S sends no touch input while moving (h177); LifeAuto behaves the same. Treating clicks as taps (PR #40)
+  and removing modules 8/9 (PR #41) did not help.
+- Portrait HSAE units render CarLife in a 16:9 window; portrait output is unavailable. Recommend R720.
+- Honda e:NS1 has no music (h100), although Baidu plays it. Closed unresolved; further work needs a Baidu log.
+- Tharu XR CNS3 does not display navigation on the instrument cluster without a head unit subscription.
+- Honda Vezel 20832125, Yegor's unit, does not show album art or song titles on the instrument cluster.
 
-## Альтернативы
+## Alternatives
 
-- Обход в приложении — пробовали на h177 (PR #40, #41), не помогло.
+- Application workarounds for h177 were tested in PR #40 and #41 and did not help.
 
-## Последствия
+## Consequences
 
-- На такие жалобы отвечать советом (R720 вместо портрета, кабель и т.п.), а не вести задачу.
-- Реестр пересматривается, если появляется новый источник знаний о ГУ (лог Baidu для h100, подписка на данные приборки).
+- Offer appropriate guidance, such as R720 instead of portrait or using a cable, rather than opening the same work again.
+- Revisit a limitation when new evidence becomes available, such as a Baidu log for h100 or a cluster-data subscription.

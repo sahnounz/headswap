@@ -5,11 +5,11 @@ import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
-/** Жизненный цикл AA-стороны моста (реализует AaConnector). */
+/** The life cycle of the AA- side of the bridge (implemented by AaConnector). */
 interface AaLifecycle {
     fun start()
 
-    /** Корректно закрыть AA (ByeBye, flush, EOF, close); onDone зовётся из отдельной нити, когда всё закрыто. */
+    /** Correctly close AA (ByeBye, flush, EOF, close); onDone is called from a separate thread when everything is closed. */
     fun stop(onDone: () -> Unit)
 }
 
@@ -29,11 +29,11 @@ interface DesktopNavigation {
 }
 
 /**
- * AA-сторона моста на время жизни СЕРВИСА, а не одной USB-сессии CarLife. Физический обрыв USB (EIO)
- * закрывает CarLife-сессию, но AA-сессия остаётся «тёплой» graceMs: если USB вернулся, новая
- * CarLife-сессия подхватывает живую AA (core.attach + START -> keyframe), если нет или нажат Стоп -
- * AA закрывается корректно. Одноразовый сервер 5277 не должен получать новое соединение, пока
- * предыдущее живо: один коннектор на хост, а новый хост ждёт, пока предыдущий закроется (previous).
+ * AA-Bridge Side for Lifetime SERVICE rather than one USB-session CarLife. Physical Breakdown USB (EIO)
+ * closes CarLife-session, but AA-session remains "warm" graceMs: if USB is back, new
+ * CarLife-session picks up live AA (core.attach + START -> keyframe) if not or press Stop -
+ * AA closes correctly. A single 5277 server should not receive a new connection until
+ * the previous one is live: one connector per host, and the new host waits until the previous one closes (previous).
  */
 class BridgeHost(
     val core: AaBridgeCore,
@@ -50,10 +50,10 @@ class BridgeHost(
     private var grace: ScheduledFuture<*>? = null
     private val tornDownLatch = CountDownLatch(1)
 
-    /** AA закрыта полностью (ByeBye, EOF, close). */
+    /** AA is closed completely (ByeBye, EOF, close). */
     val isTornDown: Boolean get() = tornDownLatch.count == 0L
 
-    /** Хост закрывается или закрыт: новую CarLife-сессию надо вешать на новый хост. */
+    /** Host is closed or closed: a new CarLife- session must be hung on a new host. */
     @get:Synchronized
     val isDead: Boolean get() = tearingDown || (connector as? TerminalSource)?.isTerminated == true
 
@@ -75,7 +75,7 @@ class BridgeHost(
         return (connector as? DesktopNavigation)?.showDesktop() ?: false
     }
 
-    /** Новая CarLife-сессия: отменить grace, при первой - запустить AA. false = хост уже закрывается. */
+    /** New CarLife-session: Cancel grace, at first - run AA. false = host already closes. */
     @Synchronized
     fun onUsbSessionStarted(): Boolean {
         if (isDead) return false
@@ -88,7 +88,7 @@ class BridgeHost(
             started = true
             val prev = previous
             if (prev != null && !prev.isTornDown) {
-                // сервер 5277 одноразовый: новое соединение только после полного закрытия предыдущего
+                // 5277 one-time server: new connection only after the previous one is completely closed
                 log("BRIDGE жду полного закрытия предыдущей AA-сессии перед новым подключением", true)
                 Thread({
                     val closed = prev.awaitTornDown(previousStopTimeoutMs)
@@ -106,7 +106,7 @@ class BridgeHost(
         return true
     }
 
-    /** CarLife-сессия закрыта. immediate (кнопка Стоп/выкл. моста) - сразу закрыть AA, иначе держать graceMs. */
+    /** CarLife-session closed. immediate (stop/off bridge button) - immediately close AA, otherwise keep graceMs. */
     @Synchronized
     fun onUsbSessionClosed(immediate: Boolean) {
         if (tearingDown) return
@@ -128,7 +128,7 @@ class BridgeHost(
         }
     }
 
-    /** Закрыть AA сейчас (Стоп, сервис уничтожен, смена режима). */
+    /** Close AA now (Stop, service destroyed, change mode). */
     @Synchronized
     fun shutdown(why: String) {
         if (tearingDown) return
@@ -152,7 +152,7 @@ class BridgeHost(
     }
 
     companion object {
-        /** Сколько держать AA-сессию живой после потери USB. */
+        /** How long to keep the AA session alive after losing USB. */
         const val GRACE_MS = 8_000L
     }
 }

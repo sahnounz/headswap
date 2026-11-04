@@ -10,37 +10,37 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Самопроверка транскодера без AA и USB: `--es cmd transcode_test`. Берёт самый крупный aa-*.h264 (сырой Annex-B от AA, кладётся в getExternalFilesDir через adb push),
- * гонит его через декодер -> энкодер ~10 с (30 fps, посреди пауза 3 с без входных кадров: энкодер обязан
- * повторять кадр) и логирует кадры на входе/выходе, fps, первые NAL выхода, задержку.
+ * Self-checking transcoder without AA and USB: `--es cmd transcode_test`. Takes the largest aa-*.h264 (raw Annex-B from AA, is put into getExternalFilesDir via adb push),
+ * Drives him through decoder -> encoder ~10 seconds (30 fpsIn the middle of a pause 3 with no entrance frame: encoder Must
+ * repeat frame) and logs frame on in/out, fps, the first NAL out, delay.
  *
- * Строка настроек идёт extra-ом `opts` (в AaTranscoder уходит как tuning) и разбирается по подстрокам. Токены самой проверки
- * (в транскодер не передаются): `slowout=NN`, `resetevery=NN`, `burst`, `nopause`, `placeholder`, `phonly`.
- * Остальное (`nogl`, `nobase`, `cbr`, `norealtime`, `nolowlat`) уходит в транскодер как есть.
+ * The settings line goes extra-om `opts` (in AaTranscoder goes as tuning) and is sorted by substrings. Tokens of the check itself
+ * (not transmitted): `slowout=NN`, `resetevery=NN`, `burst`, `nopause`, `placeholder`, `phonly`.
+ * The rest (`nogl`, `nobase`, `cbr`, `norealtime`, `nolowlat`) goes into the transcoder as is.
  *
- * Как и мост, проверка после потери кадра (onNeedAaKeyFrame) и после resetDecoder() перестаёт подавать P-кадры
- * и подаёт ближайший IDR из файла с SPS/PPS.
+ * Like the bridge, the check after loss of frame (onNeedAaKeyFrame) and after resetDecoder() ceases to serve P-frame
+ * and feeds the nearest IDR from a file with SPS/PPS.
  *
- * Запуск (лог в AppLog, `adb logcat -s Headswap` или файл лога приложения; ищи `transcode_test`):
+ * Run (log in AppLog, `adb logcat -s Headswap` or application log file; look for `transcode_test`):
  * ```
  * adb shell am start -n com.yegorkapomidorka.headswap/.MainActivity --es cmd transcode_test
- * # медленный слив в ГУ / занятый монитор моста: onEncoderFrame спит 20 мс (петля энкодер -> GL -> декодер -> вход).
- * # Ждём: нет остановки, кадры выхода идут (реже), есть потери и запросы IDR
+ *  # Slow drain in head unit / busy bridge monitor: onEncoderFrame sleeps 20 ms (loop encoder -> GL -> decoder -> input).
+ *  # Wait: no stop, frame output go (less often), there are losses and requests IDR
  * adb shell am start -n com.yegorkapomidorka.headswap/.MainActivity --es cmd transcode_test --es opts "slowout=20"
  * adb shell am start -n com.yegorkapomidorka.headswap/.MainActivity --es cmd transcode_test --es opts "slowout=80"
- * # resetDecoder() с другой нити раз в 700 мс (как START после PAUSE). Ждём: декодер пересоздаётся на следующем IDR, выход возобновляется
+ *  # resetDecoder() with another thread times in 700 ms (as START after PAUSE). Wait: decoder is re-created on the next IDR, output is resumed
  * adb shell am start -n com.yegorkapomidorka.headswap/.MainActivity --es cmd transcode_test --es opts "resetevery=700"
- * # пачки: 10 кадров без задержки, пауза 330 мс (переполнение очереди кормления). Ждём: потери и восстановление по IDR, без зависания
+ *  # packs: 10 frame without delay, pause 330 ms (overlapping the feeding queue). Waiting for: loss and recovery according to IDR, without hanging
  * adb shell am start -n com.yegorkapomidorka.headswap/.MainActivity --es cmd transcode_test --es opts "burst"
- * # всё вместе
+ *  # all together
  * adb shell am start -n com.yegorkapomidorka.headswap/.MainActivity --es cmd transcode_test --es opts "slowout=30 resetevery=900 burst"
  * ```
- * Сторожок: выход энкодера молчит > 3 с вне запланированной паузы -> `!!!!!! выход энкодера молчит N с`.
- * В конце ИТОГ2 и проверка нитей `aa-trans-*` / `aa-gl-relay` через 2 с после stop().
+ * Guard: exit encoder silent > 3 out of the planned pause -> `!!!!!! выход encoder молчит N с`.
+ * At the end of RESULT2 and check thread `aa-trans-*`/`aa-gl-relay` via 2 with after stop().
  */
 object TranscodeSelfCheck {
     private const val TOTAL_MS = 10_000L
-    private const val PAUSE_AT_FRAME = 90          // после 3 с при 30 fps
+    private const val PAUSE_AT_FRAME = 90          // after 3 with at 30 fps
     private const val PAUSE_MS = 3_000L
     private const val FRAME_MS = 33L
     private const val BURST_FRAMES = 10
@@ -71,7 +71,7 @@ object TranscodeSelfCheck {
             return
         }
 
-        // токены самой проверки; в транскодер уходит строка без них
+        // tokens of the verification itself; a string goes into the transcoder without them
         val slowOutMs = Regex("""slowout=(\d+)""").find(tuning)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
         val resetEveryMs = Regex("""resetevery=(\d+)""").find(tuning)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
         val burst = Regex("""\bburst\b""").containsMatchIn(tuning)
@@ -80,8 +80,8 @@ object TranscodeSelfCheck {
             AppLog.i("transcode_test: режим: slowout=$slowOutMs мс, resetevery=$resetEveryMs мс, burst=$burst; в транскодер tuning='$tcTuning'")
         }
 
-        // выход энкодера как он уходит на ГУ (SPS/PPS склеены только с первым IDR, как в AaBridge.onEncoderFrame):
-        // enc-out.h264 рядом, смотреть ffmpeg на ПК
+        // encoder output as it goes to head unit (SPS/PPS glued with only the first IDR, as in AaBridge.onEncoderFrame):
+        // enc-out.h264 near, watch ffmpeg on PC
         val dump = File(dir, "enc-out.h264").outputStream().buffered()
         var dumpGotIdr = false
 
@@ -94,8 +94,8 @@ object TranscodeSelfCheck {
             @Volatile var pauseStartFrames = -1L
             @Volatile var pauseEndFrames = -1L
             @Volatile var errors = 0
-            @Volatile var gotIdr = false               // как AaBridge.gotIdr: false -> P-кадры не подаём, ждём IDR из файла
-            @Volatile var lastFrameMs = 0L             // время последнего кадра выхода (0 - ещё не было)
+            @Volatile var gotIdr = false               // as AaBridge.gotIdr: false -> P-frame do not file, waiting for IDR from file
+            @Volatile var lastFrameMs = 0L             // last time frame was released (0 - not yet)
             @Volatile var maxGapMs = 0L
             @Volatile var silentReported = false
 
@@ -109,7 +109,7 @@ object TranscodeSelfCheck {
                 if (prev > 0 && now - prev > maxGapMs) maxGapMs = now - prev
                 lastFrameMs = now
                 silentReported = false
-                if (slowOutMs > 0) Thread.sleep(slowOutMs)      // медленный слив в ГУ / занятый монитор моста
+                if (slowOutMs > 0) Thread.sleep(slowOutMs)      // slow drain in head unit / busy bridge monitor
                 if (frames.getAndIncrement() == 0L) {
                     val c = csd
                     firstNals = AnnexB.nalTypes(if (c != null) AnnexB.glue(c, data) else data)
@@ -136,7 +136,7 @@ object TranscodeSelfCheck {
         }
 
         val out = Out()
-        // "placeholder": параллельно второй энкодер заглушки, как в живой сессии (VideoSource + транскодер)
+        // "placeholder": parallel to the second encoder stub, as in live session (VideoSource + transcoder)
         val ph = if (tuning.contains("placeholder")) try {
             com.yegorkapomidorka.headswap.VideoSource(1280, 720, 30, 4_000_000, object : com.yegorkapomidorka.headswap.VideoSource.Listener {
                 override fun onConfig(csd: ByteArray) {}
@@ -160,7 +160,7 @@ object TranscodeSelfCheck {
             AppLog.e("transcode_test: транскодер не создан", e)
             return
         }
-        var dropSum = 0L                                // "потеряно" из statsLine (окна сбрасываются при каждом вызове)
+        var dropSum = 0L                                // "lost" from statsLine (windows are reset on each call)
         fun stats(): String {
             val s = t.statsLine()
             dropSum += Regex("""потеряно (\d+)""").find(s)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
@@ -170,19 +170,19 @@ object TranscodeSelfCheck {
         t.requestSyncFrame()
         val t0 = SystemClock.elapsedRealtime()
         var fed = 0
-        var skippedP = 0                                // P-кадры файла, не поданные из-за ожидания IDR
+        var skippedP = 0                                // P-frame file not filed due to waiting for IDR
         var idx = firstIdr
         var pauseStartMs = -1L
         val pauseEndMs = AtomicLong(-1L)
         var lastStats = t0
         val inPause = AtomicBoolean(false)
-        val active = AtomicBoolean(true)                // вспомогательные нити работают, пока идёт подача
+        val active = AtomicBoolean(true)                // auxiliary thread work while the feed is in progress
         val resets = AtomicInteger()
-        val resetGen = AtomicInteger()                  // счётчик reset-ов: подающая нить по нему узнаёт, что надо ждать IDR
+        val resetGen = AtomicInteger()                  // reset-s counter: the thread feeder learns from it that you need to wait for IDR
         val silentEpisodes = AtomicInteger()
         val maxSilentMs = AtomicLong()
 
-        // сторожок: выход энкодера молчит > 3 с вне запланированной паузы
+        // gatekeeper: encoder exit silent > 3 with out scheduled pause
         val watch = Thread({
             try {
                 while (active.get()) {
@@ -202,7 +202,7 @@ object TranscodeSelfCheck {
             }
         }, "transcode-test-watch").also { it.isDaemon = true; it.start() }
 
-        // resetevery: resetDecoder() с другой нити, как мост на START после PAUSE
+        // resetevery: resetDecoder() with another thread, as bridge on START after PAUSE
         val resetter = if (resetEveryMs > 0) Thread({
             try {
                 while (active.get()) {
@@ -232,26 +232,26 @@ object TranscodeSelfCheck {
                 AppLog.i("transcode_test: пауза кончилась: за ${(pauseEnd - pauseStartMs) / 1000.0} с энкодер выдал ${out.pauseEndFrames - out.pauseStartFrames} кадров = %.1f fps".format((out.pauseEndFrames - out.pauseStartFrames) * 1000.0 / (pauseEnd - pauseStartMs)))
             }
             val gen = resetGen.get()
-            if (gen != seenGen) {                       // был reset: до ближайшего IDR из файла P не подаём
+            if (gen != seenGen) {                       // was reset: to the nearest IDR from file P do not submit
                 seenGen = gen
                 out.gotIdr = false
             }
-            if (idx >= aus.size) idx = firstIdr          // конец файла: по кругу с IDR
+            if (idx >= aus.size) idx = firstIdr          // end of file: in a circle with IDR
             val au = aus[idx++]
             if (out.gotIdr) {
                 t.feedFrame(au.data, fed * 33_333L)
                 fed++
             } else if (au.idr) {
-                // первый IDR после старта/потери кадра/reset: SPS/PPS из конфига, если в самом кадре их нет (после reset транскодер их забыл)
+                // first IDR after start/loss of frame/reset: SPS/PPS from the config if there are no frame in itself (after reset the transcoder forgot them)
                 val types = AnnexB.nalTypes(au.data)
                 val payload = if (AnnexB.startsWithSps(au.data) && 8 in types) au.data else AnnexB.glue(cfg, au.data)
-                out.gotIdr = true                        // до feedFrame: он может сам позвать onNeedAaKeyFrame
+                out.gotIdr = true                        // up to feedFrame: it can call onNeedAaKeyFrame by itself
                 t.feedFrame(payload, fed * 33_333L)
                 fed++
                 t.requestSyncFrame()
             } else {
                 skippedP++
-                continue                                 // IDR в дампе AA раз в ~минуту: к нему шагаем без задержки, как мост по сокету
+                continue                                 // IDR in the AA dump once per minute: we walk to it without delay, like a bridge on socket
             }
             if (SystemClock.elapsedRealtime() - lastStats >= 5000) {
                 AppLog.i("transcode_test: ${stats()}")

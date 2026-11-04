@@ -3,9 +3,9 @@ package com.yegorkapomidorka.headswap.aa
 import com.yegorkapomidorka.headswap.R
 
 /**
- * Экспериментальная настройка «Прореживание тача» (раздел для разработчиков): сколько одиночных MOVE одного пальца
- * мост пропускает перед отправкой в AA. ×2 = уходит каждый второй (см. [TouchDecimator]). Явное значение действует
- * на любой ГУ, по умолчанию выкл. Мост читает значение на каждое событие.
+ * Experimental setting "touch thinning" (developer section): how many single MOVE one finger
+ * The bridge passes before being sent to AA. ×2 = Every second person leaves (see [TouchDecimator]). Explicit value is valid
+ * on any head unit, by default off. Bridge reads value for each event.
  */
 enum class TouchDecimation(val titleRes: Int, val every: Int) {
     OFF(R.string.tdec_off, 1),
@@ -14,7 +14,7 @@ enum class TouchDecimation(val titleRes: Int, val every: Int) {
     companion object {
         val DEFAULT = OFF
 
-        /** По имени из prefs; неизвестное/пустое = по умолчанию. */
+        /** By name from prefs; unknown/empty = by default. */
         fun parse(key: String?): TouchDecimation = values().firstOrNull { it.name == key } ?: DEFAULT
     }
 }

@@ -10,8 +10,8 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Лог в три места: logcat (тег Headswap), файл headswap-<timestamp>.log в getExternalFilesDir(null)
- * и кольцо последних строк для экрана. Подробности (hexdump) идут только в logcat и файл.
+ * Log in three places: logcat (Headswap tag), file headswap-<timestamp>.log in getExternalFilesDir(null)
+ * and the last lines ring for the screen. Details (hexdump) only go to logcat and file.
  */
 object AppLog {
     const val TAG = "Headswap"
@@ -40,7 +40,7 @@ object AppLog {
         CrashLog.install(ctx)
     }
 
-    /** Строка для всех приёмников (экран тоже, если ui=true). */
+    /** Line for all receivers (screen too, if ui=true). */
     @Synchronized
     fun i(line: String, ui: Boolean = true) {
         Log.i(TAG, line)
@@ -51,7 +51,7 @@ object AppLog {
         }
     }
 
-    /** Подробности: только logcat и файл. */
+    /** Details: only logcat and file. */
     @Synchronized
     fun detail(text: String) {
         for (l in text.split('\n')) Log.d(TAG, l)
@@ -70,7 +70,7 @@ object AppLog {
     @Synchronized
     fun lastLines(): List<String> = ring.toList()
 
-    /** Очистить строки на экране (файл лога не трогаем). */
+    /** Clear lines on the screen (log file do not touch). */
     @Synchronized
     fun clearRing() = ring.clear()
 
@@ -83,7 +83,7 @@ object AppLog {
         }
     }
 
-    /** Лог одного сообщения: заголовок + hexdump первых 256 байт inner и декодированный protobuf. */
+    /** Single message log: header + hexdump first 256 bytes of inner and decoded protobuf. */
     fun msg(dir: String, chan: Int, outerLen: Int, type: Int, len: Int, decoded: String?, inner: ByteArray, ui: Boolean = true, note: String = "") {
         val head = "$dir ${Ch.name(chan)} ${Msg.hex(type)} ${Msg.name(type)} len=$len" +
             (if (decoded != null) " $decoded" else "") + note

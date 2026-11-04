@@ -5,10 +5,10 @@ import org.json.JSONObject
 import java.time.LocalDate
 
 /**
- * Диагноз подключения по логу приложения: 1-3 вероятные причины и совет пользователю.
- * Kotlin-порт tools/logdiag.py (+ нужной части tools/logdigest.py), правила общие:
- * tools/logdiag_rules.json (в сборку копируется в assets). Поведение сверяется общими
- * кейсами tools/logdiag_cases/ (LogDiagTest и tools/test_logdiag.py). Чистая логика без Android.
+ * Application log connection diagnosis: 1-3 probable causes and advice to the user.
+ * Kotlin-port tools/logdiag.py (+the desired part of tools/logdigest.py), general rules:
+ * tools/logdiag_rules.json (to be copied in assets). The behavior is checked by common
+ * tools/logdiag_cases/ cases (LogDiagTest and tools/test_logdiag.py). Pure logic without Android.
  */
 object LogDiag {
     const val SHOW = 3
@@ -16,7 +16,7 @@ object LogDiag {
 
     class Cond(val fact: String, val op: String, val value: Any?)
 
-    /** Шаг решения в правиле: текст ru/en и необязательное действие-кнопка (open_aa, video, ... см. DiagActions). */
+    /** Solution step in the rule: text ru/en and optional action-button (open_aa, video, ... see DiagActions). */
     class RuleStep(val text: String, val textEn: String?, val action: String?)
 
     class Rule(
@@ -43,7 +43,7 @@ object LogDiag {
 
     class Rules(val latest: String, val markers: Map<String, Regex>, val rules: List<Rule>)
 
-    /** Шаг для показа: текст на нужном языке и действие (null = без кнопки). */
+    /** Step to show: text in the desired language and action (null = without a button). */
     class Step(val text: String, val action: String?)
 
     class Cause(
@@ -60,7 +60,7 @@ object LogDiag {
         val isNote get() = category == "note"
     }
 
-    /** Окружение из device.txt (в приложении — из PackageInfo и Build). */
+    /** The environment is device.txt (in the application - from PackageInfo and Build). */
     class Env(val version: String?, val device: String? = null, val android: String? = null, val sdk: Int? = null)
 
     class Marker {
@@ -73,7 +73,7 @@ object LogDiag {
 
     class Result(val facts: Map<String, Any?>, val causes: List<Cause>)
 
-    // ------------------------------------------------------------ правила
+    // --------------------------------------------- rules
 
     fun parseRules(json: String): Rules {
         val o = JSONObject(json)
@@ -125,7 +125,7 @@ object LogDiag {
         return Cond(c.getString(0), c.getString(1), if (v == JSONObject.NULL) null else v)
     }
 
-    // ------------------------------------------------------------ разбор лога
+    // --------------------------------------------- Log parsing
 
     private val TS_RE = Regex("""^(\d\d):(\d\d):(\d\d)\.(\d{3}) (.*)$""")
     private val STAMP_RE = Regex("""(\d{4})(\d\d)(\d\d)-(\d\d)(\d\d)(\d\d)""")

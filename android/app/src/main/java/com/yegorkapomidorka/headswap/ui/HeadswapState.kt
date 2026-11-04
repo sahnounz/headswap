@@ -10,7 +10,7 @@ import com.yegorkapomidorka.headswap.aa.AaPrefs
 import com.yegorkapomidorka.headswap.aa.AaServerCheck
 import com.yegorkapomidorka.headswap.aa.AaState
 
-/** Сводка состояния для главного экрана и уведомления. Чистая логика без Android: считается из Inputs. */
+/** Status summary for main screen and notification. Pure logic without Android: counts from Inputs. */
 enum class Phase { OFF, WAITING, CONNECTED, RECONNECTING, PARKED, ERROR }
 
 enum class StageState { DONE, ACTIVE, PAUSE, ERR, TODO, PEND }
@@ -30,7 +30,7 @@ data class HomeState(
     val title: UiText,
     val sub: UiText,
     val stages: List<Pair<UiText, Pair<StageState, UiText>>>,
-    /** Оставшиеся секунды grace (только RECONNECTING), иначе -1. */
+    /** The remaining seconds are grace (only RECONNECTING), otherwise -1. */
     val graceLeftS: Int,
     val graceTotalS: Int,
     val primary: PrimaryAction?,
@@ -45,36 +45,36 @@ class Inputs(
     val bridgeRunning: Boolean,
     val aaStatus: String,
     val protocolKnown: Boolean,
-    /** Сервер ГУ AA запущен по пробе при открытии экрана; null - не проверяли или проба не дала ответа. */
+    /** The head unit AA server is running on a sample when the screen is opened; null - did not check or the sample did not give an answer. */
     val serverRunning: Boolean? = null,
-    /** Подключённая сессия закончилась (обрыв USB или «Стоп»), AA закрыта штатно: сервер ГУ должен был остаться. */
+    /** The connected session ended (break USB or "Stop"), AA closed normally: the head server unit was to remain. */
     val ended: Boolean,
     val graceLeftS: Int,
     val graceTotalS: Int,
     val usbAudio: Boolean,
-    /** Мост не стартует из-за настройки (нет сертификата head unit): текст для пользователя. */
+    /** Bridge does not start due to configuration (no head unit certificate): text for user. */
     val setupError: UiText? = null,
-    /** Размер видео на ГУ («1280×720»): фактический режим сессии. */
+    /** Video size on head unit ("1280×720"): actual session mode. */
     val videoRes: String = "1280×720",
-    /** Сессия идёт по Wi-Fi: CarLife и звук идут к ГУ по воздуху, кабеля нет. */
+    /** The session is on Wi-Fi: CarLife and the sound goes to head unit on wireless connection, there is no cable. */
     val wireless: Boolean = false,
-    /** Сколько мс подряд сервер ГУ отказывает (ECONNREFUSED) настоящим подключениям моста; 0 = не отказывает. */
+    /** How many ms server head unit refuses (ECONNREFUSED) real bridge connections; 0 = does not refuse. */
     val refusedForMs: Long = 0,
-    /** Сколько попыток моста подряд принято по TCP без VERSION_RESPONSE (зависший сервер). */
+    /** How many consecutive bridge attempts have been made on the TCP without the VERSION_RESPONSE (hanging server). */
     val versionHangs: Int = 0,
-    /** Хоть раз установилась настоящая AA-сессия: сервер ГУ работал. Без этого «не отвечает» не показываем (новичку - «Запустите сервер ГУ»). */
+    /** At least once the real AA-session was installed: the head unit server worked. Without this, we do not show "not responding" (to the beginner - "Start the head unit server"). */
     val serverWorked: Boolean = false,
-    /** Отказ не в окне ~10 с после закрытия нашей сессии: на свежем старте моста сервер ГУ не запущен, ждать нечего. */
+    /** Rejection is not in the window10 c after closing of our session: at the fresh start of the bridge server head unit not started, nothing to wait. */
     val refusedFresh: Boolean = false,
-    /** Идёт автопроба сервера ГУ (короткая сессия AA, ~1 с). */
+    /** Auto Test of Server head unit (short session) AA, ~1 (c) */
     val serverChecking: Boolean = false,
 )
 
 object HomeLogic {
-    /** Отказ сервера ГУ короче этого - норма: после ByeBye AA снова слушает порт примерно через 6 с. */
+    /** The head unit server failure is shorter than this - the norm: after ByeBye AA again listens to the port through about 6 s. */
     const val REFUSED_DOWN_MS = 15_000L
 
-    /** Столько попыток подряд «TCP есть, VERSION_RESPONSE нет» - сервер завис. */
+    /** So many attempts in a row "TCP is, VERSION_RESPONSE is not" - the server is stuck. */
     const val HANGS_DOWN = 2
 
     val LABELS = listOf(
@@ -92,7 +92,7 @@ object HomeLogic {
         val connected = i.bridgeRunning && st.startsWith("мост: AA -> CarLife")
         val refused = i.bridgeRunning && "жду сервер ГУ" in st
         val total = if (i.graceTotalS > 0) i.graceTotalS else 8
-        // кабель есть, мост пробует подключиться, а сервер, который раньше работал, не отвечает на настоящие попытки
+        // cable is there, the bridge tries to connect, and the server that used to work does not respond to real attempts
         val serverDown = i.bridgeRunning && i.serverWorked && (i.refusedForMs >= REFUSED_DOWN_MS || i.versionHangs >= HANGS_DOWN)
         return when {
             i.setupError != null && !i.bridgeRunning -> state(
@@ -126,7 +126,7 @@ object HomeLogic {
                     StageState.DONE to if (i.wireless) CARLIFE_WIFI else CARLIFE,
                     StageState.DONE to UiText.res(R.string.home_stage_connected),
                     StageState.DONE to UiText.raw(i.videoRes),
-                    // настройка «Звук через Headswap» (бывш. «Звук через USB») - это звук по каналу CarLife; без кабеля он идёт по Wi-Fi
+                    // Headswap (formerly USB Sound) is a CarLife channel sound; without cable, it runs on Wi-Fi
                     if (i.usbAudio) StageState.DONE to UiText.raw(if (i.wireless) "Wi-Fi" else "USB")
                     else StageState.PEND to UiText.res(R.string.home_stage_off),
                 ),
@@ -139,9 +139,9 @@ object HomeLogic {
                 ),
             )
             serverDown -> serverDownState()
-            // «Запустите сервер ГУ» сразу, если сервер не работал, отказ не в окне после закрытия нашей сессии
-            // или проба сказала «отказ». Короткий отказ после ByeBye у работавшего сервера - норма,
-            // пока AA снова слушает; ждём как обычное подключение. Проба «запущен» - тоже просто «Подключаюсь»
+            // “Start the server head unit” immediately, if the server did not work, the failure is not in the window after the closure of our session
+            // or the sample said "failure". Short failure after ByeBye at the running server is the norm,
+            // while AA is listening again; waiting as usual connection. Sample "started" - also just "Connect"
             refused && i.serverRunning != true && (!i.serverWorked || i.refusedFresh || i.serverRunning == false) -> state(
                 Phase.OFF, Tone.PRI, HeroIcon.POWER, UiText.res(R.string.home_title_off),
                 UiText.res(R.string.home_sub_refused, TEXT_START_CHAIN),
@@ -183,12 +183,12 @@ object HomeLogic {
                 ),
                 notifText = UiText.res(R.string.home_title_checking),
             )
-            // проба не дала ответа или ещё не было: запущен ли сервер ГУ, не знаем
+            // test did not give answer or has not yet been: whether the head unit server is running, do not know
             else -> unknownState()
         }
     }
 
-    /** «Запустите сервер ГУ»: проба получила отказ или сервер завис. */
+    /** “Start the head unit server”: the trial failed or the server crashed. */
     private fun offState() = state(
         Phase.OFF, Tone.PRI, HeroIcon.POWER, UiText.res(R.string.home_title_off), TEXT_START_CHAIN,
         listOf(
@@ -199,7 +199,7 @@ object HomeLogic {
         notifText = UiText.res(R.string.notif_server_off),
     )
 
-    /** «Проверьте сервер ГУ»: проба не дала ответа, ни «запущен», ни «не запущен» не утверждаем. */
+    /** “Check the head unit server”: the sample did not give an answer, neither “launched” nor “not running” is not approved. */
     private fun unknownState() = state(
         Phase.OFF, Tone.PRI, HeroIcon.POWER, UiText.res(R.string.home_title_unknown), UiText.res(R.string.home_sub_unknown),
         listOf(
@@ -211,8 +211,8 @@ object HomeLogic {
     )
 
     /**
-     * «Машина отключена»: мост сам штатно закрыл установленную сессию (ByeBye). Держится до нового кабеля.
-     * [serverKnownUp] - проба после поездки подтвердила, что сервер ГУ остался; иначе нейтральный текст.
+     * “The machine is off”: the bridge itself has closed the set session (ByeBye) on its own. Holds up to the new cable.
+     * [serverKnownUp] - a sample after the trip confirmed that the server head unit remained; otherwise neutral text.
      */
     private fun parkedState(serverKnownUp: Boolean) = state(
         Phase.PARKED, Tone.PRI, HeroIcon.CAR, UiText.res(R.string.home_title_parked),
@@ -225,7 +225,7 @@ object HomeLogic {
         notifText = UiText.res(if (serverKnownUp) R.string.notif_parked else R.string.notif_parked_unknown),
     )
 
-    /** «Сервер ГУ не отвечает»: настоящие подключения моста не получают ответа (отказ дольше REFUSED_DOWN_MS или HANGS_DOWN зависаний), нужно включить сервер снова. */
+    /** “head unit server does not respond”: real bridge connections do not receive a response (failure longer than REFUSED_DOWN_MS or HANGS_DOWN hangs), you need to turn on the server again. */
     private fun serverDownState() = state(
         Phase.ERROR, Tone.ERR, HeroIcon.ALERT, UiText.res(R.string.home_title_server_down), UiText.res(R.string.home_sub_server_down),
         listOf(
@@ -249,9 +249,9 @@ object HomeLogic {
 }
 
 /**
- * Наблюдаемая сводка (только чтение из CarLifeState/AaState + то, что сама знает UI-часть):
- * собирает Inputs и помнит переходы (оборвалась ли сессия, когда подключились, до какого момента держится grace).
- * Вызывается с главной нити: экраном и тикером уведомления.
+ * Observed summary (only reading from CarLifeState/AaState + what UI-part knows itself):
+ * collects Inputs and remembers the transitions (did the session break when they connected, to what point grace lasts).
+ * Called with main thread: screen and ticker notification.
  */
 object HeadswapStatus {
     private var prevRunning = false
@@ -264,7 +264,7 @@ object HeadswapStatus {
 
     private val graceRe = Regex("""жива\s+(\d+)\s*с""")
 
-    /** Пользователь нажал «Открыть Android Auto» (идёт включать сервер ГУ): снимаем «Машина отключена». Запущен ли сервер, скажет проба при возврате на экран. */
+    /** The user clicked "Open Android Auto" (to include the server head unit): remove "Machine is disabled". Whether the server is running, will say a sample when returning to the screen. */
     fun markServerRequested() {
         ended = false
         AaServerCheck.forgetAuto()
@@ -281,7 +281,7 @@ object HeadswapStatus {
             ended = false
             sawConnected = false
             connectedSince = 0
-            AaServerCheck.forgetAuto()      // после поездки сервер мог упасть: итог пробы до неё больше не верен
+            AaServerCheck.forgetAuto()      // after the trip, the server could fall: the result of the test before it is no longer true
         }
         if (connectedNow || reconnectingNow) sawConnected = true
         if (connectedNow) {
@@ -305,7 +305,7 @@ object HeadswapStatus {
         prevRunning = running
 
         val aaPrefs = AaPrefs(ctx)
-        // AaConnector знает об установленных сессиях только в процессе; признак запоминаем, чтобы пережить перезапуск приложения
+        // AaConnector knows about the installed sessions only in the process; the feature is memorized to survive the restart of the application
         if (AaState.serverFailures.worked && !aaPrefs.serverWorked) aaPrefs.serverWorked = true
         val serverWorked = aaPrefs.serverWorked
         val left = if (graceDeadline > 0) ((graceDeadline - now + 999) / 1000).toInt() else -1
@@ -319,7 +319,7 @@ object HeadswapStatus {
             graceLeftS = left,
             graceTotalS = graceTotalS,
             usbAudio = aaPrefs.usbAudio,
-            // известный текст нет-сертификата подменяем ресурсом, остальные ошибки показываем как есть
+            // known text no-certificate replace resource, the rest of the errors show as is
             setupError = AaState.setupError?.let { if (it == AaCreds.MISSING_TEXT) UiText.res(R.string.home_err_no_cert) else UiText.raw(it) },
             videoRes = (CarLifeState.videoMode ?: aaPrefs.videoGeometry.effective(aaPrefs.transcode)).outLabel,
             wireless = CarLifeState.wirelessSession,
@@ -332,7 +332,7 @@ object HeadswapStatus {
 
     fun current(ctx: Context): HomeState = HomeLogic.compute(inputs(ctx))
 
-    /** Подключён ли USB-аксессуар (для подсказок на экране). */
+    /** Is USB-accessory connected (for screen prompts). */
     fun accessoryPresent(ctx: Context): Boolean =
         ctx.getSystemService(UsbManager::class.java).accessoryList?.isNotEmpty() == true
 }

@@ -6,25 +6,25 @@ import com.yegorkapomidorka.headswap.AppLog
 import com.yegorkapomidorka.headswap.desktop.DesktopAppCatalog
 import com.yegorkapomidorka.headswap.launcher.AppRef
 
-/** Сторонний лаунчер вместо нашего на весь экран ГУ: что предложить в настройках телефона и как разобрать сохранённый выбор. */
+/** Third-party launcher instead of our full-screen head unit: what to offer in the phone settings and how to disassemble the saved selection. */
 internal object DesktopPick {
     /**
-     * Лаунчеры для выбора: exported вход под LAUNCHER (каталог, наш пакет там уже отфильтрован), который сам же стоит под
-     * HOME ([homeKeys] - «пакет/класс»). HOME-заглушки с отдельным LAUNCHER-входом (FallbackHome «Настроек») - не лаунчеры.
+     * launcher for selection: exported input under LAUNCHER (catalog, our package there is already filtered), which itself is under
+     * HOME ([homeKeys] - "package/class"). HOME-stub with separate LAUNCHER-input (FallbackHome "Settings") - not launcher.
      */
     fun options(catalog: List<DesktopAppCatalog.Entry>, homeKeys: Set<String>): List<DesktopAppCatalog.Entry> =
         catalog.filter { it.key in homeKeys }.distinctBy { it.packageName }
 
-    /** Строка вида «пакет/класс» с обеими частями. */
+    /** A "package/class" line with both parts. */
     fun isComponent(value: String?): Boolean = value != null && value.indexOf('/').let { it > 0 && it < value.length - 1 }
 
-    /** Выбранный компонент «пакет/класс», пока его пакет есть среди вариантов (активность могла смениться); иначе null - Headswap. */
+    /** Selected package/class component, while its package is among the options (activity could change); otherwise null - Headswap. */
     fun selected(component: String?, options: List<DesktopAppCatalog.Entry>): DesktopAppCatalog.Entry? {
         val pkg = AppRef.parse(component ?: return null)?.pkg ?: return null
         return options.firstOrNull { it.packageName == pkg }
     }
 
-    /** Установленные лаунчеры, кроме нашего пакета (у smoke-сборки он с суффиксом); запросы к PackageManager, не с главного потока. */
+    /** Installed by launcher, except our package (in smoke-assembly it is with suffix); requests to PackageManager, not with main thread. */
     fun installed(context: Context): List<DesktopAppCatalog.Entry> {
         val pm = context.packageManager
         val found = runCatching {

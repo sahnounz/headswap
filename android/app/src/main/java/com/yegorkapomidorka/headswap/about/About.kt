@@ -3,10 +3,10 @@ package com.yegorkapomidorka.headswap.about
 import android.content.Context
 import com.yegorkapomidorka.headswap.R
 
-/** Автор для экрана «О приложении»: имя по языку, ник и страница в Telegram. */
+/** Author for the screen "About application": name by language, nickname and page in Telegram. */
 data class Author(val nameRes: Int, val handle: String)
 
-/** Проект с открытой лицензией: правообладатель, лицензия, страница проекта и файл с полным текстом в assets/licenses. */
+/** Project with open license: copyright holder, license, project page and full text file in assets/licenses. */
 data class OpenSource(
     val name: String,
     val version: String?,
@@ -15,11 +15,11 @@ data class OpenSource(
     val url: String,
     val asset: String,
 ) {
-    /** «Kadb 2.1.5» или просто название, если версия не нужна. */
+    /** "Kadb 2.1.5" or just a name if version is not needed. */
     val title: String get() = if (version == null) name else "$name $version"
 }
 
-/** Авторы и сторонние лицензии: один источник для экрана ГУ (лаунчер) и экрана телефона. */
+/** Authors and third-party licenses: one source for the head unit screen (launcher) and phone screen. */
 object About {
     val authors = listOf(
         Author(R.string.about_author_yegor, "@YegorkaPomidorka"),
@@ -29,7 +29,7 @@ object About {
     private const val GPL = "GPL-3.0.txt"
     private const val APACHE = "Apache-2.0.txt"
 
-    /** Версии - те, что реально попадают в APK (gradlew :app:dependencies, releaseRuntimeClasspath). */
+    /** Versions are the ones that really fall into the APK (gradlew :app:dependencies, releaseRuntimeClasspath). */
     val licenses = listOf(
         OpenSource("Headswap", null, "Yegor, Ildar Sadykov", "GPL-3.0", "https://github.com/YegorkaPomidorka/headswap", GPL),
         OpenSource("headswap_desk", null, "Ildar Sadykov", "GPL-3.0", "https://github.com/SadykovIV/headswap_desk", GPL),
@@ -49,7 +49,7 @@ object About {
             "OFL-JetBrainsMono.txt"),
     )
 
-    /** Полный текст лицензии из assets/licenses; не прочитался - пустая строка (экран покажет только ссылку на проект). */
+    /** Full text of the license from assets/licenses; not read - empty line (the screen will show only a link to the project). */
     fun readText(ctx: Context, asset: String): String =
         try {
             ctx.assets.open("licenses/$asset").bufferedReader(Charsets.UTF_8).use { it.readText() }
@@ -61,8 +61,8 @@ object About {
     private val LIST_MARK = Regex("""^\s*(\(?[0-9A-Za-z]{1,2}[.)]|[0-9]+\.)\s""")
 
     /**
-     * Тексты лицензий набраны в 80 колонок: на узком экране строки рвутся как попало. Склеиваем строки одного абзаца,
-     * абзацы (пустая строка), пункты списка и отступы заголовков не трогаем, линии из дефисов сворачиваем.
+     * License texts are typed in 80 columns: on a narrow screen, lines are torn as if by chance. We glue together the lines of one paragraph,
+     * paragraphs (empty line), list items and indents header do not touch, lines of hyphens are rolled.
      */
     fun reflow(raw: String): String {
         val out = ArrayList<String>()

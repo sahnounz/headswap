@@ -22,7 +22,7 @@ def test_outer_inner_roundtrip():
     assert inner == bytes.fromhex("0002 0000 00010004 0801".replace(" ", ""))
     frame = C.outer(C.CH_CMD, inner)
     assert frame[:8] == (1).to_bytes(4, "big") + len(inner).to_bytes(4, "big")
-    # разбор кусками по 1 байту
+    # parsing by 1 bytes
     p = C.FrameParser()
     got = []
     for b in frame + frame:
@@ -56,7 +56,7 @@ def test_pb_roundtrip():
     assert C.pb_parse(b"\x0a\x05ab") is None
 
 
-# ---- локальная петля: сервер в потоке, тест играет мост ----
+# ---- local loop: server in stream, test plays bridge ----
 
 class FakeBridge:
     def __init__(self, port: int):
@@ -68,7 +68,7 @@ class FakeBridge:
         self.s.sendall(C.outer(C.CH_CMD, C.cmd_inner(mtype, body)))
 
     def pump(self, until, timeout: float = 5.0):
-        """Читать кадры, пока until(msgs) не станет истиной."""
+        """Read frame until until(msgs) becomes true."""
         self.s.settimeout(timeout)
         while not until(self.msgs):
             data = self.s.recv(65536)
@@ -112,7 +112,7 @@ def test_loopback_auth_ok():
     b.pump(lambda m: C.HU_AUTHEN_RESULT in [x[1] for x in m])
     result = [x[2] for x in b.msgs if x[1] == C.HU_AUTHEN_RESULT][0]
     assert result == C.pb_int(1, 1)
-    # видео: два кадра
+    # video: two frame
     b.s.sendall(C.outer(C.CH_VIDEO, C.data_inner(C.VIDEO_DATA, b"\x00\x00\x00\x01\x67" + b"x" * 10)))
     b.s.sendall(C.outer(C.CH_VIDEO, C.data_inner(C.VIDEO_DATA, b"\x00\x00\x00\x01\x41" + b"y" * 5)))
     b.pump(lambda m: C.VIDEO_HEARTBEAT in [x[1] for x in m if x[0] == C.CH_VIDEO])
@@ -160,7 +160,7 @@ P_FRAME = C.data_inner(C.VIDEO_DATA, b"\x00\x00\x00\x01\x41" + b"p" * 10)
 
 
 def test_loopback_pause_cycles():
-    """Мост шлёт кадры, на PAUSE замолкает (кроме одного кадра «в пути»), на START через 30 мс отдаёт IDR."""
+    """The frame relay bridge, on PAUSE shuts down (except for one frame "on the way"), on START via 30 ms gives IDR."""
     hu, t, res, out = start_hu(2.0, no_auth=True, pause_cycles=2, pause_every=0.3, pause_for=0.2)
     b = FakeBridge(hu.port)
     b.send_cmd(C.MD_INFO, MD_INFO_BODY)
@@ -198,11 +198,11 @@ def test_loopback_pause_cycles():
     t.join(10)
     b.s.close()
     assert not t.is_alive()
-    assert b.types() == ([C.HU_PROTOCOL_VERSION] + BURST[:2] + BURST[3:]            # без HU_AUTHEN_REQUEST
+    assert b.types() == ([C.HU_PROTOCOL_VERSION] + BURST[:2] + BURST[3:]            # without HU_AUTHEN_REQUEST
                          + [C.VIDEO_ENCODER_PAUSE, C.VIDEO_ENCODER_START] * 2)
     p = res["pause"]
     assert [c["k"] for c in p["cycles"]] == [1, 2]
-    # кадр после PAUSE мост шлёт всегда, плюс бывают кадры «в пути» (шлются раз в 50 мс до разбора PAUSE): точное число не фиксируем
+    # frame after PAUSE the bridge is always sent, plus there are frame "in transit" (run once in 50 ms until parsing PAUSE): the exact number is not fixed
     assert all(c["paused_frames"] >= 1 for c in p["cycles"])
     assert p["paused_frames_total"] == sum(c["paused_frames"] for c in p["cycles"]) >= 2
     assert p["no_idr"] == 0

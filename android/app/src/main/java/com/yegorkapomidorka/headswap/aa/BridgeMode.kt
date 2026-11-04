@@ -1,9 +1,9 @@
 package com.yegorkapomidorka.headswap.aa
 
 /**
- * Режим моста: что ГУ получает по CarLife. ANDROID_AUTO - мост к серверу ГУ Android Auto (по умолчанию),
- * DESKTOP - свой рабочий стол на виртуальном экране телефона (нужна активация с ПК, Android 13+).
- * Режим снимается на подключение (хост и сессия), а не читается на лету.
+ * Bridge mode: what head unit gets by CarLife. ANDROID_AUTO - bridge to server head unit Android Auto (default),
+ * DESKTOP - your desktop on the virtual screen of the phone (you need to activate with a PC, Android 13+).
+ * The mode is removed for connection (host and session), and not read on the fly.
  */
 enum class BridgeMode(val key: String) {
     ANDROID_AUTO("aa"),
@@ -12,19 +12,19 @@ enum class BridgeMode(val key: String) {
     companion object {
         val DEFAULT = ANDROID_AUTO
 
-        /** Trusted-дисплеи и права активации есть с Android 13; ниже режим DESKTOP недоступен. */
+        /** Trusted-displays and activation rights are with Android 13; below mode DESKTOP is not available. */
         const val DESKTOP_MIN_SDK = 33
 
-        /** По ключу из prefs; неизвестное/пустое = по умолчанию. */
+        /** By key from prefs; unknown/empty = default. */
         fun parse(key: String?): BridgeMode = values().firstOrNull { it.key == key } ?: DEFAULT
 
         fun desktopSupported(sdk: Int) = sdk >= DESKTOP_MIN_SDK
 
-        /** Режим, который реально применяется: DESKTOP на Android ниже 13 трактуется как Android Auto. */
+        /** Mode that is actually applied: DESKTOP on Android below 13 is treated as Android Auto. */
         fun effective(stored: BridgeMode, sdk: Int): BridgeMode =
             if (stored == DESKTOP && !desktopSupported(sdk)) ANDROID_AUTO else stored
 
-        /** Живой хост (grace после обрыва USB) годится новой сессии только того же режима. */
+        /** A live host (grace after the USB break) is only suitable for a new session of the same mode. */
         fun hostReusable(hostMode: BridgeMode, wanted: BridgeMode) = hostMode == wanted
     }
 }

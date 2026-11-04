@@ -18,7 +18,7 @@ class LauncherSpecTest {
         val s = LauncherSpecs.forSize(1920, 720)
         assertEquals(135, s.rail)
         assertEquals(132, s.bottomH) // T + 2G
-        assertEquals(132, s.navH) // блок навигации - одна полоса с нижним рядом
+        assertEquals(132, s.navH) // navigation block - one lane with bottom row
         assertEquals(18, s.radius)
         assertEquals(40, s.ic)
         assertEquals(54, s.icBig)
@@ -31,11 +31,11 @@ class LauncherSpecTest {
 
     @Test fun railFollowsMockup() {
         val s = LauncherSpecs.forSize(1920, 720)
-        assertEquals(90, s.rb) // все кнопки рейки по T, пока влезают
+        assertEquals(90, s.rb) // all the rail buttons on T, while climbing
         assertEquals(40, s.ric)
         assertEquals(58, s.logoIn)
-        assertEquals(54, s.backIc) // белый шеврон 54 px на 1920x720
-        // 1280x480: три кнопки, рейка сжата по высоте
+        assertEquals(54, s.backIc) // White Chevron 54 px on 1920x720
+        // 1280x480: three buttons, rail compressed in height
         val strip = LauncherSpecs.forSize(1280, 480)
         assertEquals(106, strip.navH)
         assertEquals(88, strip.rb)
@@ -52,7 +52,7 @@ class LauncherSpecTest {
         assertEquals(62, LauncherSpecs.forSize(800, 480).barH)
         for (row in LauncherSpecs.TABLE) {
             val s = LauncherSpecs.forSize(row[0], row[1])
-            // панель не выше пятой части экрана и не ниже цели касания рейки, иконка влезает
+            // panel is not above the fifth part of the screen and not below the purpose of touching the rail, the icon fits
             assertTrue("${row[0]}x${row[1]}", s.barH in 60..110 && s.barH == s.rb && s.barIc < s.barH && s.barH * 10 <= s.h * 2)
         }
     }
@@ -69,7 +69,7 @@ class LauncherSpecTest {
     }
 
     @Test fun gridIsOneToTwo() {
-        val vezel = LauncherSpecs.forSize(1600, 900) // масштаб строки 1920x1080
+        val vezel = LauncherSpecs.forSize(1600, 900) // 1920x1080
         assertEquals(83, vezel.t)
         assertEquals(125, vezel.rail)
         assertEquals(470, vezel.music)
@@ -80,7 +80,7 @@ class LauncherSpecTest {
     }
 
     @Test fun compactPhoneByFormula() {
-        // на текст меньше 15 * F2 * 0.55
+        // for text less than 15 * F2 * 0.55
         val compact = setOf("1280x720", "1280x640", "1024x600", "800x480")
         for (row in LauncherSpecs.TABLE) {
             val s = LauncherSpecs.forSize(row[0], row[1])
@@ -94,7 +94,7 @@ class LauncherSpecTest {
         assertFalse(LauncherSpecs.forSize(800, 480).strip)
         assertFalse(LauncherSpecs.forSize(1280, 640).strip)
         assertEquals(313, LauncherSpecs.forSize(1280, 480).music)
-        assertEquals(92 * 5 - 21, LauncherSpecs.forSize(1280, 480).phone) // только для оверлея входящего
+        assertEquals(92 * 5 - 21, LauncherSpecs.forSize(1280, 480).phone) // Only for the incoming overlay
     }
 
     @Test fun quickAppsFourPlusAddOrFiveInStrip() {
@@ -107,9 +107,9 @@ class LauncherSpecTest {
         val s = LauncherSpecs.forSize(1920, 800)
         assertTrue(s.t in 60..120)
         assertTrue(s.rail > 0 && s.music > 0)
-        // больше таблицы - крупнее цель касания
+        // larger table - larger touch target
         assertTrue(LauncherSpecs.forSize(3840, 1440).t > 110)
-        // меньше любой строки таблицы не падает в ноль
+        // less than any row of the table does not fall to zero
         assertTrue(LauncherSpecs.forSize(320, 200).t >= 1)
     }
 }

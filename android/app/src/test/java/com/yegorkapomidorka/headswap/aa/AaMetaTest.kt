@@ -16,7 +16,7 @@ import org.junit.Test
 import kotlin.math.abs
 import com.yegorkapomidorka.headswap.aa.AapMessages as M
 
-/** Ссылка, записывающая метаданные и MODULE_STATUS. */
+/** A link that records metadata and MODULE_STATUS. */
 class MetaLink : CarlifeLink {
     val infos = ArrayList<CarlifeMediaInfo>()
     val progress = ArrayList<Int>()
@@ -31,7 +31,7 @@ class MetaLink : CarlifeLink {
         return true
     }
 
-    /** Как настоящая ГУ Honda: на каждый MODULE_STATUS NAVI=1 отвечает SUBSCRIBE_START (доставляет тест через pumpSubscribe). */
+    /** As the real head unit Honda: for each MODULE_STATUS NAVI=1 answers SUBSCRIBE_START (delivers test via pumpSubscribe). */
     var huResubscribes = false
     var pendingSubscribe = 0
 
@@ -62,7 +62,7 @@ class MetaLink : CarlifeLink {
 class AaMetaTest {
     private val png = byteArrayOf(0x89.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte(), 1, 2, 3)
 
-    // NAVI=1 на весь маршрут по умолчанию включён (кроме Desay G6S); тесты, выключающие флаг, возвращают его здесь
+    // NAVI=1 is enabled for the entire route by default (except Desay G6S); tests that turn off the flag return it here
     @After
     fun routeNaviOn() {
         AaBridgeCore.ROUTE_NAVI_STATUS_ENABLED = true
@@ -105,7 +105,7 @@ class AaMetaTest {
         override fun onNavDistance(d: AaNavDistance) { events.add("dist ${d.meters} ${d.timeSeconds} ${d.destinationMeters}") }
     }
 
-    // --- разбор ch9 / ch10 ---
+    // --- parsing ch9 / ch10 ---
     @Test
     fun parsesMediaPlaybackChannel() {
         val r = Rec()
@@ -186,14 +186,14 @@ class AaMetaTest {
         assertEquals(5, AaMeta.turnFromLegacy(6, 3))
         assertEquals(24, AaMeta.turnFromLegacy(19, 3))
         assertEquals(1, AaMeta.turnFromLegacy(4, 3))
-        // каждый код манёвра рисуется
+        // each maneuver code is drawn
         for (t in 0..45) assertNotNull(AaMeta.glyph(AaMeta.turnFromManeuver(t)))
         assertEquals(90, AaMeta.glyph(3).angle)
         assertEquals(-90, AaMeta.glyph(7).angle)
         assertEquals(AaMeta.GlyphKind.DEST, AaMeta.glyph(24).kind)
     }
 
-    // --- подписи в логе по каналу ---
+    // --- signatures in log on channel ---
     @Test
     fun logNamesDependOnChannel() {
         assertEquals("MEDIA_CONFIG", M.messageName(M.CH_AUDIO_MEDIA, 0x8003))
@@ -220,7 +220,7 @@ class AaMetaTest {
         assertFalse(M.isPeriodicMeta(M.CH_AUDIO_MEDIA, 0x8001))
     }
 
-    // --- реле в ядре моста ---
+    // --- relay at the core of the bridge ---
     private class Rig {
         var now = 1_000_000L
         val link = MetaLink()
@@ -233,7 +233,7 @@ class AaMetaTest {
 
         fun start() = core.onCarlifeStart()
 
-        /** Доставить ответные SUBSCRIBE_START; число раундов ограничено, чтобы цикл перевзвода был виден, а не вис. */
+        /** Deliver a SUBSCRIBE_START response; the number of rounds is limited so that the re-drive cycle is visible rather than a wuss. */
         fun pumpSubscribe(maxRounds: Int = 10): Int {
             var rounds = 0
             while (link.pendingSubscribe > 0 && rounds < maxRounds) {
@@ -272,7 +272,7 @@ class AaMetaTest {
         r.core.onMediaStatus(AaMeta.parseMediaStatus(status(2, 3))!!)
         assertEquals("без изменений не шлём", 3, r.link.progress.size)
 
-        // повтор тех же метаданных - тишина; новая обложка того же трека - тот же source; новый трек - новый source
+        // repeat the same metadata - silence; new cover of the same track - the same source; new track - new source
         r.core.onMediaMetadata(AaMeta.parseMediaMetadata(metadata("A"))!!)
         assertEquals(1, r.link.infos.size)
         r.core.onMediaMetadata(AaMeta.parseMediaMetadata(metadata("A", art = png + byteArrayOf(9)))!!)
@@ -303,9 +303,9 @@ class AaMetaTest {
         r.core.onNavTurn(AaMeta.parseNavState(navState(8, "Main St"))!!)
         r.core.onNavDistance(AaMeta.parseNavPosition(navPosition(300, 30))!!)
         assertTrue(r.link.turns.isEmpty())
-        // NAVI=1 уходит до подписки: VW BT 1538 (h244) подписывается только после него
+        // NAVI=1 goes to subscription: VW BT 1538 (h244) subscribes only after it
         assertEquals(listOf(1), r.link.navi())
-        // подписка START moduleID=0 -> текущий манёвр сразу, NAVI=1 не дублируется
+        // subscription START moduleID=0 -> current maneuver immediately, NAVI=1 is not duplicated
         r.core.onCarlifeSubscribe(listOf(0), true)
         assertEquals(listOf(1), r.link.navi())
         assertEquals(1, r.link.turns.size)
@@ -317,7 +317,7 @@ class AaMetaTest {
         val r = Rig()
         r.core.onCarlifeSubscribe(listOf(0), true)
         r.start()
-        r.core.onNavStatus(2)            // INACTIVE на старте: ни «прибыли», ни NAVI
+        r.core.onNavStatus(2)            // INACTIVE at the start: neither "profits" nor NAVI
         assertTrue(r.link.turns.isEmpty())
         assertTrue(r.link.navi().isEmpty())
 
@@ -346,7 +346,7 @@ class AaMetaTest {
             assertEquals(300, totalDistance)
             assertEquals(250, remainDistance)
         }
-        // новый манёвр: дистанция сбрасывается, первая дистанция уходит без троттлинга, total с неё
+        // new maneuver: the distance is reset, the first distance goes without trotting, total with it
         r.now += 10
         r.core.onNavTurn(AaMeta.parseNavState(navState(7, "Second Ave"))!!)
         r.core.onNavDistance(AaMeta.parseNavPosition(navPosition(900, 60))!!)
@@ -356,7 +356,7 @@ class AaMetaTest {
             assertEquals(7, nextTurn)
             assertEquals(900, totalDistance)
         }
-        // конец маршрута: action 3, nextTurn 24, NAVI=0
+        // End of route: action 3, nextTurn 24, NAVI=0
         r.core.onNavStatus(2)
         with(r.link.turns.last()) {
             assertEquals(3, action)
@@ -375,7 +375,7 @@ class AaMetaTest {
         r.core.onNavTurn(AaMeta.parseNavState(navState(8, "Main St"))!!)
         r.core.onNavDistance(AaMeta.parseNavPosition(navPosition(30, 6))!!)
         assertEquals(1, r.link.turns.size)
-        // стоим: AA повторяет те же данные раз в секунду; SHOW -> UPDATE уходит сразу, дальше тишина до 5 с
+        // cost: AA repeats the same data once per second; SHOW -> UPDATE goes immediately, further silence to 5 s
         val same = { r.now += 1000; r.core.onNavDistance(AaMeta.parseNavPosition(navPosition(30, 6))!!) }
         same()
         assertEquals(2, r.link.turns.size)
@@ -385,7 +385,7 @@ class AaMetaTest {
         same()
         assertEquals("keepalive через 5 с", 3, r.link.turns.size)
         assertEquals(2, r.link.turns[2].action)
-        // AA замолчал на 15 с: следующий пакет снова SHOW
+        // AA is silent on 15 with: next pack again SHOW
         r.now += 15_000
         r.core.onNavDistance(AaMeta.parseNavPosition(navPosition(20, 4))!!)
         assertEquals(4, r.link.turns.size)
@@ -404,7 +404,7 @@ class AaMetaTest {
         r.core.onNavTurn(AaMeta.parseNavState(navState(8, "Main St"))!!)
         var m = 2000
         r.core.onNavDistance(AaMeta.parseNavPosition(navPosition(m, 200))!!)
-        // едем: дистанция меняется каждую секунду, SHOW не реже раза в 10 с, остальное UPDATE
+        // ride: distance changes every second, SHOW at least once in 10 with, rest of UPDATE
         repeat(25) {
             r.now += 1000
             m -= 10
@@ -426,7 +426,7 @@ class AaMetaTest {
         r.now += 1000
         r.core.onNavDistance(AaMeta.parseNavPosition(navPosition(10, 1))!!)
         assertEquals(100, r.link.turns.last().totalDistance)
-        // следующий поворот тот же (ключ не сменился), дистанция 10 -> 50: новый манёвр, без троттлинга
+        // next turn same (key not changed), distance 10 -> 50: new maneuver, without trottle
         r.now += 100
         r.core.onNavDistance(AaMeta.parseNavPosition(navPosition(50, 12))!!)
         with(r.link.turns.last()) {
@@ -434,7 +434,7 @@ class AaMetaTest {
             assertEquals(50, remainDistance)
             assertEquals("total с нового поворота", 50, totalDistance)
         }
-        // дрожание на 10-20 м новым поворотом не считается
+        // shaking on the 10-20 m is not considered a new turn
         r.now += 1000
         r.core.onNavDistance(AaMeta.parseNavPosition(navPosition(40, 10))!!)
         r.now += 1000
@@ -511,7 +511,7 @@ class AaMetaTest {
         r.core.onNavTurn(AaMeta.parseNavState(navState(39, "Home"))!!)
         assertEquals("хвост не поднимает NAVI", listOf(1, 0), r.link.navi())
         assertEquals("и не шлёт NEXT_TURN", turns, r.link.turns.size)
-        // позже - новый маршрут без статуса стартует неявно
+        // later - a new route without status starts implicitly
         r.now += MetaRelay.TAIL_MS
         r.core.onNavTurn(AaMeta.parseNavState(navState(7, "Next"))!!)
         r.core.onNavDistance(AaMeta.parseNavPosition(navPosition(100, 10))!!)
@@ -533,14 +533,14 @@ class AaMetaTest {
         r.core.onAaEnded(true)
         assertEquals(listOf(1, 0), r.link.navi())
 
-        // TTS раньше маршрута, тёплый START посреди: NAVI=1 один раз, конец маршрута его не гасит
+        // TTS before the route, warm START in the middle: NAVI=1 once, the end of the route does not extinguish it
         val q = Rig()
         q.core.onCarlifeSubscribe(listOf(0), true)
         q.start()
         q.core.onAudioData(M.CH_AUDIO_SPEECH, ByteArray(640), 0)
         q.core.onNavStatus(1)
         assertEquals(listOf(1), q.link.navi())
-        q.core.onCarlifeStart()          // тёплый START: звук не трогаем
+        q.core.onCarlifeStart()          // Warm START: sound do not touch
         q.core.onNavStatus(2)
         assertEquals(listOf(1), q.link.navi())
     }
@@ -554,12 +554,12 @@ class AaMetaTest {
             r.start()
             r.core.onNavStatus(1)
             r.core.onAudioData(M.CH_AUDIO_SPEECH, ByteArray(640), 0)
-            r.core.onNavStatus(2)                                   // «Вы прибыли» ещё играет
+            r.core.onNavStatus(2)                                   // You are still playing.
             assertEquals(listOf(1), r.link.navi())
             r.core.onAudioStop(M.CH_AUDIO_SPEECH)
             assertEquals("TTS кончился после маршрута: NAVI=0, приборка гаснет", listOf(1, 0), r.link.navi())
 
-            // маршрут идёт: конец TTS NAVI не трогает
+            // route goes: end of TTS NAVI does not touch
             val q = Rig()
             q.core.onCarlifeSubscribe(listOf(0), true)
             q.start()
@@ -567,7 +567,7 @@ class AaMetaTest {
             q.core.onAudioData(M.CH_AUDIO_SPEECH, ByteArray(640), 0)
             q.core.onAudioStop(M.CH_AUDIO_SPEECH)
             assertEquals(listOf(1), q.link.navi())
-            q.core.onNavStatus(2)                                   // крестик посреди маршрута, TTS уже молчит
+            q.core.onNavStatus(2)                                   // cross in the middle of the route, TTS is already silent
             assertEquals("отмена маршрута: NAVI=0", listOf(1, 0), q.link.navi())
         } finally {
             AaBridgeCore.TTS_DEBOUNCE_ENABLED = true
@@ -601,7 +601,7 @@ class AaMetaTest {
         assertRouteWithoutNavi(Rig())
     }
 
-    /** Маршрут без NAVI=1: манёвры идут, NAVI=1 остаётся только вокруг TTS. */
+    /** The route without NAVI=1: maneuvers go, NAVI=1 remains only around TTS. */
     private fun assertRouteWithoutNavi(r: Rig) {
         r.core.onCarlifeSubscribe(listOf(0), true)
         r.start()
@@ -617,7 +617,7 @@ class AaMetaTest {
     @Test
     fun routeNaviOnForUsualHu() {
         val r = Rig()
-        r.core.onHuInfo("", "")                  // Honda Vezel: пустые manufacturer / model
+        r.core.onHuInfo("", "")                  // Honda Vezel: empty manufacturer / model
         r.core.onHuStatistic("20832125")
         r.core.onCarlifeSubscribe(listOf(0), true)
         r.start()
@@ -657,7 +657,7 @@ class AaMetaTest {
         r.core.onCarlifeClosed()
         r.core.attach(MetaLink())
         assertTrue("новая сессия - флаг заново", !r.core.huVw20082138)
-        r.core.onHuStatistic("20082138")                       // порядок любой: канал раньше имени
+        r.core.onHuStatistic("20082138")                       // Any order: channel before name
         assertTrue("одного канала мало", !r.core.huVw20082138)
         r.core.onHuInfo("VW BT 1538", "VW BT 1538")
         assertTrue(r.core.huVw20082138)
@@ -667,14 +667,14 @@ class AaMetaTest {
     fun vwId6CrozzFlagByManufacturerAndChannelAsPair() {
         val r = Rig()
         r.core.onHuInfo("VW BT 9491", "VW BT 9491")
-        r.core.onHuStatistic("20082134")                       // чужой канал к имени 9491 - не пара
+        r.core.onHuStatistic("20082134")                       // another channel to the name 9491 - not a pair
         assertTrue("имя и канал только парой", !r.core.huVw20082138)
         r.core.onHuStatistic("20082128")
         assertTrue(r.core.huVw20082138)
         r.core.onCarlifeClosed()
         r.core.attach(MetaLink())
         assertTrue("новая сессия - флаг заново", !r.core.huVw20082138)
-        r.core.onHuInfo("VW BT 4370", "VW BT 4370")             // 20082128 - только пара с 9491
+        r.core.onHuInfo("VW BT 4370", "VW BT 4370")             // 20082128 - only pair with 9491
         r.core.onHuStatistic("20082128")
         assertTrue(!r.core.huVw20082138)
     }
@@ -692,7 +692,7 @@ class AaMetaTest {
     fun vwIdFlagByCarPresetWithoutHuMatch() {
         val r = Rig()
         r.core.carVwId = true
-        r.core.onHuInfo("VW BT 1420", "VW BT 1420")             // пресет выбран руками - сильнее опознания
+        r.core.onHuInfo("VW BT 1420", "VW BT 1420")             // presets hand-picked - stronger identification
         r.core.onHuStatistic("20082138")
         assertTrue(r.core.huVw20082138)
         r.core.onCarlifeClosed()
@@ -707,7 +707,7 @@ class AaMetaTest {
     fun pioneerRm56FlagByManufacturerAndModelAndReset() {
         val r = Rig()
         assertTrue(!r.core.huPioneerRm56)
-        r.core.onHuInfo("Pioneer", "AVH-Z9200")                 // другая модель Pioneer под обход не попадает
+        r.core.onHuInfo("Pioneer", "AVH-Z9200")                 // other model Pioneer under bypass does not fall
         assertTrue(!r.core.huPioneerRm56)
         r.core.onHuInfo("Other", "RM56E8B")
         assertTrue(!r.core.huPioneerRm56)
@@ -723,7 +723,7 @@ class AaMetaTest {
     @Test
     fun vwIdFlagNotSetForVwBt1420OnSameChannel() {
         val r = Rig()
-        r.core.onHuInfo("VW BT 1420", "VW BT 1420")             // Павел: тот же канал прошивки, другое BT-имя
+        r.core.onHuInfo("VW BT 1420", "VW BT 1420")             // Paul: same firmware channel, other BT-name
         r.core.onHuStatistic("20082138")
         assertTrue(!r.core.huVw20082138)
         assertTrue(r.core.huVwBt1420)
@@ -759,7 +759,7 @@ class AaMetaTest {
     fun pauseHeartbeatForVwCns2DelphiChannel20082114() {
         val r = Rig()
         r.core.onHuInfo("VW", "")
-        r.core.onHuStatistic("20082114")                  // h425: Tharu 2020 CNS2, EIO через 6-8 с PAUSE
+        r.core.onHuStatistic("20082114")                  // h425: Tharu 2020 CNS2, EIO via 6-8 with PAUSE
         assertTrue(r.core.huVw20082120)
     }
 
@@ -806,7 +806,7 @@ class AaMetaTest {
         assertFalse("новая сессия - флаг заново по HU_INFO", r.core.huHyundaiCn7)
     }
 
-    /** Ссылка, запоминающая INIT и данные MEDIA. */
+    /** A link that remembers INIT and data MEDIA. */
     private class CapLink(private val d: MetaLink = MetaLink()) : CarlifeLink by d {
         val inits = ArrayList<ByteArray>()
         val data = java.io.ByteArrayOutputStream()
@@ -903,7 +903,7 @@ class AaMetaTest {
         assertEquals("заиграл: отложенный трек уходит", "A", r.link.infos.single().song)
         assertEquals("прогресс ушёл", 1, r.link.progress.size)
 
-        // AA умерла: трек протух, после рестарта без нового metadata ничего не показываем
+        // AA is dead: the track is out, after a restart without a new metadata we show nothing
         r.core.onAaEnded(true)
         r.now += 5000
         r.core.onMediaStatus(AaMeta.parseMediaStatus(status(2, 1))!!)
@@ -913,7 +913,7 @@ class AaMetaTest {
     @Test
     fun huMusicOffPausesAaWithAndWithoutPause() {
         assertEquals(127, AaBridgeCore.KEYCODE_MEDIA_PAUSE)
-        // Desay G6S: PAUSE, затем MUSIC=0
+        // Desay G6S: PAUSE, then MUSIC=0
         val r = Rig()
         val peer = FakePeer()
         r.core.peer = peer
@@ -925,7 +925,7 @@ class AaMetaTest {
         r.core.onCarlifeMusicControl(0)
         assertEquals(listOf(AaBridgeCore.KEYCODE_MEDIA_PAUSE), peer.keys.toList())
 
-        // другие ГУ: MUSIC=0 без PAUSE
+        // Others head unit: MUSIC=0 without PAUSE
         val q = Rig()
         val qPeer = FakePeer()
         q.core.peer = qPeer
@@ -954,7 +954,7 @@ class AaMetaTest {
         assertEquals(listOf(127), peer.keys.toList())
     }
 
-    /** Desay G6S, AA играет, ГУ ушло на радио (MUSIC=0 после PAUSE). */
+    /** Desay G6S, AA plays, head unit went to radio (MUSIC=0 after PAUSE). */
     private fun g6sPausedByUs(): Pair<Rig, FakePeer> {
         val r = Rig()
         val peer = FakePeer()
@@ -970,7 +970,7 @@ class AaMetaTest {
 
     @Test
     fun g6sMusicOnAfterOurPauseResumesAaOnceForWholeBurst() {
-        // h214: START, затем пачка MUSIC=1 - play один раз, MUSIC=1 на всю пачку
+        // h214: START, then pack MUSIC=1 - play once, MUSIC=1 for the whole pack
         val (r, peer) = g6sPausedByUs()
         r.now += 950
         r.start()
@@ -984,16 +984,16 @@ class AaMetaTest {
         }
         assertEquals("126 один раз", listOf(127, 126), peer.keys.toList())
         assertTrue(r.logs.any { it.contains("вернулось на CarLife-музыку") })
-        // MEDIA снова пересылается
+        // MEDIA is sent again
         val pcm = ByteArray(640)
         r.core.onAudioData(M.CH_AUDIO_MEDIA, pcm, 0)
         assertEquals(1, r.link.audio.count { it == CarlifeAudio.MEDIA_DATA })
-        // после окна ответ снова по факту
+        // After the window, the answer is again in fact
         r.now += AaBridgeCore.HU_RESUME_ANSWER_MS
         r.core.onCarlifeMusicControl(1)
         assertEquals(listOf(127, 126), peer.keys.toList())
 
-        // MUSIC=1 раньше START (лог 2026-10-13): тоже play
+        // MUSIC=1 before START (log 2026-10-13): also play
         val (q, qPeer) = g6sPausedByUs()
         q.now += 5000
         assertTrue(q.core.onCarlifeMusicControl(1))
@@ -1003,7 +1003,7 @@ class AaMetaTest {
 
     @Test
     fun vezelSoundKeyOffOnResumesAa() {
-        // Vezel (20832125): кнопка звука на ГУ - MUSIC=0, повторное нажатие - пачка MUSIC=1 (лог 30.10 11:10/11:26)
+        // Vezel (20832125): sound button on head unit - MUSIC=0, re-press - pack MUSIC=1 (log 30.10 11:10/11:26)
         val r = Rig()
         val peer = FakePeer()
         r.core.peer = peer
@@ -1018,7 +1018,7 @@ class AaMetaTest {
         assertTrue(r.core.onCarlifeMusicControl(1))
         assertEquals("126 один раз", listOf(127, 126), peer.keys.toList())
 
-        // другая Honda без флага: как раньше, play не шлём
+        // other Honda without flag: as before, play do not send
         val q = Rig()
         val qPeer = FakePeer()
         q.core.peer = qPeer
@@ -1033,7 +1033,7 @@ class AaMetaTest {
 
     @Test
     fun honda20772104ResumesAfterExternalPause() {
-        // Civic 2021 (h629, лог 31.10 12:29): после задней AA встаёт на паузу извне, через 100 мс ГУ шлёт MUSIC=1
+        // Civic 2021 (h629, log 31.10 12:29): after the rear AA pauses from the outside, through 100 ms head unit flight MUSIC=1
         val r = Rig()
         val peer = FakePeer()
         r.core.peer = peer
@@ -1049,7 +1049,7 @@ class AaMetaTest {
         assertTrue(r.core.onCarlifeMusicControl(1))
         assertEquals("126 один раз", listOf(126), peer.keys.toList())
 
-        // пауза пользователем (кнопка с ГУ перед ней): MUSIC=1 play не шлёт
+        // pause by user (button with head unit in front of it): MUSIC=1 play does not send
         r.core.onMediaStatus(AaMeta.parseMediaStatus(status(2, 3))!!)
         r.now += 10_000
         r.core.onCarlifeVoiceKey()
@@ -1059,7 +1059,7 @@ class AaMetaTest {
         assertFalse(r.core.onCarlifeMusicControl(1))
         assertEquals(1, peer.keys.count { it == 126 })
 
-        // другая Honda без флага: как раньше
+        // other Honda without flag: as before
         val q = Rig()
         val qPeer = FakePeer()
         q.core.peer = qPeer
@@ -1075,7 +1075,7 @@ class AaMetaTest {
 
     @Test
     fun honda20772104BtAudioMusicOffDoesNotPauseAa() {
-        // Civic 2021 (h629, лог 31.10 18:14-18:25): звук по BT, MUSIC=0 - ГУ ушло на BT-аудио этого же телефона, 127 его глушил
+        // Civic 2021 (h629, 31.10 18:14-18:25 log): sound by BT, MUSIC=0 - head unit went to BT-audio of the same phone, 127 jammed it
         val r = Rig()
         val peer = FakePeer()
         r.core.peer = peer
@@ -1086,7 +1086,7 @@ class AaMetaTest {
         assertFalse(r.core.onCarlifeMusicControl(0))
         assertTrue("127 не шлём", peer.keys.isEmpty())
 
-        // лог 31.10 20:58-21:07: MUSIC=1 от нас уводил ГУ на CarLife-источник, BT вставал на паузу
+        // log 31.10 20:58-21:07: MUSIC=1 from us took head unit to CarLife-source, BT paused
         assertTrue("MUSIC по плееру не заявляем", r.link.modules.none { it.first == CarlifeAudio.MODULE_MUSIC })
         r.now += 60_000
         r.core.onMediaStatus(AaMeta.parseMediaStatus(status(3, 2))!!)
@@ -1097,7 +1097,7 @@ class AaMetaTest {
         assertTrue("126 не шлём", peer.keys.isEmpty())
         assertTrue(r.link.modules.none { it.first == CarlifeAudio.MODULE_MUSIC })
 
-        // звук по USB: как раньше, пауза
+        // sound according to USB: as before, pause
         val q = Rig()
         val qPeer = FakePeer()
         q.core.peer = qPeer
@@ -1110,7 +1110,7 @@ class AaMetaTest {
 
     @Test
     fun g6sMusicOnWithoutOurPauseDoesNotPlay() {
-        // свежая сессия: пачка MUSIC=1 через ~2 с после HU_INFO, паузы нашей нет (h33: радио не глушить)
+        // fresh session: pack MUSIC=1 through ~ 2 S after HU_INFOThere is no pause (h33: radio not to be silenced)
         val r = Rig()
         val peer = FakePeer()
         r.core.peer = peer
@@ -1119,7 +1119,7 @@ class AaMetaTest {
         repeat(10) { assertFalse(r.core.onCarlifeMusicControl(1)) }
         assertTrue(peer.keys.isEmpty())
 
-        // юзер сам поставил AA на паузу до ухода ГУ: MUSIC=1 не запускает трек
+        // user himself put AA on pause before leaving head unit: MUSIC=1 does not start track
         val q = Rig()
         val qPeer = FakePeer()
         q.core.peer = qPeer
@@ -1131,7 +1131,7 @@ class AaMetaTest {
         assertFalse(q.core.onCarlifeMusicControl(1))
         assertTrue(qPeer.keys.isEmpty())
 
-        // возврат без MUSIC=1 (NAVI): только START - play нет
+        // return without MUSIC=1 (NAVI): only START - play no
         val (n, nPeer) = g6sPausedByUs()
         n.now += 7000
         n.start()
@@ -1139,7 +1139,7 @@ class AaMetaTest {
         n.start()
         assertEquals(listOf(127), nPeer.keys.toList())
 
-        // не Desay G6S: MUSIC=1 после нашей паузы play не шлёт
+        // not Desay G6S: MUSIC=1 after our pause play does not send
         val o = Rig()
         val oPeer = FakePeer()
         o.core.peer = oPeer
@@ -1149,7 +1149,7 @@ class AaMetaTest {
         o.core.onCarlifeMusicControl(1)
         assertEquals(listOf(127), oPeer.keys.toList())
 
-        // флаг выключен - старое поведение
+        // flag off - old behaviour
         AaBridgeCore.HU_MUSIC_RESUME_ENABLED = false
         try {
             val (f, fPeer) = g6sPausedByUs()
@@ -1166,7 +1166,7 @@ class AaMetaTest {
         fun media(r: Rig) = r.core.onAudioData(M.CH_AUDIO_MEDIA, pcm, 0)
         fun Rig.mediaPackets(type: Int) = link.audio.count { it == type }
 
-        // выход из паузы по началу медиаканала AA
+        // output from the pause at the beginning of the media channel AA
         val r = Rig()
         r.core.peer = FakePeer()
         r.start()
@@ -1185,7 +1185,7 @@ class AaMetaTest {
         assertEquals("после MEDIA START данные снова идут", 2, r.mediaPackets(CarlifeAudio.MEDIA_INIT))
         assertEquals(2, r.mediaPackets(CarlifeAudio.MEDIA_DATA))
 
-        // выход из паузы по статусу playing после paused
+        // exit from the pause on playing status after paused
         val q = Rig()
         q.core.peer = FakePeer()
         q.start()
@@ -1202,7 +1202,7 @@ class AaMetaTest {
         assertEquals(2, q.mediaPackets(CarlifeAudio.MEDIA_DATA))
     }
 
-    /** AA играет, ГУ ушло на радио (MUSIC=0): 127 ушёл, huPausedAa. Возвращает риг, пир и счётчик пакетов MEDIA. */
+    /** AA plays, head unit went to radio (MUSIC=0): 127 gone, huPausedAa. Returns rig, feast and packet counter MEDIA. */
     private inner class PausedRig {
         val r = Rig()
         val peer = FakePeer()
@@ -1228,7 +1228,7 @@ class AaMetaTest {
         assertEquals(listOf(127), p.peer.keys.toList())
         r.core.onHuBtHfpConnection(2)
         r.now += 6000
-        r.core.onCarlifeTouch(1, 10, 10)          // UP не ввод пользователя
+        r.core.onCarlifeTouch(1, 10, 10)          // UP No user input
         r.core.onAudioStart(M.CH_AUDIO_MEDIA)
         assertEquals("автоплей после HFP: снова 127", listOf(127, 127), p.peer.keys.toList())
         assertTrue(r.logs.any { it.contains("автоплей, снова KEYCODE 127") })
@@ -1236,11 +1236,11 @@ class AaMetaTest {
         p.media()
         assertEquals("MEDIA не уходит", before, p.mediaData())
 
-        // не чаще раза в секунду
+        // not more than once per second
         r.now += 500
         r.core.onAudioStart(M.CH_AUDIO_MEDIA)
         assertEquals(listOf(127, 127), p.peer.keys.toList())
-        // автоплей через статус плеера: paused -> playing
+        // Autoplay through player status: paused -> playing
         r.now += 600
         r.core.onMediaStatus(AaMeta.parseMediaStatus(status(3, 2))!!)
         r.now += 1500
@@ -1280,7 +1280,7 @@ class AaMetaTest {
         assertEquals("без HFP play снимает паузу", before + 1, p.mediaData())
         assertEquals(listOf(127), p.peer.keys.toList())
 
-        // HFP отключился (state=0) окно не открывает
+        // HFP is down (state=0) window does not open
         val q = PausedRig()
         q.r.core.onHuBtHfpConnection(0)
         q.r.core.onAudioStart(M.CH_AUDIO_MEDIA)
@@ -1345,7 +1345,7 @@ class AaMetaTest {
         val peer = FakePeer()
         r.core.peer = peer
         r.start()
-        r.core.onMediaStatus(AaMeta.parseMediaStatus(status(3, 1))!!)       // AA на паузе (ассистент / пользователь)
+        r.core.onMediaStatus(AaMeta.parseMediaStatus(status(3, 1))!!)       // AA on pause (assistant / user)
         assertFalse("MUSIC=0: ответ MUSIC=0", r.core.onCarlifeMusicControl(0))
         assertTrue("AA не играет: 127 не шлём", peer.keys.isEmpty())
         assertTrue(r.logs.any { it.contains("AA не играет: хвост MEDIA не пересылаю до play") })
@@ -1369,14 +1369,14 @@ class AaMetaTest {
         r.start()
         r.core.onMediaStatus(AaMeta.parseMediaStatus(status(2, 1))!!)
         r.core.onAudioData(M.CH_AUDIO_MEDIA, ByteArray(640), 0)
-        r.core.onAudioData(M.CH_AUDIO_SPEECH, ByteArray(640), 0)            // TTS инициализирован
+        r.core.onAudioData(M.CH_AUDIO_SPEECH, ByteArray(640), 0)            // TTS
         assertTrue("MEDIA играет: MUSIC активна", r.core.musicActive)
         assertFalse("MUSIC=0: ответ MUSIC=0, хотя пауза MEDIA отложена", r.core.onCarlifeMusicControl(0))
         assertFalse("пауза MEDIA ждёт конца TTS", r.link.audio.contains(CarlifeAudio.MEDIA_PAUSE))
         assertTrue(r.logs.any { it.contains("MEDIA пауза отложена") })
         assertEquals("AA на паузе: 127 ушёл", listOf(AaBridgeCore.KEYCODE_MEDIA_PAUSE), peer.keys.toList())
 
-        // хвост MEDIA во время TTS на ГУ не идёт
+        // MEDIA tail during TTS on head unit does not go
         val before = r.link.audio.count { it == CarlifeAudio.MEDIA_DATA }
         r.core.onAudioData(M.CH_AUDIO_MEDIA, ByteArray(640), 0)
         assertEquals(before, r.link.audio.count { it == CarlifeAudio.MEDIA_DATA })
@@ -1415,7 +1415,7 @@ class AaMetaTest {
         )
     }
 
-    // --- билдеры CarLife ---
+    // --- CarLife Builders ---
     @Test
     fun mediaInfoWritesAllRequiredFields() {
         val body = Msgs.mediaInfo(CarlifeMediaInfo("src", "", "", "", null, 0), ByteArray(0))
@@ -1454,16 +1454,16 @@ class AaMetaTest {
         assertEquals("NAVI_NEXT_TURN_INFO", Msg.name(Msg.NAVI_NEXT_TURN_INFO))
     }
 
-    // --- Honda: стрелки после SUBSCRIBE_START, перевзвод NAVI 0->1 ---
+    // --- Honda: arrows after SUBSCRIBE_START, NAVI rearrangement 0->1 ---
 
 
-    // --- Honda (приборка/HUD): перевзвод NAVI 0->1 перед SHOW, NAVI отпускается после TTS ---
+    // --- Honda (instrument cluster/HUD): NAVI 0->1 rearview before SHOW, NAVI is released after TTS ---
     private fun hondaRoute(honda: Boolean = true): Rig {
         val r = Rig()
         r.core.onCarlifeSubscribe(listOf(0), true)
         r.start()
         if (honda) r.core.onHuStatistic("20832117")
-        r.link.huResubscribes = honda                // ГУ Honda отвечает SUBSCRIBE_START на каждый NAVI=1
+        r.link.huResubscribes = honda                // head unit Honda answers SUBSCRIBE_START on each NAVI=1
         r.core.onNavStatus(1)
         r.core.onNavTurn(AaMeta.parseNavState(navState(8, "Main St"))!!)
         r.core.onNavDistance(AaMeta.parseNavPosition(navPosition(30, 18))!!)
@@ -1477,13 +1477,13 @@ class AaMetaTest {
         val r = hondaRoute()
         assertEquals(listOf(1), r.link.navi())
         var m = 2000
-        repeat(25) {                                     // едем: SHOW каждые 10 с
+        repeat(25) {                                     // Drive: SHOW every 10 with
             r.now += 1000
             m -= 10
             r.core.onNavDistance(AaMeta.parseNavPosition(navPosition(m, 200))!!)
         }
         r.now += 1000
-        r.core.onNavTurn(AaMeta.parseNavState(navState(7, "Second Ave"))!!)   // новый манёвр - SHOW
+        r.core.onNavTurn(AaMeta.parseNavState(navState(7, "Second Ave"))!!)   // new maneuver - SHOW
         r.core.onNavDistance(AaMeta.parseNavPosition(navPosition(300, 40))!!)
         assertTrue("периодические SHOW были", r.link.turns.count { it.action == 1 } >= 4)
         assertEquals(1, r.link.turns.last().action)
@@ -1494,7 +1494,7 @@ class AaMetaTest {
 
     @Test
     fun hondaEmptyRoadGetsManeuverText() {
-        // Google Maps на выездах со двора шлёт legacy 0x8004 с road="": Honda - подпись манёвра, остальное как прислал AA
+        // Google Maps on departures from the yard legacy 0x8004 with road=": Honda - signature maneuver, the rest as sent by AA
         for (honda in listOf(true, false)) for (road in listOf("", "  ", "ул. Мадояна")) {
             val r = Rig()
             r.link.huResubscribes = honda
@@ -1519,7 +1519,7 @@ class AaMetaTest {
 
     @Test
     fun hondaShowWaitsForSubscribe() {
-        // 17.10 16:18:02: NAVI=1 и манёвр одной пачкой - SHOW уходил раньше SUBSCRIBE_START
+        // 17.10 16:18:02: NAVI=1 and one pack maneuver - SHOW left before SUBSCRIBE_START
         val r = Rig()
         r.link.huResubscribes = true
         r.core.onCarlifeSubscribe(listOf(0), true)
@@ -1545,7 +1545,7 @@ class AaMetaTest {
         r.core.onCarlifeSubscribe(listOf(0), true)
         r.start()
         r.core.onHuStatistic("20832117")
-        r.core.onNavStatus(1)                                   // ГУ не отвечает подпиской
+        r.core.onNavStatus(1)                                   // head unit does not respond with a subscription
         r.core.onNavTurn(AaMeta.parseNavState(navState(8, "Main St"))!!)
         r.core.onNavDistance(AaMeta.parseNavPosition(navPosition(540, 123))!!)
         assertTrue(r.link.turns.isEmpty())
@@ -1585,7 +1585,7 @@ class AaMetaTest {
 
     @Test
     fun hondaSlowFirstTurnAfterRouteStartNoRearm() {
-        // 16:15:33 NAVI=1 (маршрут), подписка ГУ через 0,7 с, первый TURN_EVENT от AA через 2,1 с
+        // 16:15:33 NAVI=1 (route), subscription head unit via 0,7 s, first TURN_EVENT by AA via 2,1 s
         val r = Rig()
         r.link.huResubscribes = true
         r.core.onCarlifeSubscribe(listOf(0), true)
@@ -1608,7 +1608,7 @@ class AaMetaTest {
         val r = hondaRoute()
         assertEquals(1, r.link.turns.last().action)
         assertEquals("NAVI=1 только что поднят маршрутом: перед первым SHOW не перевзводим", listOf(1), r.link.navi())
-        r.now += MetaRelay.NAVI_RESHOW_MS + 1000          // AA молчал
+        r.now += MetaRelay.NAVI_RESHOW_MS + 1000          // AA
         r.core.onNavDistance(AaMeta.parseNavPosition(navPosition(30, 17))!!)
         r.pumpSubscribe()
         assertEquals(1, r.link.turns.last().action)
@@ -1632,7 +1632,7 @@ class AaMetaTest {
         AaBridgeCore.TTS_DEBOUNCE_ENABLED = false
         try {
             val r = hondaRoute()
-            r.core.onAudioData(M.CH_AUDIO_SPEECH, ByteArray(640), 0)   // TTS идёт в момент перестроения
+            r.core.onAudioData(M.CH_AUDIO_SPEECH, ByteArray(640), 0)   // TTS is in the process of being rebuilt
             r.core.onNavStatus(2)
             assertEquals("NAVI держит TTS", listOf(1), r.link.navi())
             r.now += 6000
@@ -1656,7 +1656,7 @@ class AaMetaTest {
 
     @Test
     fun desktopMusicOffPausesPhonePlayerAndVezelMusicOnResumes() {
-        // Vezel (лог 2026-11-03): MUSIC=0 за секунду до обрыва USB при выключении машины
+        // Vezel (2026-11-03 log): MUSIC=0 seconds before break USB when machine is turned off
         val r = Rig()
         val media = FakeDesktopMedia(playing = true)
         r.core.desktopMedia = media
@@ -1687,13 +1687,13 @@ class AaMetaTest {
         r.core.onAudioData(M.CH_AUDIO_MEDIA, ByteArray(640), 0)
         assertEquals(0, r.link.audio.count { it == CarlifeAudio.MEDIA_DATA })
 
-        // пользователь включил музыку на телефоне: MEDIA снова пересылаем
+        // user has included music on the phone: MEDIA again send
         media.playing = true
         r.now += AaBridgeCore.DESKTOP_RESUME_GUARD_MS
         r.core.onAudioData(M.CH_AUDIO_MEDIA, ByteArray(640), 0)
         r.core.onAudioData(M.CH_AUDIO_MEDIA, ByteArray(640), 0)
         assertTrue(r.link.audio.count { it == CarlifeAudio.MEDIA_DATA } >= 1)
-        // MUSIC=1 у не-Vezel/G6S play не шлёт
+        // MUSIC=1 in non-Vezel/G6S play does not send
         assertTrue(media.calls.isEmpty())
     }
 
@@ -1704,7 +1704,7 @@ class AaMetaTest {
         r.core.desktopMedia = media
         r.start()
         r.core.onCarlifeMusicControl(0)
-        media.playing = true                       // плеер ещё доигрывает хвост
+        media.playing = true                       // The player still plays the tail.
         r.now += AaBridgeCore.DESKTOP_RESUME_GUARD_MS - 1
         r.core.onAudioData(M.CH_AUDIO_MEDIA, ByteArray(640), 0)
         assertEquals(0, r.link.audio.count { it == CarlifeAudio.MEDIA_DATA })

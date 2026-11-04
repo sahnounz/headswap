@@ -25,9 +25,9 @@ import com.yegorkapomidorka.headswap.desktop.DesktopAppCatalog
 import com.yegorkapomidorka.headswap.dex.DexState
 
 /**
- * Домашний экран Headswap Desktop (Compose) на виртуальном дисплее ГУ. Запускается только на этом дисплее,
- * на телефон не открывает ничего и домашним приложением телефона не становится.
- * API 30+ (display, insetsController): активность стартует только в режиме Desktop, а он доступен с Android 13.
+ * Home screen Headswap Desktop (Compose) on the virtual display head unit. Runs only on this display,
+ * The phone does not open anything and the home phone application does not become.
+ * API 30+ (display, insetsController): activity starts only in Desktop mode, and it is available with Android 13.
  */
 @SuppressLint("NewApi")
 class LauncherActivity : ComponentActivity() {
@@ -47,7 +47,7 @@ class LauncherActivity : ComponentActivity() {
         }
     }
 
-    /** Блокировка телефона во время сеанса: в логе видно, что случилось с экраном и держит ли рабочий стол ключ-защита. */
+    /** Locking the phone during the session: the log shows what happened to the screen and whether the desktop holds a security key. */
     private val screenEvents = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val locked = getSystemService(KeyguardManager::class.java)?.isKeyguardLocked
@@ -66,7 +66,7 @@ class LauncherActivity : ComponentActivity() {
         // Render a neutral first frame; reveal the launcher only after the client confirms ownership.
         if (currentDisplayId() <= 0) { finish(); return }
         AppLog.init(this)
-        // Рабочий стол остаётся на экране при блокировке телефона (сам дисплей не блокируется: ALWAYS_UNLOCKED).
+        // The desktop remains on the screen when the phone is locked (the display itself is not blocked: ALWAYS_UNLOCKED).
         setShowWhenLocked(true)
         ContextCompat.registerReceiver(this, screenEvents, IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
@@ -74,8 +74,8 @@ class LauncherActivity : ComponentActivity() {
             addAction(Intent.ACTION_USER_PRESENT)
         }, ContextCompat.RECEIVER_NOT_EXPORTED)
         LauncherModel.init(this)
-        ForeignActions.reload(this, currentDisplayId(), goHome = false) // сразу в чужой лаунчер, если он выбран
-        // дочерние окна живут с плотностью дисплея ГУ
+        ForeignActions.reload(this, currentDisplayId(), goHome = false) // directly in foreign launcher, if it is selected
+        // child windows live with head unit display density
         val dpi = resources.displayMetrics.densityDpi.coerceIn(96, 1280)
         LauncherModel.densityDpi = dpi
         EmbedHost.densityDpi = dpi
@@ -88,8 +88,8 @@ class LauncherActivity : ComponentActivity() {
     }
 
     /**
-     * Сюда приходят HOME ГУ и смена лаунчера в настройках телефона (оба через showDesktop): выбор из DexPrefs перечитывается
-     * и в режиме чужого лаунчера выполняется «Домой».
+     * Here come HOME head unit and launcher change in phone settings (both via showDesktop): selection from DexPrefs is reread
+     * and in the alien mode launcher is performed by "Home".
      */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -102,11 +102,11 @@ class LauncherActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         if (currentDisplayId() <= 0) { finish(); return }
-        ForeignActions.reload(this, currentDisplayId(), goHome = false) // «Домой» только по onNewIntent, иначе каждый возврат на экран сбрасывал бы лаунчер
+        ForeignActions.reload(this, currentDisplayId(), goHome = false) // “Home” only on onNewIntent, otherwise each return to the screen would reset launcher
         visible = true
         connected = ownsDisplay()
         AppLog.i("LAUNCHER активность на экране, дисплей=${currentDisplayId()}", false)
-        LauncherModel.reloadCatalog() // за время работы могли поставить или удалить приложение
+        LauncherModel.reloadCatalog() // during the work could put or remove the application
         window.insetsController?.apply {
             hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
             systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE

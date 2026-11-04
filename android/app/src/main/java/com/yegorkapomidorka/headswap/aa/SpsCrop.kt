@@ -3,12 +3,12 @@ package com.yegorkapomidorka.headswap.aa
 import java.io.ByteArrayOutputStream
 
 /**
- * Кроп без перекодирования (h529, идея Димы): поля кадра AA отрезает декодер ГУ по frame_crop_* в SPS.
- * SPS разбирается до frame_cropping_flag, новые смещения пишутся заново, хвост (VUI) копируется побитно.
- * Остальные NAL потока не трогаются.
+ * crop without transcoding (h529, Dima idea): frame AA fields cut off decoder head unit by frame_crop_* in SPS.
+ * SPS is disassembled to frame_cropping_flag, new offsets are written anew, the tail (VUI) is copied bit by bit.
+ * The rest of the NAL stream is not touched.
  */
 object SpsCrop {
-    /** Геометрия SPS в пикселях: кодированный кадр, смещения кропа и единица кропа по осям. */
+    /** SPS geometry in pixels: frame encoded, crop offset and crop unit in axes. */
     data class Info(
         val codedW: Int, val codedH: Int,
         val left: Int, val right: Int, val top: Int, val bottom: Int,
@@ -22,18 +22,18 @@ object SpsCrop {
 
     class Result(val sps: ByteArray, val before: Info, val after: Info)
 
-    /** SPS не разобрался или кроп в него не ложится; сообщение идёт в лог. */
+    /** SPS is not clear or crop does not fit into it; the message goes to log. */
     class SpsException(message: String) : Exception(message)
 
     private val HIGH_PROFILES = setOf(100, 110, 122, 244, 44, 83, 86, 118, 128, 138, 139, 134, 135)
 
-    /** Разбор до кропа: позиция бита frame_cropping_flag в RBSP и геометрия. */
+    /** Analysis to crop: of the frame_cropping_flag bit position in RBSP and geometry. */
     private class Parsed(val rbsp: ByteArray, val cropFlagPos: Int, val afterCropPos: Int, val info: Info)
 
-    /** nal - SPS без стартового кода, с байтом заголовка NAL. */
+    /** nal - SPS without start code, with byte header NAL. */
     fun parse(nal: ByteArray): Info = parseInternal(nal).info
 
-    /** Прибавить к кропу SPS поля в пикселях (каждое кратно единице кропа). */
+    /** Add to crop SPS fields in pixels (each multiple of crop). */
     fun rewrite(nal: ByteArray, addL: Int, addR: Int, addT: Int, addB: Int): Result {
         val p = parseInternal(nal)
         val i = p.info
@@ -59,8 +59,8 @@ object SpsCrop {
     }
 
     /**
-     * SPS без кропа: декодер отдаёт кадр кодированного размера (1920x1088 вместо 1920x1080). Декодирование кроп не меняет,
-     * поэтому картинка та же, плюс скрытые строки, а они тоже опорные (свой IDR, IdrSplice). Без кропа - тот же массив.
+     * SPS without crop: decoder gives frame encoded size (1920x1088 instead of 1920x1080). Decoding crop does not change,
+     * so the picture is the same, plus hidden lines, and they are also supporting (its IDR, IdrSplice). Without crop - the same array.
      */
     fun uncrop(nal: ByteArray): ByteArray {
         val p = parseInternal(nal)
@@ -77,7 +77,7 @@ object SpsCrop {
         return addEmulationPrevention(w.toByteArray())
     }
 
-    /** Применить transform к каждому SPS (тип 7) в access unit с 4-байтными стартовыми кодами; без SPS - тот же массив. */
+    /** Apply transform to each SPS (7 type) in access unit with 4 byte start codes; without SPS - the same array. */
     fun mapSps(au: ByteArray, transform: (ByteArray) -> ByteArray): ByteArray {
         val starts = ArrayList<Int>()
         var i = 0
@@ -105,7 +105,7 @@ object SpsCrop {
         val rbsp = removeEmulationPrevention(nal)
         val r = BitReader(rbsp)
         try {
-            r.skip(8)                                   // заголовок NAL
+            r.skip(8)                                   // header NAL
             val profile = r.u(8)
             r.skip(16)                                  // constraint flags, level_idc
             r.ue()                                      // seq_parameter_set_id
@@ -165,7 +165,7 @@ object SpsCrop {
         }
     }
 
-    /** Убрать байты 0x03 из последовательностей 00 00 03. */
+    /** Remove 0x03 bytes from 00 00 03 sequences. */
     fun removeEmulationPrevention(d: ByteArray): ByteArray {
         val out = ByteArrayOutputStream(d.size)
         var zeros = 0
@@ -181,7 +181,7 @@ object SpsCrop {
         return out.toByteArray()
     }
 
-    /** Вставить 0x03 после 00 00, если следующий байт <= 3. */
+    /** Insert 0x03 after 00 00, if the next byte is <= 3. */
     fun addEmulationPrevention(d: ByteArray): ByteArray {
         val out = ByteArrayOutputStream(d.size + 4)
         var zeros = 0
@@ -226,7 +226,7 @@ object SpsCrop {
             return if (k and 1 == 1) (k + 1) / 2 else -(k / 2)
         }
 
-        /** Позиция последней единицы (rbsp_stop_one_bit). */
+        /** Position of the last unit (rbsp_stop_one_bit). */
         fun lastOneBit(): Int? {
             for (p in d.size * 8 - 1 downTo 0) if (bitAt(p) == 1) return p
             return null
@@ -254,7 +254,7 @@ object SpsCrop {
             for (k in len - 1 downTo 0) bit(((x ushr k) and 1).toInt())
         }
 
-        /** Скопировать биты [from, to) из src. */
+        /** Copy bits [from, to) from src. */
         fun copy(src: ByteArray, from: Int, to: Int) {
             for (p in from until to) bit((src[p ushr 3].toInt() ushr (7 - (p and 7))) and 1)
         }

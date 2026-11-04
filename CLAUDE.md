@@ -1,14 +1,15 @@
 # CLAUDE.md
 
-## Карта и решения
+## Architecture map and decisions
 
-- `docs/ARCHITECTURE.md` — карта приложения: пакеты, поток данных, флаги ГУ, инварианты, «симптом → куда смотреть».
-  Читать перед разведкой по коду: часто она её заменяет.
-- `docs/adr/` — почему сделано так. Перед тем как менять подход (проброс/перекодирование, heartbeat, нарезка, сервер 5277),
-  прочитать ADR по теме.
-- Неочевидное решение (выбрали подход из нескольких, отвергли вариант после проверки на машине, ввели инвариант) — новая
-  запись ADR в том же PR, правила в `docs/adr/README.md`. Причину брать из разговора с Егором; неизвестна — так и написать.
-- Изменилась структура (новый пакет, флаг ГУ, путь данных) — поправить ARCHITECTURE.md в том же PR.
+- `docs/ARCHITECTURE.md` maps the application: packages, data flow, head unit flags, invariants, and a symptom-to-code guide.
+  Read it before exploring the code; it often answers the question directly.
+- `docs/adr/` explains why the implementation works this way. Before changing an approach such as passthrough/transcoding,
+  heartbeat, chunking, or the server on port 5277, read the relevant ADR.
+- Record non-obvious decisions in a new ADR in the same PR. Examples include choosing between approaches, rejecting an
+  option after a vehicle test, or introducing an invariant. Follow `docs/adr/README.md`. Use the reason discussed with
+  Yegor; if it is unknown, say so explicitly.
+- If the structure changes, such as a new package, head unit flag, or data path, update ARCHITECTURE.md in the same PR.
 
 ## Ticket workflow
 
@@ -22,25 +23,31 @@
 - Do NOT build test APKs (hNNNtestN) or start implementing until the user explicitly says to build.
 - Before adding a new video mode or fix, check existing branches, commits and open PRs for overlap (`git log --all --oneline | grep -i <keyword>`, `gh pr list`).
 
-## Как изменения попадают в main
+## How changes reach main
 
-Репозиторий github.com/YegorkaPomidorka/headswap, владелец Егор. Порядок всегда один:
+These are the upstream workflow conventions for github.com/YegorkaPomidorka/headswap, owned by Yegor:
 
-1. **Worktree.** Правки только в отдельном worktree со своей веткой `claude/...`. В основном checkout (`main`) параллельно работают другие сессии, туда не коммитить.
-2. **Ветка.** Коммиты в ветку worktree. `git add` только явных путей, без `-a`. В конце сообщения строка `Co-Authored-By`.
-3. **Пуш ветки.** Через личный аккаунт gh, не через GCM (он уводит в рабочую организацию):
-   `git -c credential.helper= -c "credential.helper=!gh auth git-credential" push -u origin <ветка>`
-   Если main ушёл вперёд, сначала подтянуть его в ветку (в Claude Desktop — `sync_with_base_branch`), прогнать тесты.
-4. **PR** в `main`: `gh pr create --repo YegorkaPomidorka/headswap --base main --head <ветка>`.
-5. **Мердж.** Когда Егор говорит «залей» / «влей», сливать сразу, ревью не ждать — это его разрешение:
-   `gh pr merge <номер> --repo YegorkaPomidorka/headswap --merge`
-6. **После мерджа** main на GitHub обновлён. Локальный `main` в основном checkout подтянет та сессия, которая там работает; из worktree его не трогать.
+1. **Worktree.** Make changes in a separate worktree with its own `claude/...` branch. Other sessions work in the main
+   checkout concurrently; do not commit there.
+2. **Branch.** Commit to the worktree branch. Use `git add` with explicit paths, without `-a`. End the commit message
+   with a `Co-Authored-By` line.
+3. **Push.** Use the personal gh account rather than GCM, which selects the work organization:
+   `git -c credential.helper= -c "credential.helper=!gh auth git-credential" push -u origin <branch>`
+   If main has advanced, first update the branch from main (`sync_with_base_branch` in Claude Desktop) and run the tests.
+4. **PR** targeting `main`: `gh pr create --repo YegorkaPomidorka/headswap --base main --head <branch>`.
+5. **Merge.** When Yegor says to push the change through or merge it, merge immediately without waiting for a review;
+   that instruction is his authorization:
+   `gh pr merge <number> --repo YegorkaPomidorka/headswap --merge`
+6. **After merging**, GitHub main is updated. The session using the main checkout will update its local `main`;
+   do not modify it from the worktree.
 
-Версия (`versionCode`/`versionName` в `android/app/build.gradle.kts`) поднимается отдельным коммитом «Version X.Y.Z (versionCode N)» только при выпуске релиза. Тестовые сборки (`-cx5test1` и т.п.) собираются с временной правкой версии, которая в коммит не попадает.
+Increment `versionCode`/`versionName` in `android/app/build.gradle.kts` only when releasing, in a separate commit
+called “Version X.Y.Z (versionCode N)”. Test builds such as `-cx5test1` use temporary version edits that are not committed.
 
-Релиз, кроме сайта, выкладывается в GitHub Releases: оттуда приложение обновляется само (`update/UpdateLogic.kt`). Тег `vX.Y.Z`, файл `headswap-X.Y.Z.apk` (имя как на сайте), описание релиза приложение показывает перед установкой:
-`gh release create vX.Y.Z headswap-X.Y.Z.apk --repo YegorkaPomidorka/headswap --title "Headswap X.Y.Z" --notes-file <что нового>`
-Тестовые сборки на GitHub выкладывать только с `--prerelease`: последним релизом GitHub их не считает, приложение их не предложит.
+Publish releases to GitHub Releases as well as the website; the application updates from there (`update/UpdateLogic.kt`).
+Use tag `vX.Y.Z` and file `headswap-X.Y.Z.apk`, matching the website filename. The app displays the release notes before installation:
+`gh release create vX.Y.Z headswap-X.Y.Z.apk --repo YegorkaPomidorka/headswap --title "Headswap X.Y.Z" --notes-file <release-notes>`
+Only publish test builds with `--prerelease`; GitHub will not treat them as the latest stable release, and the app will not offer them.
 
 ## Release
 

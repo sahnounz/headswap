@@ -5,24 +5,24 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Параметры [BitratePolicy] под транспорт. [USB] - прежнее поведение (кабель: старт с потолка, вниз до 0.8 слива,
- * вверх +10% раз в 10 с). [WIFI] - воздух (план Э3, 5.3): старт с 0.75 потолка, вниз не меньше чем ×0.7,
- * вверх +20% раз в 5 с после 10 с затишья, выше старта - только после 60 с без спадов.
+ * Options [BitratePolicy] under transport. [USB] - previous behavior (cable: start from the ceiling, down to 0.8 plum,
+ * up +10% Once in 10 (c) [WIFI] - wireless connection (Plan E3, 5.3Start with 0.75 ceiling, down not less than ×0.7,
+ * up +20% times in 5 with after 10 with calm, above start - only after 60 with no downs.
  */
 data class BitrateProfile(
     val name: String,
-    /** Старт сессии: доля потолка. */
+    /** Start of the session: share of the ceiling. */
     val startFraction: Double,
-    /** Шаг вниз не меньше: цель не выше current * downStep (1.0 = только по сливу). */
+    /** Step down no less: the target is no higher than current * downStep (1.0 = plum only). */
     val downStep: Double,
-    /** Вниз и без измеренного слива (только шагом [downStep]). */
+    /** Down and without measured drain (only step [downStep]). */
     val downWithoutDrain: Boolean,
     val upFactor: Double,
-    /** Затишье после спада, прежде чем подниматься. */
+    /** Calm down after the fall before you go up. */
     val upWaitMs: Long,
-    /** Между ступенями подъёма. */
+    /** Between the climbing steps. */
     val upIntervalMs: Long,
-    /** Выше стартового битрейта - только после стольких мс без спадов (с начала сессии или последнего спада). */
+    /** Above the starting bitrate - only after so many ms without recessions (since the beginning of the session or the last recession). */
     val aboveStartAfterMs: Long,
 ) {
     companion object {
@@ -32,37 +32,37 @@ data class BitrateProfile(
 }
 
 /**
- * Целевой битрейт энкодера по состоянию видео-очереди CarLife: ГУ принимает видео с ограниченной скоростью
- * (Kia Seltos ~210 КиБ/с), энкодер на 6 Мбит/с забивает очередь и задержка растёт до секунд. Вниз - до 0.8 скорости слива,
- * вверх - ступенями после затишья (см. [BitrateProfile]). Чистая логика: время приходит параметром, кодек не трогает.
- * [update] зовётся с одной нити, [lowerCeiling] - с любой; [current] читается с любой.
+ * Target bitrate encoder as of video queue CarLife: head unit receives video at limited speed
+ * (Kia Seltos ~210 KiB/s), encoder on 6 Mbit/s scores the queue and the delay increases to seconds. Down - to 0.8 speed of discharge,
+ * Then, after a pause (see below). [BitrateProfile]). Pure logic: time comes parameter, codec does not touch.
+ * [update] called one. thread, [lowerCeiling] - with any; [current] Read with anyone.
  */
 class BitratePolicy(ceilingBps: Int, floorBps: Int = FLOOR_BPS, val profile: BitrateProfile = BitrateProfile.USB) {
     val floorBps = min(floorBps, ceilingBps)
 
-    /** Потолок, бит/с. Только вниз и на лету - [lowerCeiling] (ГУ с лимитом на размер кадра). */
+    /** Ceiling, bit / s. Only down and on the fly - [lowerCeiling] (head unit with a limit on size frame). */
     @Volatile var ceilingBps = ceilingBps
         private set
 
     /**
-     * Потолок по нагреву телефона, бит/с (Int.MAX_VALUE = нет). В отличие от [ceilingBps] возвращается обратно, когда
-     * телефон остыл: подъём дальше идёт обычными ступенями.
+     * Phone heating ceiling, bit/s (Int.MAX_VALUE = no). Unlike [ceilingBps] returns back when
+     * The phone has cooled: the rise goes on with the usual steps.
      */
     @Volatile var thermalCapBps = Int.MAX_VALUE
         private set
 
-    /** Битрейт старта сессии: потолок (USB) или его доля (воздух). */
+    /** bitrate start of the session: ceiling (USB) or its share (wireless connection). */
     val startBps = max(this.floorBps, (ceilingBps * profile.startFraction).toInt())
 
-    /** Текущая цель, бит/с. */
+    /** Current target, bit/s. */
     @Volatile var current = startBps
         private set
 
-    /** Бэклог после сглаживания, мс (для лога и тестов). */
+    /** Backlog after smoothing, ms (for log and tests). */
     var smoothedMs = 0.0
         private set
 
-    /** Описание последнего изменения (для одной строки лога у вызывающего). */
+    /** Description of the last change (for one line of log in caller). */
     var lastReason = ""
         private set
 
@@ -80,9 +80,9 @@ class BitratePolicy(ceilingBps: Int, floorBps: Int = FLOOR_BPS, val profile: Bit
     private var cleanSinceMs = NEVER
 
     /**
-     * Очередной замер: бэклог очереди (мс) и скорость слива (байт/с, 0 = ещё не измерена). Возвращает новый битрейт,
-     * если он изменился, иначе null. Бэклог сглаживается EWMA по времени (tau 1 с), поэтому одиночный IDR на 160 КБ
-     * не даёт отката, а результат не зависит от частоты вызовов.
+     * Another measurement: queue backlog (ms) and drain speed (byte/s, 0 = not yet measured). Returns a new bitrate,
+     * if it has changed, otherwise null. Backlog is smoothed by EWMA time (tau 1 s), so single IDR on 160 KB
+     * does not roll back, and the result does not depend on the frequency of calls.
      */
     @Synchronized
     fun update(nowMs: Long, backlogMs: Double, drainBytesPerSec: Double): Int? {
@@ -133,8 +133,8 @@ class BitratePolicy(ceilingBps: Int, floorBps: Int = FLOOR_BPS, val profile: Bit
     }
 
     /**
-     * Опустить потолок (не ниже [floorBps]); выше текущего он не поднимается. Если [current] выше нового потолка, он
-     * срезается до него. true = потолок изменился (вызывающий сверяет [current] и применяет к энкодеру).
+     * Lower the ceiling (not lower) [floorBps]It does not rise above the present. If [current] Above the new ceiling,
+     * cuts to it. true = ceiling changed (caller matches [current] and applies to encoder).
      */
     @Synchronized
     fun lowerCeiling(newCeilingBps: Int): Boolean {
@@ -150,8 +150,8 @@ class BitratePolicy(ceilingBps: Int, floorBps: Int = FLOOR_BPS, val profile: Bit
     }
 
     /**
-     * Потолок по нагреву (не ниже [floorBps]; Int.MAX_VALUE снимает его). [current] выше потолка срезается сразу.
-     * true = [current] изменился (вызывающий применяет его к энкодеру).
+     * Heating ceiling (no lower than [floorBps]; Int.MAX_VALUE removes it). [current] above the ceiling is cut immediately.
+     * true = [current] The Change (caller applies it to encoder).
      */
     @Synchronized
     fun setThermalCap(capBps: Int): Boolean {

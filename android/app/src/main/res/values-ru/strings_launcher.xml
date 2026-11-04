@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- launcher/*: лаунчер Headswap Desktop на экране ГУ -->
+    <!-- launcher/*: launcher Headswap Desktop on screen head unit -->
     <string name="l_connecting">Подключаем рабочий стол…</string>
     <string name="l_all_apps">Все приложения</string>
     <string name="l_choose_app">Выберите приложение</string>
@@ -76,7 +76,7 @@
     <string name="l_set_apps">Список приложений</string>
     <string name="l_set_apps_empty">Список пуст</string>
 
-    <!-- Настройки (интерфейс на телефоне): Режим / Рабочий стол -->
+    <!-- Settings (phone interface): Mode / Desktop -->
     <string name="l_perm_button">Разрешить доступ к телефону и звонкам</string>
     <string name="l_perm_summary">Звонки, контакты и ответ на вызов с экрана ГУ</string>
     <string name="l_perm_granted">Все разрешения выданы</string>

@@ -1,11 +1,11 @@
 package com.yegorkapomidorka.headswap.aa
 
-/** Источник нагрева телефона (на устройстве - PhoneThermal поверх PowerManager; в JVM-тестах - заглушка). */
+/** The source of heating of the phone (on the device - PhoneThermal on top of PowerManager; in JVM-tests - stub). */
 interface ThermalSource {
     /** PowerManager.THERMAL_STATUS_* (0 = NONE). */
     fun status(): Int
 
-    /** Прогноз getThermalHeadroom на 10 с (1.0 = SEVERE), NaN = недоступен. */
+    /** getThermalHeadroom forecast for 10 with (1.0 = SEVERE), NaN = not available. */
     fun headroom(): Float
 
     object NONE : ThermalSource {
@@ -15,8 +15,8 @@ interface ThermalSource {
 }
 
 /**
- * Ступень разгрузки перекодирования по нагреву телефона. [fpsCap] - потолок частоты энкодера (null = без ограничения),
- * [bitrateFraction] - доля потолка битрейта режима.
+ * transcoding's degree of unloading by phone heating. [fpsCap] - frequency ceiling encoder (null = no limit),
+ * [bitrateFraction] - the ceiling share of bitrate mode.
  */
 enum class ThermalLevel(val fpsCap: Int?, val bitrateFraction: Double) {
     NORMAL(null, 1.0),
@@ -25,18 +25,18 @@ enum class ThermalLevel(val fpsCap: Int?, val bitrateFraction: Double) {
 }
 
 /**
- * Разгрузка перекодирования по нагреву (жалобы: телефон перегревается в поездке). Вход - статус PowerManager
- * (getCurrentThermalStatus: 0 NONE .. 6 SHUTDOWN) и прогноз getThermalHeadroom (1.0 = SEVERE, NaN = неизвестно).
- * MODERATE или прогноз >= [WARM_HEADROOM] - [ThermalLevel.WARM], SEVERE и выше - [ThermalLevel.HOT].
- * Вниз (сильнее разгрузка) - сразу; обратно - по одной ступени и только если ниже уже [RELAX_MS] подряд,
- * чтобы частота не прыгала туда-сюда на границе статуса. Чистая логика: время приходит параметром. [update] - с одной нити.
+ * Unloading transcoding by heating (complaints: the phone overheats on the trip). Login - status PowerManager
+ * (getCurrentThermalStatus: 0 NONE .. 6 SHUTDOWN) and forecast getThermalHeadroom (1.0 = SEVERE, NaN = unknown).
+ * MODERATE or forecast >= [WARM_HEADROOM] - [ThermalLevel.WARM], SEVERE and above - [ThermalLevel.HOT].
+ * Down (stronger unloading) - immediately; back - one step, and only if lower already [RELAX_MS] in a row,
+ * so that the frequency does not jump back and forth at the status border. Pure logic: time comes with a parameter. [update] - with one thread.
  */
 class ThermalThrottle(private val relaxMs: Long = RELAX_MS) {
-    /** Читается с любой нити ([capFps] из обработки FRAME_RATE_CHANGE и создания транскодера). */
+    /** It is read with any thread ([capFps] from FRAME_RATE_CHANGE processing and creating a transcoder). */
     @Volatile var level = ThermalLevel.NORMAL
         private set
 
-    /** Самая сильная ступень за сессию и время на ней/выше NORMAL - для резюме. */
+    /** The strongest step for the session and the time on it / above NORMAL - for the resume. */
     var maxLevel = ThermalLevel.NORMAL
         private set
     var throttledMs = 0L
@@ -45,7 +45,7 @@ class ThermalThrottle(private val relaxMs: Long = RELAX_MS) {
     private var lowerSinceMs = NEVER
     private var lastMs = NEVER
 
-    /** Ступень по одному замеру, без гистерезиса. */
+    /** Step by step, without hysteresis. */
     fun levelFor(status: Int, headroom: Float): ThermalLevel = when {
         status >= STATUS_SEVERE -> ThermalLevel.HOT
         status == STATUS_MODERATE -> ThermalLevel.WARM
@@ -53,7 +53,7 @@ class ThermalThrottle(private val relaxMs: Long = RELAX_MS) {
         else -> ThermalLevel.NORMAL
     }
 
-    /** Очередной замер. Возвращает новую ступень, если она сменилась, иначе null. */
+    /** Another measurement. Returns a new stage if it is changed, otherwise null. */
     fun update(nowMs: Long, status: Int, headroom: Float): ThermalLevel? {
         if (lastMs != NEVER && level != ThermalLevel.NORMAL) throttledMs += maxOf(nowMs - lastMs, 0L)
         lastMs = nowMs
@@ -71,22 +71,22 @@ class ThermalThrottle(private val relaxMs: Long = RELAX_MS) {
         if (lowerSinceMs == NEVER) lowerSinceMs = nowMs
         if (nowMs - lowerSinceMs < relaxMs) return null
         level = ThermalLevel.values()[level.ordinal - 1]
-        lowerSinceMs = if (want < level) nowMs else NEVER      // до want ещё ступень: снова ждать relaxMs
+        lowerSinceMs = if (want < level) nowMs else NEVER      // up to want another step: wait again for relaxMs
         return level
     }
 
-    /** Частота с учётом нагрева: не выше потолка ступени. */
+    /** Frequency with heating: not higher than the ceiling of the stage. */
     fun capFps(fps: Int): Int = level.fpsCap?.let { minOf(fps, it) } ?: fps
 
-    /** Потолок битрейта с учётом нагрева. */
+    /** bitrate ceiling with heating. */
     fun capBitrate(ceilingBps: Int): Int = (ceilingBps * level.bitrateFraction).toInt()
 
     companion object {
-        /** Значения PowerManager.THERMAL_STATUS_*. */
+        /** Values of PowerManager.THERMAL_STATUS_*. */
         const val STATUS_MODERATE = 2
         const val STATUS_SEVERE = 3
 
-        /** Прогноз на 10 с: столько от порога SEVERE - уже разгружаемся, не дожидаясь MODERATE. */
+        /** Forecast for 10 with: so much from the threshold of SEVERE - already unload, without waiting for MODERATE. */
         const val WARM_HEADROOM = 0.85f
         const val RELAX_MS = 60_000L
         private const val NEVER = Long.MIN_VALUE

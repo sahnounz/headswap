@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Главный экран в режиме «Свой лаунчер» -->
+<!-- Main screen in the mode "Your launcher" -->
 <resources>
     <string name="home_desk_stage_activation">Активация</string>
     <string name="home_desk_stage_headunit">Магнитола</string>

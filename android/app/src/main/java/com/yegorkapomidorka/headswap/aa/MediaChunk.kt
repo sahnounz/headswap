@@ -3,9 +3,9 @@ package com.yegorkapomidorka.headswap.aa
 import com.yegorkapomidorka.headswap.R
 
 /**
- * Экспериментальная настройка «Размер пакета музыки» (раздел для разработчиков): на какие куски мост режет PCM музыки
- * перед CarLife MEDIA_DATA. Авто = как отдаёт Android Auto (до CarlifeAudio.MAX_CHUNK). Размеры кратны 4 (кадр стерео PCM16).
- * Мост читает значение на каждый буфер музыки, смена действует сразу.
+ * Experimental setting of the "Size of the package of music" (section for developers): what pieces of the bridge cut PCM music
+ * before CarLife MEDIA_DATA. Auto = as gives Android Auto (up to CarlifeAudio.MAX_CHUNK). Dimensions multiples of 4 (frame stereo PCM16).
+ * The bridge reads the value for each music buffer, the change is effective immediately.
  */
 enum class MediaChunk(val titleRes: Int, val bytes: Int?) {
     AUTO(R.string.mchunk_auto, null),
@@ -17,7 +17,7 @@ enum class MediaChunk(val titleRes: Int, val bytes: Int?) {
     companion object {
         val DEFAULT = AUTO
 
-        /** По имени из prefs; неизвестное/пустое = по умолчанию. */
+        /** By name from prefs; unknown/empty = by default. */
         fun parse(key: String?): MediaChunk = values().firstOrNull { it.name == key } ?: DEFAULT
     }
 }

@@ -40,7 +40,7 @@ class OnboardingPathTest {
 
     @Test
     fun noModeStepBelowAndroid13() {
-        // DESKTOP там недоступен, выбирать нечего: прежние десять шагов, «из 10»
+        // DESKTOP is not available there, there is nothing to choose: the previous ten steps, “from 10”
         val q = OnboardingPath.queue(BridgeMode.ANDROID_AUTO, false, false, none)
         assertEquals(OnboardingPath.AA, q)
         assertFalse(StepId.MODE in q)
@@ -51,7 +51,7 @@ class OnboardingPathTest {
         val q = OnboardingPath.queue(BridgeMode.DESKTOP, true, false, { it == StepId.DEVMODE })
         assertFalse(StepId.DEVMODE in q)
         assertEquals(StepId.NOTIF, q[1])
-        // номер шага считается по очереди без пропущенного
+        // step number is considered in turn without missing
         assertEquals(3 to 9, OnboardingPath.progress(q, StepId.ACTIVATE))
     }
 
@@ -63,7 +63,7 @@ class OnboardingPathTest {
 
     @Test
     fun resumesAfterActivationRestart() {
-        // активация перезапускает приложение: режим отмечен, режим разработчика включён, доступ есть - идём дальше
+        // activation restarts the application: the mode is marked, the developer mode is enabled, there is access - go further
         val done = setOf(StepId.MODE, StepId.DEVMODE, StepId.NOTIF, StepId.ACTIVATE)
         val q = OnboardingPath.queue(BridgeMode.DESKTOP, true, false, { it in done })
         assertEquals(StepId.BACKGROUND, q.first())
@@ -82,7 +82,7 @@ class OnboardingPathTest {
         assertEquals(BridgeMode.ANDROID_AUTO, OnboardingPath.modeFor(BridgeMode.ANDROID_AUTO, StepId.MODE))
         assertEquals(BridgeMode.ANDROID_AUTO, OnboardingPath.modeFor(BridgeMode.ANDROID_AUTO, null))
         assertEquals(BridgeMode.DESKTOP, OnboardingPath.modeFor(BridgeMode.DESKTOP, StepId.AA_DEV))
-        // и шаг не выпадает, когда он уже выполнен (режим разработчика включён на отладочном телефоне)
+        // and the step does not fall out when it has already been executed (developer mode is enabled on the debug phone)
         val mode = OnboardingPath.modeFor(BridgeMode.ANDROID_AUTO, StepId.DEVMODE)
         val q = OnboardingPath.queue(mode, true, false, { true }, keep = StepId.DEVMODE)
         assertTrue(StepId.DEVMODE in q)
@@ -97,7 +97,7 @@ class OnboardingPathTest {
         assertEquals(1 to 10, OnboardingPath.progress(launcher, StepId.MODE))
         assertEquals(4 to 10, OnboardingPath.progress(launcher, StepId.ACTIVATE))
         assertEquals(10 to 10, OnboardingPath.progress(launcher, StepId.CAR))
-        assertEquals(1 to 10, OnboardingPath.progress(launcher, StepId.AA_DEV))      // нет в пути - первый
+        assertEquals(1 to 10, OnboardingPath.progress(launcher, StepId.AA_DEV))      // Not on the road, first
     }
 
     @Test

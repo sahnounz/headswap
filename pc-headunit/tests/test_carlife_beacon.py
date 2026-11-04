@@ -52,9 +52,9 @@ def test_parse_args_discover():
     assert a.discover and a.probe_8999 and a.discover_timeout == 5 and a.beacon_port == 1234
     assert a.bind_ip == "192.168.43.2"
     with pytest.raises(SystemExit):
-        C.parse_args(["--discover"])                             # без tcp6
+        C.parse_args(["--discover"])                             # without tcp6
     with pytest.raises(SystemExit):
-        C.parse_args(["--transport", "tcp6", "--probe-8999"])    # без --discover
+        C.parse_args(["--transport", "tcp6", "--probe-8999"])    # without --discover
 
 
 # ---- wait_beacon ----
@@ -90,11 +90,11 @@ def test_discover_timeout_stop_reason():
     assert "no beacon within 0.3 s" in (hu.o.out / "carlife_hu.log").read_text(encoding="utf-8")
 
 
-# ---- end-to-end: маяк -> проба -> 6 сокетов ----
+# ---- end-to-end: beacon -> sample -> 6 socket ----
 
 def test_discover_session():
     phone = FakePhone()
-    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)    # телефон на 8999 (эфемерный порт)
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)    # phone on 8999 (ephemeral port)
     probe.bind(("127.0.0.1", 0))
     probe.settimeout(5)
     probed: list[bytes] = []
@@ -115,7 +115,7 @@ def test_discover_session():
     try:
         send_udp(hu.beacon_port)
         phone.accept_all()
-        # CMD: голый HU_PROTOCOL_VERSION, без внешнего заголовка
+        # CMD: naked HU_PROTOCOL_VERSION, without external header
         assert phone.pump(C.CH_CMD, lambda m: len(m) >= 1)
         assert phone.types(C.CH_CMD) == [C.HU_PROTOCOL_VERSION]
         assert phone.parsers[C.CH_CMD].buf == b""
@@ -138,7 +138,7 @@ def test_discover_session():
 
 def test_discover_probe_no_reply_still_connects():
     phone = FakePhone()
-    silent = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)   # порт есть, ответа нет
+    silent = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)   # port is available, no answer
     silent.bind(("127.0.0.1", 0))
     hu = make_hu(duration=20.0, probe_8999=True, probe_port=silent.getsockname()[1])
     hu.o.ports = phone.ports

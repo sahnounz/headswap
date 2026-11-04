@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Шаг: заголовок, пронумерованный список (string-array), подсказка, кнопки; short - название в чеклисте -->
+    <!-- Step: header, numbered list (string-array), prompt, buttons; short - name in checklist -->
     <string name="step_aa_dev_title">Включите режим разработчика Android Auto</string>
     <string-array name="step_aa_dev_list">
         <item>Нажмите кнопку «Открыть Android Auto»</item>
@@ -40,7 +40,7 @@
     <string name="step_notif_hint_launcher">Код для активации Headswap вводится прямо в уведомлении. Ещё в шторке видно, как идёт подключение к магнитоле.</string>
     <string name="step_notif_short">Уведомления</string>
 
-    <!-- Пункты 3-4 (автозапуск) показываются только на Xiaomi -->
+    <!-- 3-4 points (autorun) are shown only on Xiaomi -->
     <string name="step_background_title">Снимите ограничение батареи</string>
     <string-array name="step_background_list">
         <item>Нажмите кнопку «Снять ограничение батареи»</item>
@@ -112,7 +112,7 @@
     <string name="step_car_short">Автомобиль</string>
     <string name="step_car_body">Подставим настройки, проверенные сообществом на этой машине. Опытные пользователи могут пропустить шаг.</string>
 
-    <!-- Выбор режима и путь «Свой лаунчер» (OnboardingMode.dc.html) -->
+    <!-- Mode selection and path «Your launcher» (OnboardingMode.dc.html) -->
     <string name="step_mode_title">Выберите режим</string>
     <string name="step_mode_subtitle">Что показывать на магнитоле. Сменить можно в Настройках в любой момент.</string>
     <string name="step_mode_aa_body">Стандартный AA: карты, музыка и звонки из Android Auto. Работает через его сервер ГУ.</string>
@@ -133,7 +133,7 @@
     <string name="step_devmode_primary">Открыть настройки</string>
     <string name="step_devmode_short">Режим разработчика</string>
 
-    <!-- Пункты и подсказка шага активации; заголовок, кнопки и статус - PhoneActivationBlock -->
+    <!-- Activation step points and prompt; header, buttons and status - PhoneActivationBlock -->
     <string-array name="step_activate_list">
         <item>Нажмите «Активировать», откроется «Для разработчиков» (на Xiaomi: Расширенные настройки → Для разработчиков)</item>
         <item>Включите «Отладку по Wi-Fi» и нажмите «Подключить устройство с кодом сопряжения»</item>

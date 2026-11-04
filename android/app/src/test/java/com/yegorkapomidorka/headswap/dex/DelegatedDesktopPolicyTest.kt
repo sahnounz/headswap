@@ -58,10 +58,10 @@ class DelegatedDesktopPolicyTest {
         DelegatedDesktopPolicy.Task(display, user, base, top, visible)
 
     @Test fun taskObserverTellsMovedToBackFromTop() {
-        // Back из корня: задача осталась единственной и topActivity прежний, но её не видно
+        // Back from the root: the task remained the only one and topActivity is the same, but it is not visible
         assertEquals(3, DelegatedDesktopPolicy.taskState(42, 0, "com.example.map", true, listOf(task(42, visible = false))))
         assertEquals(2, DelegatedDesktopPolicy.taskState(42, 0, "com.example.map", true, listOf(task(42, visible = true))))
-        // невидимая чужая задача на том же дисплее приложение «сверху» не делает
+        // invisible alien task on the same display application "from above" does not
         assertEquals(1, DelegatedDesktopPolicy.taskState(42, 0, "com.example.map", true,
             listOf(task(42, base = "com.example.music", visible = false), task(42))))
     }
@@ -88,14 +88,14 @@ class DelegatedDesktopPolicyTest {
 
     @Test fun unreadableDisplayFallsBackToPackageInsteadOfUnknown() {
         val u = DelegatedDesktopPolicy.UNKNOWN
-        // displayId/userId скрыты: состояние берём по пакету, а не -1
+        // displayId/userId hidden: state take on the package, not -1
         assertEquals(2, DelegatedDesktopPolicy.taskState(42, 0, "com.example.map", true, listOf(task(u, u))))
         assertEquals(3, DelegatedDesktopPolicy.taskState(42, 0, "com.example.map", true, listOf(task(u, u, visible = false))))
         assertEquals(0, DelegatedDesktopPolicy.taskState(42, 0, "com.example.map", true,
             listOf(task(u, u, base = "com.example.music"))))
         assertEquals(1, DelegatedDesktopPolicy.taskState(42, 0, "com.example.map", true,
             listOf(task(u, u, base = "com.example.music"), task(u, u, base = "com.example.map", top = "com.example.dialog"))))
-        // читаемые задачи по-прежнему фильтруются по дисплею, нечитаемые чужого пакета не мешают
+        // readable tasks are still filtered by the display, unreadable someone else's package does not interfere
         assertEquals(0, DelegatedDesktopPolicy.taskState(42, 0, "com.example.map", true, listOf(task(0), task(u, u, base = "x.y"))))
         assertEquals(2, DelegatedDesktopPolicy.taskState(42, 0, "com.example.map", true, listOf(task(u, u, base = "x.y"), task(42))))
     }
@@ -111,7 +111,7 @@ class DelegatedDesktopPolicyTest {
     @Test fun childPackagesNeverGuessWhenPermissionListOrIdentityIsMissing() {
         assertNull(DelegatedDesktopPolicy.childPackages(42, 0, false, listOf(task(42))))
         assertNull(DelegatedDesktopPolicy.childPackages(42, 0, true, null))
-        // нечитаемый экран задачи: пакет мог быть с телефона, списка нет вовсе
+        // unreadable task screen: the package could be from the phone, there is no list at all
         assertNull(DelegatedDesktopPolicy.childPackages(42, 0, true, listOf(task(42), task(DelegatedDesktopPolicy.UNKNOWN, base = "x.y"))))
     }
 

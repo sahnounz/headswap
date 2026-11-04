@@ -1,12 +1,12 @@
 package com.yegorkapomidorka.headswap.aa
 
 /**
- * Сглаживание пачек тача (h425, VW CNS2 Delphi 20082114). ГУ копит MOVE ~196 мс и отдаёт пачкой по 9-14 событий
- * за 5-20 мс: точки целые, время сбито, в AA скролл идёт рывками с частотой ~5 Гц. Первый MOVE пачки уходит сразу,
- * остальные раздаём равномерно на интервал между пачками: k-й - в момент начало + k * интервал / размер пачки. Размер
- * берём у текущей пачки и пересчитываем на каждое её событие: к первой отправке пачка обычно уже вся в очереди, а угадывать
- * по прошлой нельзя - на краях жеста пачки короче. Интервал - среднее по пачкам без пауз пальца. Цена - постоянная
- * задержка следования за пальцем на одну пачку. DOWN / UP / второй палец: сначала досылаем очередь, потом событие как есть.
+ * Smoothing packs touch (h425, VW CNS2 Delphi 20082114). head unit Sucks MOVE ~196 ms and gives a pack of 9-14 Events
+ * after 5-20 ms: points are complete, time is down, in AA Scroll goes jerks with frequency ~ 5 Hz. First MOVE packs go away immediately,
+ * the rest are distributed evenly on the interval between the packs: k-i - at the time of beginning + k * interval / size of the pack. Size
+ * take from the current pack and recalculate for each of its events: by the first shipment, the pack is usually already all in line, and guess
+ * the past can not - at the edges of the gesture packs shorter. The interval - the average of the packs without pauses finger. Price - constant
+ * delay of following the finger by one pack. DOWN / UP / second finger: first send the queue, then the event as it is.
  */
 class TouchBurstPacer(
     private val clockMs: () -> Long,
@@ -22,10 +22,10 @@ class TouchBurstPacer(
     private var lastArrival = NEVER
     private var burstStart = NEVER
     private var burstSize = 0
-    private var sent = 0                       // сколько событий текущей пачки уже отправлено
+    private var sent = 0                       // how many events of the current pack have already been sent
     private var interval = DEFAULT_INTERVAL_MS
 
-    /** Сколько пачек разглажено (для лога). */
+    /** How many packs are smoothed (for log). */
     var bursts = 0
         private set
 
@@ -45,10 +45,10 @@ class TouchBurstPacer(
             if (burstStart != NEVER) {
                 if (burstSize > 1) bursts++
                 val gap = now - burstStart
-                // палец стоял (пачку-другую ГУ не прислала): в среднее не берём
+                // the finger was standing (a pack-two head unit did not send): in the average do not take
                 if (gap <= interval * 3 / 2) interval = ((interval + gap + 1) / 2).coerceIn(MIN_INTERVAL_MS, MAX_INTERVAL_MS)
             }
-            // хвост прошлой пачки не успели раздать: досылаем, чтобы задержка не копилась
+            // the tail of the last pack did not have time to distribute: we send so that the delay does not accumulate
             flushLocked()
             burstStart = now
             burstSize = 1
@@ -61,7 +61,7 @@ class TouchBurstPacer(
         armLocked()
     }
 
-    /** Сессия закрыта: очередь и таймер выбрасываем. */
+    /** Session closed: queue and timer are thrown out. */
     fun reset() = synchronized(lock) {
         queue.clear()
         cancelTickLocked()
@@ -69,7 +69,7 @@ class TouchBurstPacer(
         interval = DEFAULT_INTERVAL_MS
     }
 
-    /** Таймер на следующее событие очереди по текущему размеру пачки; новое событие пачки переставляет его раньше. */
+    /** The timer to the next event queues for the current size of the pack; a new pack event rearranges it earlier. */
     private fun armLocked() {
         cancelTickLocked()
         if (queue.isEmpty()) return
@@ -109,7 +109,7 @@ class TouchBurstPacer(
     }
 
     companion object {
-        // лог h425 22.10 (66 пачек): внутри пачки зазоры 0-4 мс, между пачками от 176 мс, интервал медиана 196 мс, p10-p90 191-199
+        // log h425 22.10 (66 packs): inside the pack gaps 0-4 ms, between packs from 176 ms, median interval 196 ms, p10-p90 191-199
         const val BURST_GAP_MS = 7L
         const val DEFAULT_INTERVAL_MS = 196L
         const val MIN_INTERVAL_MS = 30L

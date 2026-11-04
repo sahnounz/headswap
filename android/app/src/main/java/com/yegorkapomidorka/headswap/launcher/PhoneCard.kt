@@ -41,7 +41,7 @@ private fun typeLabel(type: CallType): String = stringResource(when (type) {
 private fun whenText(timeMs: Long): String =
     PhoneLogic.whenLabel(System.currentTimeMillis(), timeMs, yesterday = stringResource(R.string.l_yesterday))
 
-/** Кнопки карточки «Телефон» (PhoneStates.dc.html): все размером T. */
+/** Phone Card Buttons (PhoneStates.dc.html): all sized T. */
 private enum class PhoneBtn { CALL, RECALL, ACCEPT, DECLINE, END, CANCEL, CONTACTS, MUTE, ALLOW }
 
 @Composable
@@ -81,20 +81,20 @@ private fun PhoneButton(b: PhoneBtn, number: String?) {
 }
 
 /**
- * Что нарисовать в карточке. Полный вид: шапка цветом состояния, имя и время в строку. Компактный (узкая карточка):
- * имя цветом состояния, ниже [line2], без многоточий; [small] - длинная фраза вместо имени, шрифт F2.
+ * What to draw in the card. Full view: state color cap, name and time per line. Compact (narrow card):
+ * state color name, below [line2], without ellipsis; [small] - long phrase instead of name, font F2.
  */
 private class PhoneView(
     val head: String, val headColor: Color, val headMono: Boolean = false,
     val name: String, val sub: String = "",
     val nameColor: Color? = null, val small: Boolean = false, val line2: String = "", val line2Color: Color? = null,
     val full: List<PhoneBtn>, val compact: List<PhoneBtn> = full.take(1),
-    /** Входящий в компактном виде: значок звонка вместо текста. */
+    /** Incoming in compact form: call icon instead of text. */
     val ringIcon: Boolean = false,
     val number: String? = null,
 )
 
-/** Карточка «Телефон»: состояния А-Ж из PhoneStates.dc.html, полный и компактный вид. Тап по телу - экран «Вызовы». */
+/** Card "Phone": A-Zh status of PhoneStates.dc.html, full and compact appearance. Tap on the body - screen "Calls". */
 @Composable
 fun PhoneCard(modifier: Modifier, shape: Shape? = null) {
     val model = LauncherModel
@@ -111,7 +111,7 @@ fun PhoneCard(modifier: Modifier, shape: Shape? = null) {
     val v = phoneView(phone, accent)
     CardBox(modifier, background = if (incoming) accent.copy(alpha = 0.14f) else Pal.SURFACE, shape = cardShape) {
         if (!ongoing) Pressable(Modifier.fillMaxSize(), description = stringResource(R.string.l_phone), onTap = { LauncherActions.openCalls() }) {}
-        // рамка входящего: inset 4px акцентом
+        // Incoming Frame: inset 4px Accent
         if (incoming) Box(Modifier.fillMaxSize().border(m.dp(4), accent, cardShape))
         Row(
             Modifier.fillMaxSize().padding(horizontal = m.dp(s.g), vertical = m.dp(s.g8)),
@@ -176,7 +176,7 @@ private fun phoneView(phone: PhoneCardModel, accent: Color): PhoneView {
     }
 }
 
-/** Экран «Вызовы» (Calls.dc.html): статус, вкладки «Недавние» и «Контакты», 2 колонки x 4 строки, страницы стрелками. */
+/** Screen "Calls" (Calls.dc.html): status, tabs "Recent" and "Contacts", 2 columns x 4 lines, pages with arrows. */
 @Composable
 fun CallsScreen() {
     val model = LauncherModel
@@ -188,7 +188,7 @@ fun CallsScreen() {
     LaunchedEffect(Unit) { PhoneController.loadAsync(ctx) }
     val permitted = if (tab == 0) PhoneController.logPermitted else PhoneController.contactsPermitted
     val yesterday = stringResource(R.string.l_yesterday)
-    // тип вызова не пишем: пропущенные - имя цветом пропущенного, справа только время
+    // call type do not write: missed - the name of the color of the missed, right only time
     val rows: List<CallsRow> = if (tab == 0) PhoneController.calls.map {
         CallsRow(it.title, PhoneLogic.whenLabel(System.currentTimeMillis(), it.timeMs, yesterday = yesterday),
             if (it.type == CallType.MISSED) Pal.MISSED else Pal.TEXT, it.number)
@@ -234,7 +234,7 @@ fun CallsScreen() {
     }
 }
 
-/** Вкладка экрана «Вызовы»: выбранная - золото .32 с обводкой 2px, остальные - белый .10. */
+/** Call screen tab: selected is gold .32 with 2px trim, the rest is white .10. */
 @Composable
 private fun TabPill(text: String, selected: Boolean, onTap: () -> Unit) {
     val m = LocalMetrics.current

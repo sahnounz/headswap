@@ -6,25 +6,25 @@ import android.content.pm.PackageManager
 import com.yegorkapomidorka.headswap.BuildConfig
 
 /**
- * Машина, выбранная пользователем: Bluetooth-устройство ГУ и привязка CompanionDeviceManager. Живёт в отдельном
- * файле prefs. Триггер (ресивер ACL, [CarAclReceiver]) включён только пока машина выбрана и сборка с бетой беспровода.
+ * Machine selected by user: Bluetooth-head unit device and binding CompanionDeviceManager. Lives in separate
+ * The prefs. Trigger file (ACL, [CarAclReceiver]) is only enabled while the machine is selected and assembly with a wireless beta.
  */
 class CarProfile(ctx: Context) {
     private val sp = ctx.applicationContext.getSharedPreferences("car_profile", Context.MODE_PRIVATE)
 
-    /** MAC как пришёл от системы (регистр разный, сравнивать через [CarMac.same]). */
+    /** MAC as came from the system (register different, compare via [CarMac.same]). */
     val btMac: String? get() = sp.getString("btMac", null)
 
     val btName: String? get() = sp.getString("btName", null)
 
-    /** id привязки CDM (API 33+); -1 - нет (на API 29-32 id не выдаётся, привязка по MAC). */
+    /** id binding CDM (API 33+); -1 - not (on API 29-32 id is not issued, binding on MAC). */
     val cdmAssociationId: Int get() = sp.getInt("cdmAssociationId", -1)
 
     val isSet: Boolean get() = btMac != null
 
     /**
-     * Как эта машина подключается по воздуху. Привязан к [btMac]: другая машина или сброс - снова UNKNOWN.
-     * Без выбранной машины не пишется.
+     * How this machine connects to wireless connection. Tied to [btMac]: other machine or reset - again UNKNOWN.
+     * Without the selected machine is not written.
      */
     var connMode: CarConnMode
         get() = if (!isSet) CarConnMode.UNKNOWN else CarConnMode.entries.firstOrNull { it.name == sp.getString("connMode", null) } ?: CarConnMode.UNKNOWN
@@ -43,7 +43,7 @@ class CarProfile(ctx: Context) {
     }
 
     companion object {
-        /** Включить/выключить ресивер ACL. Включается, только если машина выбрана и сборка с бетой беспровода. */
+        /** The ACL. receiver is turned on/off only if the machine is selected and the assembly with a wireless beta. */
         fun enableTrigger(ctx: Context, on: Boolean) {
             val enable = on && BuildConfig.WIRELESS_BETA && CarProfile(ctx).isSet
             ctx.packageManager.setComponentEnabledSetting(
@@ -53,7 +53,7 @@ class CarProfile(ctx: Context) {
             )
         }
 
-        /** Состояние ресивера для отчёта. DEFAULT = как в манифесте (enabled=false), то есть выключен. */
+        /** Status of receiver for report. DEFAULT = as in manifest (enabled=false), i.e. disabled. */
         fun triggerEnabled(ctx: Context): Boolean =
             ctx.packageManager.getComponentEnabledSetting(component(ctx)) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
 

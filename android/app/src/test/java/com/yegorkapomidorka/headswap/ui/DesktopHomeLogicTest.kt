@@ -111,7 +111,7 @@ class DesktopHomeLogicTest {
     @Test
     fun errorBeatsRunningAndAbortedRecovery() {
         assertEquals(DesktopPhase.ERROR, DesktopHomeLogic.compute(inp(running = true, desktop = true, error = "x")).phase)
-        // восстановление оборвано (BridgeService:1188): error выставлен, а строка «(1/2)…» осталась в статусе
+        // recovery aborted (BridgeService:1188): error is displayed, and the line "(1/2)".
         assertEquals(DesktopPhase.ERROR, DesktopHomeLogic.compute(inp(running = true, error = "x", recovering = true)).phase)
     }
 

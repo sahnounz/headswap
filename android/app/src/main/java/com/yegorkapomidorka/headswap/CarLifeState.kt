@@ -3,7 +3,7 @@ package com.yegorkapomidorka.headswap
 import com.yegorkapomidorka.headswap.aa.AaDensity
 import com.yegorkapomidorka.headswap.aa.VideoGeometry
 
-/** Состояние для экрана; пишут сервис и сессия, читает activity (один процесс). */
+/** Status for screen; write service and session, read activity (one process). */
 object CarLifeState {
     @Volatile var status: String = "не запущено"
     @Volatile var accessory: String = "-"
@@ -12,37 +12,37 @@ object CarLifeState {
     @Volatile var video: String = "-"
     @Volatile var touch: String = "-"
 
-    /** Видео-режим текущей/последней сессии (фактический, с учётом passthrough); null - сессии не было. */
+    /** Video mode of the current/last session (actual, taking into account passthrough); null - there was no session. */
     @Volatile var videoMode: VideoGeometry? = null
 
-    /** Ручной DPI AA той же сессии (AaDensity.AUTO = density режима). */
+    /** Manual DPI AA of the same session (AaDensity.AUTO = density mode). */
     @Volatile var densityOverride: Int = AaDensity.AUTO
     @Volatile var running: Boolean = false
 
-    /** Текущая сессия идёт по Wi-Fi (TCP), а не по кабелю; false - сессии нет или она по USB. */
+    /** Current session is on Wi-Fi (TCP), not cable; false - no session or it is on USB. */
     @Volatile var wirelessSession: Boolean = false
 
-    /** ГУ из HU_INFO: «производитель модель» и carlifeversion (раздел «Система» лаунчера); null - ещё не приходило. */
+    /** head unit from HU_INFO: "manufacturer model" and carlifeversion (the "System" section of launcher); null has not yet arrived. */
     @Volatile var huName: String? = null
     @Volatile var huCarlifeVersion: String? = null
 
-    /** STATISTIC_INFO: channel и versionName - запасное имя ГУ, когда HU_INFO пустой (Honda Vezel). */
+    /** STATISTIC_INFO: channel and versionName are the head unit when HU_INFO is empty (Honda Vezel). */
     @Volatile var huChannel: String? = null
     @Volatile var huStatVersion: String? = null
 
-    /** Последний themeModes из CHANGE_MD_THEME (0 день, 1 ночь, 2 авто); null - ГУ не присылала. Тема «Авто» лаунчера. */
+    /** Last themeModes of CHANGE_MD_THEME (0 day, 1 night, 2 car); null - head unit did not send. The theme "Auto" launcher. */
     @Volatile var huTheme: Int? = null
 
-    /** Беспровод (бета, ветка B): что сейчас происходит, для экрана; null - режим не включён. */
+    /** Wireless (beta, branch B): what is happening now, for the screen; null - mode not included. */
     @Volatile var wireless: String? = null
 
-    /** Bluetooth-проба ветки A: что прислала ГУ по RFCOMM `carlife`; null - проба не запускалась. */
+    /** Bluetooth- test branch A: that sent head unit to RFCOMM `carlife`; null - the test was not started. */
     @Volatile var btProbe: String? = null
 
-    /** Авторежим беспровода: выбранная машина рядом по Bluetooth (пишет BridgeService). */
+    /** Wireless mode: selected machine next to Bluetooth (writes BridgeService). */
     @Volatile var carAuto: Boolean = false
 
-    /** Запрос сети Wi-Fi машины: idle / requesting / available / unavailable (пишет BridgeService). */
+    /** Wi-Fi machine network request: idle / requesting / available / unavailable (writes BridgeService). */
     @Volatile var carNet: String = "idle"
 
     fun resetSession() {

@@ -13,9 +13,9 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * Картинки для CarLife: обложка AA (PNG 256x256, 90-127 КБ) -> JPEG < 30720 Б (CarlifeUtil.java:398),
- * стрелки манёвров PNG < 30720 Б (RGEventHUDCollection.compressByte). AA объявлена в режиме ENUM: своих картинок
- * манёвров телефон не шлёт, рисуем сами по nextTurn.
+ * Pictures for CarLife: cover AA (PNG 256x256, 90-127 KB) -> JPEG < 30720 B (CarlifeUtil.java:398),
+ * PNG < 30720 B (RGEventHUDCollection.compressByte). AA maneuver arrows announced in ENUM: mode of its pictures
+ * the phone does not send maneuvers, we draw ourselves on nextTurn.
  */
 object MetaImages {
     const val MAX_BYTES = 30720
@@ -23,14 +23,14 @@ object MetaImages {
     private const val ART_SMALL = 160
     private const val ICON = 128
 
-    /** Обложка -> JPEG; null, если картинка не декодируется или не влезает в лимит [maxBytes] даже 160x160 q10. */
+    /** Cover -> JPEG; null, if the picture is not decoded or does not fit into the limit [maxBytes] even 160x160 q10. */
     fun albumJpeg(src: ByteArray, maxBytes: Int = MAX_BYTES): ByteArray? {
         val bmp = BitmapFactory.decodeByteArray(src, 0, src.size) ?: return null
         try {
             for (side in intArrayOf(ART_SIDE, ART_SMALL)) {
                 val scaled = if (bmp.width > side || bmp.height > side) Bitmap.createScaledBitmap(bmp, side, side, true) else bmp
                 try {
-                    // JPEG без альфы: прозрачное на чёрный фон
+                    // JPEG without alpha: transparent to black background
                     val opaque = Bitmap.createBitmap(scaled.width, scaled.height, Bitmap.Config.ARGB_8888)
                     Canvas(opaque).apply {
                         drawColor(Color.BLACK)
@@ -56,7 +56,7 @@ object MetaImages {
         }
     }
 
-    /** Стрелка манёвра nextTurn (коды CarLife): белая с тёмной обводкой на прозрачном фоне, PNG 128x128. */
+    /** nextTurn maneuver arrow (CarLife codes): white with dark outline on a transparent background, PNG 128x128. */
     fun turnIcon(nextTurn: Int): ByteArray {
         val bmp = Bitmap.createBitmap(ICON, ICON, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
@@ -155,13 +155,13 @@ object MetaImages {
 
     private class PointF2(val x: Float, val y: Float)
 
-    /** Точка на расстоянии len от p в направлении angle (0 вверх, + по часовой). */
+    /** Point at distance len from p in direction angle (0 up, + clockwise). */
     private fun dir(p: PointF2, angle: Int, len: Float): Pair<Float, Float> {
         val a = Math.toRadians(angle.toDouble())
         return Pair(p.x + len * sin(a).toFloat(), p.y - len * cos(a).toFloat())
     }
 
-    /** Наконечник: треугольник с вершиной чуть дальше (x, y) по направлению angle. */
+    /** Tip: triangle with a vertex slightly further (x, y) in the direction of angle. */
     private fun head(x: Float, y: Float, angle: Int): Path {
         val a = Math.toRadians(angle.toDouble())
         val fx = sin(a).toFloat()

@@ -16,15 +16,15 @@ import com.yegorkapomidorka.headswap.R
 import com.yegorkapomidorka.headswap.aa.AaPrefs
 import com.yegorkapomidorka.headswap.dex.DelegatedDesktopAccess
 
-/** Всё, что надо включить перед поездкой: порядок, тексты, автоопределение «уже сделано». Общее для онбординга и чеклиста. */
+/** All you need to include before the trip: order, texts, auto-definition "already done". Common to onboarding and checklist. */
 enum class StepId(val key: String) {
-    /** Первый шаг: Android Auto или свой лаунчер. Дальше путь зависит от выбора (OnboardingPath). */
+    /** The first step: Android Auto or your launcher. Next path depends on the choice (OnboardingPath). */
     MODE("mode"),
 
-    /** Только для своего лаунчера: режим разработчика Android (нужен «Отладке по Wi-Fi»). */
+    /** Only for its launcher: developer mode Android (need "Debug Wi-Fi"). */
     DEVMODE("devmode"),
 
-    /** Только для своего лаунчера: активация Headswap через «Отладку по Wi-Fi» (PhoneActivationBlock). */
+    /** Only for its launcher: activation of Headswap via "Debugging by Wi-Fi" (PhoneActivationBlock). */
     ACTIVATE("activate"),
     AA_DEV("aa_dev"),
     AA_UNKNOWN("aa_unknown"),
@@ -36,13 +36,13 @@ enum class StepId(val key: String) {
     LOCATION("location"),
     FIRST("first"),
 
-    /** Выбор машины: проверенные сообществом настройки (CarPreset). Последний шаг; опытные пропускают. */
+    /** Machine selection: Community-proven settings (CarPreset). Last step; experienced skip. */
     CAR("car"),
 }
 
 /**
- * Тексты шага - id ресурсов (hint/extra могут отсутствовать). Тело шага - либо пронумерованный список (string-array [list]),
- * либо абзац ([body], шаг выбора машины). В строки превращает UI: ctx.getString, список - через [listItems].
+ * Step Texts - id resources (hint/extra may be missing). Step body - either numbered list (string-array [list]),
+ * or paragraph ([body], the step of choosing a machine). In lines turns UI: ctx.getString, list - through [listItems].
  */
 class StepInfo(
     val id: StepId,
@@ -53,10 +53,10 @@ class StepInfo(
     val primary: Int,
     val extra: Int?,
     val skip: Int,
-    /** Короткое название для чеклиста. */
+    /** A short name for the checklist. */
     val short: Int,
 ) {
-    /** Пункты списка; на шаге фона пункты про «Автозапуск» (3-4) есть только на Xiaomi. */
+    /** List items; in the background step, the items about "Autostart" (3-4) are only on Xiaomi. */
     fun listItems(ctx: Context, xiaomi: Boolean = Readiness.isXiaomi()): List<String> {
         val all = list?.let { ctx.resources.getStringArray(it).toList() } ?: return emptyList()
         return if (id == StepId.BACKGROUND && !xiaomi) all.take(2) else all
@@ -107,7 +107,7 @@ object Readiness {
         ),
     )
 
-    /** Шаги выбора режима и пути лаунчера: в [STEPS] их нет, чтобы чеклист и путь Android Auto остались прежними. */
+    /** The launcher: mode and path selection steps in [STEPS] are not available to keep the Android Auto checklist and path unchanged. */
     val EXTRA_STEPS: List<StepInfo> = listOf(
         StepInfo(
             StepId.MODE, R.string.step_mode_title, null, R.string.step_mode_subtitle, null,
@@ -117,7 +117,7 @@ object Readiness {
             StepId.DEVMODE, R.string.step_devmode_title, R.array.step_devmode_list, null, R.string.step_devmode_hint,
             R.string.step_devmode_primary, null, R.string.onb_already_done, R.string.step_devmode_short,
         ),
-        // заголовок и кнопки рисует PhoneActivationBlock; список и подсказку блок берёт отсюда
+        // header and buttons draw PhoneActivationBlock; the block list and prompt takes from here
         StepInfo(
             StepId.ACTIVATE, R.string.pa_title, R.array.step_activate_list, null, R.string.step_activate_hint,
             R.string.pa_button, null, R.string.onb_later, R.string.step_activate_short,
@@ -131,13 +131,13 @@ object Readiness {
         return m.contains("xiaomi") || m.contains("redmi") || m.contains("poco")
     }
 
-    /** true/false - определено автоматически; null - определить нельзя (только ручная отметка «Уже сделано»). */
+    /** true/false - defined automatically; null - cannot be defined (only manual mark "Already done"). */
     fun auto(ctx: Context, id: StepId): Boolean? = when (id) {
         StepId.NOTIF -> ctx.getSystemService(NotificationManager::class.java).areNotificationsEnabled() &&
             (Build.VERSION.SDK_INT < 33 || ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
         StepId.MIC -> ctx.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         StepId.BACKGROUND -> batteryOk(ctx)
-        StepId.CAR -> if (AaPrefs(ctx).carPreset != null) true else null      // пропуск - ручная отметка
+        StepId.CAR -> if (AaPrefs(ctx).carPreset != null) true else null      // Pass - manual mark
         StepId.DEVMODE -> devSettingsEnabled(ctx)
         StepId.ACTIVATE -> DelegatedDesktopAccess.isReady(ctx)
         StepId.LOCATION -> try {
@@ -148,21 +148,21 @@ object Readiness {
         else -> null
     }
 
-    /** Режим разработчика включён (семь нажатий на «Номер сборки»). */
+    /** Developer mode is enabled (seven clicks on "Assembly number"). */
     fun devSettingsEnabled(ctx: Context): Boolean =
         Settings.Global.getInt(ctx.contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) == 1
 
     fun batteryOk(ctx: Context): Boolean =
         ctx.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(ctx.packageName)
 
-    /** Выполнено: автоопределение, а где его нет - ручная отметка. Фон на Xiaomi требует ещё и ручной отметки. */
+    /** Done: Auto-detection, and where it is not - manual mark. Background on Xiaomi also requires manual mark. */
     fun isDone(ctx: Context, id: StepId): Boolean {
         val ui = UiPrefs(ctx)
         if (id == StepId.BACKGROUND) return batteryOk(ctx) && (!isXiaomi() || ui.isManualDone(id.key))
         return auto(ctx, id) ?: ui.isManualDone(id.key)
     }
 
-    // --- действия кнопок ---
+    // --- button actions ---
 
     fun appDetails(ctx: Context) {
         ctx.startActivity(
@@ -187,7 +187,7 @@ object Readiness {
         }
     }
 
-    /** Автозапуск Xiaomi (Безопасность); не вышло - карточка приложения. */
+    /** Autostart Xiaomi (Security); failed - application card. */
     fun openXiaomiAutostart(ctx: Context) {
         try {
             ctx.startActivity(
@@ -208,7 +208,7 @@ object Readiness {
 
     fun openBluetoothSettings(ctx: Context) = openSettings(ctx, Settings.ACTION_BLUETOOTH_SETTINGS)
 
-    /** «О телефоне»: там «Номер сборки». */
+    /** "About the phone": there is an "Assembly number". */
     fun openDeviceInfo(ctx: Context) = openSettings(ctx, Settings.ACTION_DEVICE_INFO_SETTINGS)
 
     private fun openSettings(ctx: Context, action: String) {

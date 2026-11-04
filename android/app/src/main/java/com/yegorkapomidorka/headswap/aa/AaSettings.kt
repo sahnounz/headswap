@@ -7,70 +7,70 @@ import java.io.FileNotFoundException
 import java.io.InputStream
 import java.util.concurrent.atomic.AtomicLong
 
-/** Настройки AA-режима (отдельный файл prefs). */
+/** Settings AA-mode (separate file prefs). */
 class AaPrefs(ctx: Context) {
     private val sp: SharedPreferences = ctx.getSharedPreferences("aa", Context.MODE_PRIVATE)
 
-    /** jvc (по умолчанию, принят AA 17.7 живьём) или hur. */
+    /** jvc (default, adopted by AA 17.7 live) or hur. */
     var certSet: String
         get() = sp.getString("certSet", "jvc") ?: "jvc"
         set(v) = sp.edit().putString("certSet", v).apply()
 
-    /** Звук AA -> CarLife по USB; по умолчанию вкл. */
+    /** Sound AA -> CarLife by USB; default on. */
     var usbAudio: Boolean
         get() = sp.getBoolean("usbAudio", true)
         set(v) = sp.edit().putBoolean("usbAudio", v).apply()
 
-    /** Частота музыки в CarLife (имя MusicRate, по умолчанию Авто). Мост читает на каждый MEDIA INIT. */
+    /** Music frequency in CarLife (name MusicRate, default Auto). Bridge reads on each MEDIA INIT. */
     var musicRate: MusicRate
         get() = MusicRate.parse(sp.getString("musicRate", MusicRate.DEFAULT.name))
         set(v) = sp.edit().putString("musicRate", v.name).apply()
 
-    /** Размер пакета музыки в CarLife (имя MediaChunk, по умолчанию Авто; эксперимент, не входит в пресеты авто). Мост читает на каждый буфер. */
+    /** The size of the music package in CarLife (name MediaChunk, default Auto; experiment, not included in auto presets). The bridge reads on each buffer. */
     var mediaChunk: MediaChunk
         get() = MediaChunk.parse(sp.getString("mediaChunk", MediaChunk.DEFAULT.name))
         set(v) = sp.edit().putString("mediaChunk", v.name).apply()
 
-    /** Размер пакета речи в CarLife (имя VoiceChunk, по умолчанию Авто; эксперимент, не входит в пресеты авто). Мост читает на каждый пакет. */
+    /** The size of the speech package in CarLife (name VoiceChunk, default Auto; experiment, not included in the auto presets). The bridge reads on each package. */
     var voiceChunk: VoiceChunk
         get() = VoiceChunk.parse(sp.getString("voiceChunk", VoiceChunk.DEFAULT.name))
         set(v) = sp.edit().putString("voiceChunk", v.name).apply()
 
-    /** Пре-ролл тишины перед подсказкой TTS (имя TtsPreroll, по умолчанию Авто; эксперимент, не входит в пресеты авто). Мост читает на каждый TTS INIT. */
+    /** Pre-roll silence before the TTS prompt (name TtsPreroll, default Auto; experiment, not included in auto presets). Bridge reads on each TTS INIT. */
     var ttsPreroll: TtsPreroll
         get() = TtsPreroll.parse(sp.getString("ttsPreroll", TtsPreroll.DEFAULT.name))
         set(v) = sp.edit().putString("ttsPreroll", v.name).apply()
 
-    /** Прореживание MOVE тача (имя TouchDecimation, по умолчанию Выкл; эксперимент, не входит в пресеты авто). Мост читает на каждое событие. */
+    /** The MOVE touch thinning (TouchDecimation name, default Off; experiment, not included in auto presets). The bridge reads for every event. */
     var touchDecimation: TouchDecimation
         get() = TouchDecimation.parse(sp.getString("touchDecimation", TouchDecimation.DEFAULT.name))
         set(v) = sp.edit().putString("touchDecimation", v.name).apply()
 
     /**
-     * Режим моста (ключ BridgeMode, по умолчанию Android Auto): сырое сохранённое значение, на Android ниже 13 оно
-     * может быть DESKTOP - применяемый режим даёт [BridgeMode.effective]. Читается один раз на подключение.
+     * Bridge mode (BridgeMode key, default Android Auto): raw stored value, on Android below 13 it
+     * can be DESKTOP - the mode used gives [BridgeMode.effective]. Reads once per connection.
      */
     var bridgeMode: BridgeMode
         get() = BridgeMode.parse(sp.getString("bridgeMode", BridgeMode.DEFAULT.key))
         set(v) = sp.edit().putString("bridgeMode", v.key).apply()
 
     /**
-     * Свой IDR раз в 2 с в прямом проброске (IdrSplice, ADR 0005), раздел для разработчиков. По умолчанию включён;
-     * выключают на ГУ, которые сами возвращают картинку после камеры (VW). Ключ новый: старый idrSplice был выключен по умолчанию.
+     * Its IDR times in 2 with direct passthrough (IdrSplice, ADR 0005), the section for developers. By default included;
+     * turn off on head unit, which themselves return the picture after the camera (VW). The key is new: the old idrSplice was turned off by default.
      */
     var ownIdr: Boolean
         get() = sp.getBoolean("ownIdr", true)
         set(v) = sp.edit().putBoolean("ownIdr", v).apply()
 
-    /** Видео моста: passthrough H.264 AA как есть (по умолчанию с 3.0) или перекодирование. */
+    /** Video of the bridge: passthrough H.264 AA as is (default with 3.0) or transcoding. */
     var transcode: Boolean
         get() = sp.getBoolean("transcode", false)
         set(v) = sp.edit().putBoolean("transcode", v).apply()
 
     /**
-     * Одноразовая миграция на 3.0: прямой проброс и частота «Авто» для всех, кто обновился.
-     * Зовётся из MainActivity и BridgeService (приложение могло запуститься от USB), идемпотентна.
-     * Пресет «Мой автомобиль» не трогаем: он остаётся подписью, настройки пользователь меняет сам.
+     * One-time migration to 3.0: direct passthrough and Auto frequency for anyone who has updated.
+     * Called MainActivity and BridgeService (the application could run from USB), it is idempotent.
+     * Preset "My car" do not touch: it remains a signature, the user changes the settings himself.
      */
     fun migrateTo30() {
         if (sp.getBoolean("video30Migrated", false)) return
@@ -82,12 +82,12 @@ class AaPrefs(ctx: Context) {
         AppLog.i("миграция 3.0: прямой проброс, частота кадров Авто")
     }
 
-    /** Разрешение видео (имя VideoMode, по умолчанию 1280×720). Читается один раз на подключение. */
+    /** Video resolution (name VideoMode, default 1280×720). Read once per connection. */
     var videoMode: VideoMode
         get() = VideoMode.parse(sp.getString("videoMode", VideoMode.DEFAULT.name))
         set(v) = sp.edit().putString("videoMode", v.name).apply()
 
-    /** Своё разрешение (раздел для разработчиков): вместо [videoMode], только с перекодированием. Читается один раз на подключение. */
+    /** Authorization (developer section): instead of [videoMode], only c transcoding. Read once for connection. */
     var customRes: Boolean
         get() = sp.getBoolean("customRes", false)
         set(v) = sp.edit().putBoolean("customRes", v).apply()
@@ -100,7 +100,7 @@ class AaPrefs(ctx: Context) {
         get() = sp.getInt("customH", DEFAULT_CUSTOM_H)
         set(v) = sp.edit().putInt("customH", v).apply()
 
-    /** Размер, который ГУ просила в VIDEO_ENCODER_INIT в последней сессии; 0 = ещё не было. */
+    /** The size that head unit requested in VIDEO_ENCODER_INIT in the last session; 0 = has not yet been. */
     var lastHuW: Int
         get() = sp.getInt("lastHuW", 0)
         set(v) = sp.edit().putInt("lastHuW", v).apply()
@@ -109,40 +109,40 @@ class AaPrefs(ctx: Context) {
         get() = sp.getInt("lastHuH", 0)
         set(v) = sp.edit().putInt("lastHuH", v).apply()
 
-    /** Сохранить размер, запрошенный ГУ (нули и мусор не пишем). */
+    /** Save the size requested by head unit (zeros and no trash). */
     fun saveHuSize(w: Int, h: Int) {
         if (w > 0 && h > 0) sp.edit().putInt("lastHuW", w).putInt("lastHuH", h).apply()
     }
 
-    /** Итоговая геометрия видео: своё разрешение (если включено и валидно) или [videoMode]. Перекодирование учитывается через effective(). */
+    /** Total video geometry: its resolution (if included and valid) or [videoMode]. transcoding is taken into account through effective(). */
     val videoGeometry: VideoGeometry
         get() = CustomVideoMode.resolve(customRes, customW, customH, videoMode)
 
-    /** Ручной DPI интерфейса AA (AaDensity), 0 = авто (density режима). Читается один раз на подключение. */
+    /** Manual DPI interface AA (AaDensity), 0 = Auto (density mode). Read once per connection. */
     var aaDensity: Int
         get() = AaDensity.parse(sp.getInt("aaDensity", AaDensity.AUTO))
         set(v) = sp.edit().putInt("aaDensity", AaDensity.parse(v)).apply()
 
-    /** Частота кадров (имя FpsSetting, по умолчанию Авто). Читается один раз на подключение. */
+    /** Frequency frame (name FpsSetting, default Auto). Read once per connection. */
     var fpsSetting: FpsSetting
         get() = FpsSetting.parse(sp.getString("fpsSetting", FpsSetting.DEFAULT.name))
         set(v) = sp.edit().putString("fpsSetting", v.name).apply()
 
-    /** Марка автомобиля для SDR вместо «Google» (CAR_MAKES); null = по умолчанию. Читается на подключение. */
+    /** Car brand for SDR instead of "Google" (CAR_MAKES); null = default. Readable for connection. */
     var carMake: String?
         get() = sp.getString("carMake", null)?.takeIf { it in CAR_MAKES }
         set(v) = sp.edit().apply { if (v == null) remove("carMake") else putString("carMake", v) }.apply()
 
-    /** Машина из раздела «Мой автомобиль» (имя CarPreset); null = не выбрана. Сам выбор только подпись, настройки пишет [applyCar]. */
+    /** Machine from the section "My car" (name CarPreset); null = not selected. The choice is only a signature, settings write [applyCar]. */
     var carPreset: CarPreset?
         get() = CarPreset.parse(sp.getString("carPreset", null))
         set(v) = sp.edit().apply { if (v == null) remove("carPreset") else putString("carPreset", v.name) }.apply()
 
-    /** Текущие значения настроек, которые выставляет выбор машины. */
+    /** The current values of the settings that the choice of machine sets. */
     val carSettings: CarSettings
         get() = CarSettings(transcode, videoMode, aaDensity, fpsSetting, musicRate)
 
-    /** Выбрать машину и записать её рекомендованные настройки. */
+    /** Select the car and write down its recommended settings. */
     fun applyCar(p: CarPreset) {
         val s = p.settings
         sp.edit()
@@ -155,64 +155,64 @@ class AaPrefs(ctx: Context) {
             .apply()
     }
 
-    /** Источник звука для микрофона AA: машина / телефон / авто (ГУ, при молчании 2 с - телефон). */
+    /** Sound source for microphone AA: machine/phone/car (head unit, with silence 2 s - phone). */
     var micMode: MicMode
         get() = MicMode.parse(sp.getString("micMode", MicMode.AUTO.key))
         set(v) = sp.edit().putString("micMode", v.key).apply()
 
-    /** Вместе с запросом записи у ГУ слать MODULE_STATUS VR=1/0 (как Baidu). */
+    /** Together with the recording request from head unit send MODULE_STATUS VR=1/0 (as Baidu). */
     var micVrStatus: Boolean
         get() = sp.getBoolean("micVrStatus", true)
         set(v) = sp.edit().putBoolean("micVrStatus", v).apply()
 
-    /** Сообщать ГУ о звонках (TelephonyManager -> MODULE_STATUS PHONE + TELE_STATE); по умолчанию выкл. Читается на подключение. */
+    /** Notify head unit of calls (TelephonyManager -> MODULE_STATUS PHONE + TELE_STATE); by default off. Read to connect. */
     var callsToHu: Boolean
         get() = sp.getBoolean("callsToHu", false)
         set(v) = sp.edit().putBoolean("callsToHu", v).apply()
 
-    /** Трек, обложка и прогресс из AA -> MEDIA_INFO / MEDIA_PROGRESS_BAR. Читается на подключение. */
+    /** Track, cover and progress from AA -> MEDIA_INFO / MEDIA_PROGRESS_BAR. Read on connection. */
     var metaMusic: Boolean
         get() = sp.getBoolean("metaMusic", true)
         set(v) = sp.edit().putBoolean("metaMusic", v).apply()
 
-    /** Подсказки поворотов из AA -> NAVI_NEXT_TURN_INFO (если ГУ подписалась). Читается на подключение. */
+    /** Turning tips from AA -> NAVI_NEXT_TURN_INFO (if head unit has subscribed). Readable for connection. */
     var metaNavi: Boolean
         get() = sp.getBoolean("metaNavi", true)
         set(v) = sp.edit().putBoolean("metaNavi", v).apply()
 
-    /** Поле 6 NAVI_NEXT_TURN_INFO: bytes-иконка (как 8.6.7). */
+    /** Field 6 NAVI_NEXT_TURN_INFO: bytes-icon (as 8.6.7). */
     var naviIcon: Boolean
         get() = sp.getBoolean("naviIcon", true)
         set(v) = sp.edit().putBoolean("naviIcon", v).apply()
 
-    /** Поле 6 NAVI_NEXT_TURN_INFO: int32 time (как apollo-DuerOS). */
+    /** Field 6 NAVI_NEXT_TURN_INFO: int32 time (as apollo-DuerOS). */
     var naviTime: Boolean
         get() = sp.getBoolean("naviTime", true)
         set(v) = sp.edit().putBoolean("naviTime", v).apply()
 
     val naviField6: NaviField6 get() = NaviField6.of(naviIcon, naviTime)
 
-    /** MEDIA_PROGRESS_BAR в секундах вместо мс (если ГУ покажет прогресс в 1000 раз больше). */
+    /** MEDIA_PROGRESS_BAR in seconds instead of ms (if head unit shows progress in 1000 times more). */
     var progressSeconds: Boolean
         get() = sp.getBoolean("progressSeconds", false)
         set(v) = sp.edit().putBoolean("progressSeconds", v).apply()
 
-    /** Хоть раз установилась настоящая AA-сессия: сервер ГУ у пользователя работал (для «Сервер ГУ не отвечает», а не «Запустите сервер ГУ»). */
+    /** At least once installed a real AA-session: the server head unit user worked (for "Server head unit does not respond" and not "Start server head unit"). */
     var serverWorked: Boolean
         get() = sp.getBoolean("serverWorked", false)
         set(v) = sp.edit().putBoolean("serverWorked", v).apply()
 
-    /** Предупреждение про видео в движении в разделе «Приложения для магнитолы» уже показано (один раз). */
+    /** The video alert in motion in the "Magnetola Applications" section is already shown (once). */
     var appsWarningShown: Boolean
         get() = sp.getBoolean("appsWarningShown", false)
         set(v) = sp.edit().putBoolean("appsWarningShown", v).apply()
 
-    /** Пресет эквалайзера (EqPreset.key); полосы и preamp хранятся отдельно, пресет — только подпись. */
+    /** The preset of the equalizer (EqPreset.key); strips and preamp are stored separately, the preset is only a signature. */
     var eqPreset: EqPreset
         get() = EqPreset.parse(sp.getString("eqPreset", EqPreset.FLAT.key))
         set(v) = sp.edit().putString("eqPreset", v.key).apply()
 
-    /** Полосы (CSV, дБ) и preamp; запись сразу применяется к мосту через EqLive. */
+    /** Bands (CSV, dB) and preamp; recording immediately applies to bridge over EqLive. */
     var eq: EqSettings
         get() = EqSettings(EqSettings.parseBands(sp.getString("eqBands", null)), sp.getInt("eqPreamp", 0)).normalized()
         set(v) {
@@ -221,7 +221,7 @@ class AaPrefs(ctx: Context) {
             EqLive.settings = n
         }
 
-    /** Последние значения «Своего»: возврат к нему после пробы пресетов. */
+    /** The last meaning of “My”: a return to it after testing presets. */
     var eqCustom: EqSettings
         get() = EqSettings(EqSettings.parseBands(sp.getString("eqCustomBands", null)), sp.getInt("eqCustomPreamp", 0)).normalized()
         set(v) {
@@ -235,13 +235,13 @@ class AaPrefs(ctx: Context) {
     }
 }
 
-/** Марки для настройки «Марка автомобиля» (канонические английские написания). */
+/** Stamps for setting up "Car brand" (canonical English spellings). */
 val CAR_MAKES = listOf(
     "Honda", "Mazda", "Toyota", "Nissan", "Hyundai", "Kia", "Volkswagen", "Skoda", "Ford",
     "Chevrolet", "Mitsubishi", "Subaru", "Lexus", "Changan", "Haval", "Chery", "Geely",
 )
 
-/** Состояние AA-режима для экрана; пишет сервис, читает activity (один процесс). */
+/** Status AA-screen mode; writes service, reads activity (one process). */
 object AaState {
     @Volatile var status: String = "не запущено"
     @Volatile var running: Boolean = false
@@ -254,10 +254,10 @@ object AaState {
     @Volatile var bridgeDropped: Long = 0
     @Volatile var audioBytes: Long = 0
 
-    /** Ошибка настройки, из-за которой мост не стартует (например, нет сертификата head unit); null = всё в порядке. */
+    /** A configuration error that prevents the bridge from starting (e.g. no head unit certificate); null = all right. */
     @Volatile var setupError: String? = null
 
-    /** Отказы сервера ГУ при настоящих подключениях моста: источник состояния «Сервер ГУ не отвечает» на главном экране. */
+    /** head unit server failures with real bridge connections: status source "head Server unit does not respond" on the main screen. */
     val serverFailures = ServerFailures()
 
     fun reset() {
@@ -273,14 +273,14 @@ object AaState {
         "AA: $status\nAA cert: $cert  selftest: $selftest\nAA кадров: ${frames.get()} (config $codecConfigs, ${bytes / 1024} КиБ)\nМОСТ: в CarLife отправлено $bridgeSent, отброшено $bridgeDropped, звук ${audioBytes / 1024} КиБ"
 }
 
-/** Ни один набор сертификата head unit не найден в assets. */
+/** No head unit certificate set found in assets. */
 class AaCertsMissingException(message: String) : Exception(message)
 
-/** Загрузка сертификатов из assets с откатом на второй набор и крупным логом отката. */
+/** Download certificates from assets with rollback to the second set and a large rollback log. */
 object AaCreds {
     const val MISSING_TEXT = "Нет сертификата head unit: положите cert.pem и key.pem в app/src/main/assets/aa/jvc/ (см. README)"
 
-    /** @throws AaCertsMissingException если файлов сертификата нет ни в одном наборе */
+    /** @throws AaCertsMissingException if the certificate files are not in any set */
     fun load(ctx: Context, preferred: String): AapCerts.Loaded {
         val opener: (String) -> InputStream = { ctx.assets.open(it) }
         val loaded = try {
@@ -298,7 +298,7 @@ object AaCreds {
         return loaded
     }
 
-    /** notBefore/notAfter отдельно: у JVC формат UTCTime с зоной, парсится не везде. Только для лога. */
+    /** notBefore/notAfter separately: JVC format UTCTime with zone, parsed not everywhere. Only for log. */
     fun describeValidity(creds: AapCredentials): String = try {
         val c = creds.chain[0]
         "notBefore=${c.notBefore} notAfter=${c.notAfter}"
@@ -306,7 +306,7 @@ object AaCreds {
         "notBefore/notAfter не читаются: ${e.javaClass.simpleName}: ${e.message}"
     }
 
-    /** Самопроверка без сети: in-memory TLS-handshake обоими наборами, результат в лог. */
+    /** Self-checking without network: in-memory TLS-handshake both sets, result in log. */
     fun selfTest(ctx: Context) {
         val opener: (String) -> InputStream = { ctx.assets.open(it) }
         val parts = ArrayList<String>()

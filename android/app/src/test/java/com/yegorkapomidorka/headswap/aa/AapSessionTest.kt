@@ -17,9 +17,9 @@ import com.yegorkapomidorka.headswap.aa.AapFraming as F
 import com.yegorkapomidorka.headswap.aa.AapMessages as M
 
 /**
- * Живая AapSession против скриптованного "телефона" (сервер AAP, написан отдельно от AapSession)
- * по loopback-сокету: version, TLS-сервер с запросом клиентского сертификата, service discovery,
- * каналы, видео с фрагментацией, ping, фокус, touch, ByeBye в обе стороны и чистый конец сокета.
+ * Live AapSession vs. scripted "phone" (AAP server, written separately from AapSession)
+ * by loopback-socket: version, TLS-server with client certificate request, service discovery,
+ * channels, video fragmentation, ping, focus, touch, ByeBye in both directions and net end of socket.
  */
 class AapSessionTest {
     open class Sink : AaVideoSink {
@@ -39,7 +39,7 @@ class AapSessionTest {
         }
     }
 
-    /** Приёмник с микрофоном: принимает open, считает open/close. */
+    /** Microphone receiver: adopts open, thinks open/close. */
     class MicSink : Sink(), AaMicSink {
         val opens = java.util.concurrent.atomic.AtomicInteger()
         val closes = CopyOnWriteArrayList<String>()
@@ -98,7 +98,7 @@ class AapSessionTest {
             }
         }
 
-        /** Следующее сообщение от HU (touch-события складываются отдельно). */
+        /** Next post from HU (touch- events are added separately). */
         fun recvMsg(stopWhen: (() -> Boolean)? = null): Triple<Int, Int, ByteArray>? {
             while (true) {
                 if (stopWhen != null && stopWhen()) return null
@@ -163,7 +163,7 @@ class AapSessionTest {
             assertEquals(0x03, f.flags)
             assertArrayEquals(Golden.hex("0001 0001 0002"), f.body)
             sendPlain(M.VERSION_RESPONSE, Golden.hex("0001 0007 0000"))
-            // TLS в plain-кадрах
+            // TLS to plain-frame
             var firstOut = tls.handshakeStep(null)
             check(firstOut.isEmpty())
             while (!tls.handshakeDone) {
@@ -182,36 +182,36 @@ class AapSessionTest {
             assertArrayEquals(Golden[if (fullAudio) "sdr_full" else "sdr_default"], sd)
             assertEquals(0x0B, rxFlags[0 to 6])
             if (end == "no_video") {
-                // видео не открывается: через preVideoTimeoutMs HU сам завершает сессию чистым ByeBye
+                // video does not open: through preVideoTimeoutMs HU itself completes the session clean ByeBye
                 assertArrayEquals(Golden["byebye_request"], expect(0, M.BYEBYE_REQUEST))
                 sendMsg(0, M.BYEBYE_RESPONSE, ByteArray(0))
                 return
             }
             if (end == "write_fail") {
-                // с этого момента запись HU падает; HU должен закрыть сессию сам и не слать ByeBye
+                // from this point the HU record falls; HU must close the session itself and not send ByeBye
                 onBeforeFail()
                 sendMsg(0, M.PING_REQUEST, AapPb().v(1, 1L).toByteArray())
-                // свою сторону не закрываем, пока HU не закроет сокет сам: иначе наш EOF обгоняет сбой записи
+                // do not close your side until HU closes socket itself: otherwise our EOF overrides the recording failure
                 while (sock.getInputStream().read(buf) >= 0) {
                 }
                 return
             }
 
-            // каналы
+            // Channels
             for (chan in if (fullAudio) listOf(1, 2, 3, 4, 5, 6, 7, 9, 10) else listOf(1, 2, 3, 5, 7, 9, 10)) {
                 sendMsg(chan, M.CHANNEL_OPEN_REQUEST, AapPb().v(1, 0).v(2, chan).toByteArray())
                 assertArrayEquals(Golden["channel_open_response"], expect(chan, M.CHANNEL_OPEN_RESPONSE))
                 assertEquals(if (chan != 0) 0x0F else 0x0B, rxFlags[chan to 8])
                 if (chan == 1) assertArrayEquals(Golden["driving_status"], expect(1, M.SENSOR_EVENT))
             }
-            // сенсоры, input
+            // sensors, input
             sendMsg(1, M.SENSOR_START_REQUEST, AapPb().v(1, 13).v(2, 0).toByteArray())
             assertArrayEquals(Golden["sensor_start_response"], expect(1, M.SENSOR_START_RESPONSE))
             sendMsg(1, M.SENSOR_START_REQUEST, AapPb().v(1, 10).v(2, 0).toByteArray())
             assertArrayEquals(Golden["sensor_start_response"], expect(1, M.SENSOR_START_RESPONSE))
             assertArrayEquals(Golden["night"], expect(1, M.SENSOR_EVENT))
-            if (::session.isInitialized) {                    // сценарии с AaConnector сессию не передают
-                session.sendNightMode(true)                   // CHANGE_MD_THEME тёмная после старта сенсора
+            if (::session.isInitialized) {                    // AaConnector session scripts do not transmit
+                session.sendNightMode(true)                   // CHANGE_MD_THEME dark after sensor start
                 assertArrayEquals(M.nightModeEvent(true).payload, expect(1, M.SENSOR_EVENT))
                 session.sendNightMode(false)
                 assertArrayEquals(Golden["night"], expect(1, M.SENSOR_EVENT))
@@ -219,7 +219,7 @@ class AapSessionTest {
             sendMsg(3, M.INPUT_BINDING_REQUEST, AapPb().v(1, 3).v(1, 4).v(1, 84).toByteArray())
             assertArrayEquals(Golden["binding_response"], expect(3, M.INPUT_BINDING_RESPONSE))
 
-            // видео: config + кадр в 3 фрагмента + маленький кадр
+            // video: config + frame in 3 snippets + small frame
             sendMsg(2, M.MEDIA_SETUP, AapPb().v(1, 3).toByteArray())
             assertArrayEquals(Golden["media_config_video"], expect(2, M.MEDIA_CONFIG))
             assertArrayEquals(Golden["video_focus_unsol"], expect(2, M.MEDIA_VIDEO_FOCUS_NOTIFICATION))
@@ -234,14 +234,14 @@ class AapSessionTest {
             }
             sendMsg(2, M.MEDIA_VIDEO_FOCUS_REQUEST, AapPb().v(2, 1).toByteArray())
             assertArrayEquals(Golden["video_focus_sol"], expect(2, M.MEDIA_VIDEO_FOCUS_NOTIFICATION))
-            // mode=2 (NATIVE, «Выйти»): HU не отвечает (иначе следующим пришло бы не ch5 MEDIA_CONFIG), а зовёт sink
-            // (только с голым sink: мост на него отвечает keyframe-циклом, это проверяет AaBridgeTest)
+            // mode=2 (NATIVE, "Exit"): HU does not respond (otherwise the next would not come ch5 MEDIA_CONFIG), and calls sink
+            // (only with bare sink: bridge on it responds with keyframe-cycle, it checks AaBridgeTest)
             if (exitTap) sendMsg(2, M.MEDIA_VIDEO_FOCUS_REQUEST, AapPb().v(2, 2).v(3, 0).toByteArray())
 
-            // сторож тишины работает только до VIDEO MEDIA_START: пауза дольше его таймаута сессию не убивает
+            // The silence guard only works until VIDEO MEDIA_START: pause longer than his timeout session does not kill
             if (idleAfterVideoMs > 0) Thread.sleep(idleAfterVideoMs)
 
-            // аудио
+            // Audio
             sendMsg(5, M.MEDIA_SETUP, AapPb().v(1, 1).toByteArray())
             assertArrayEquals(Golden["media_config_audio"], expect(5, M.MEDIA_CONFIG))
             assertArrayEquals(Golden["audio_focus_unsolicited"], expect(0, M.AUDIO_FOCUS_NOTIFICATION))
@@ -249,7 +249,7 @@ class AapSessionTest {
             sendMsg(5, M.MEDIA_DATA, ByteArray(8) + ByteArray(640) { 1 })
             assertArrayEquals(Golden.hex("08 03 10 01"), expect(5, M.MEDIA_ACK))
             if (fullAudio) {
-                // MEDIA (ch6, 48k стерео) и SPEECH (ch4, 16k моно): setup/config/focus/start/data -> ack, затем STOP MEDIA
+                // MEDIA (ch6, 48k stereo) and SPEECH (ch4, 16k mono): setup/config/focus/start/data -> ack, then STOP MEDIA
                 for ((chan, sid, bytes) in listOf(Triple(6, 4, 3840), Triple(4, 2, 640))) {
                     sendMsg(chan, M.MEDIA_SETUP, AapPb().v(1, 1).toByteArray())
                     assertArrayEquals(Golden["media_config_audio"], expect(chan, M.MEDIA_CONFIG))
@@ -278,7 +278,7 @@ class AapSessionTest {
             sendMsg(0, M.VOICE_SESSION_NOTIFICATION, AapPb().v(1, 1).toByteArray())
 
             if (end == "bridge_grace") {
-                // AA жива после обрыва USB: ждём keyframe-цикл NATIVE -> PROJECTED и отвечаем новым config + IDR
+                // AA is alive after the break USB: waiting for keyframe-cycle NATIVE -> PROJECTED and respond with new config + IDR
                 ready.countDown()
                 assertArrayEquals(Golden.hex("08 02 10 00"), expect(2, M.MEDIA_VIDEO_FOCUS_NOTIFICATION))
                 assertArrayEquals(Golden["video_focus_unsol"], expect(2, M.MEDIA_VIDEO_FOCUS_NOTIFICATION))
@@ -286,13 +286,13 @@ class AapSessionTest {
                 assertArrayEquals(Golden["media_ack"], expect(2, M.MEDIA_ACK))
                 sendMsg(2, M.MEDIA_DATA, ByteArray(8) { if (it == 7) 9 else 0 } + IDR2)
                 assertArrayEquals(Golden["media_ack"], expect(2, M.MEDIA_ACK))
-                // дальше AA закрывается хостом после grace: чистый ByeBye
+                // AA is closed by the host after grace: clean ByeBye
                 assertArrayEquals(Golden["byebye_request"], expect(0, M.BYEBYE_REQUEST))
                 sendMsg(0, M.BYEBYE_RESPONSE, ByteArray(0))
                 return
             }
             if (stress) {
-                // идёт поток видео (300 кадров с фрагментацией), а "чужая" нить шлёт touch DOWN, 30 MOVE, UP
+                // video stream (300 frame with fragmentation), and "alien" thread shot touch DOWN, 30 MOVE, UP
                 val toucher = Thread {
                     session.sendTouch(M.TOUCH_DOWN, 100, 200)
                     repeat(30) {
@@ -317,7 +317,7 @@ class AapSessionTest {
                 return
             }
 
-            // touch: тест дёргает sendTouch из своей нити (как UI)
+            // touch: test pulls sendTouch from its thread (as UI)
             if (!externalTouch) {
                 session.sendTouch(M.TOUCH_DOWN, 640, 360)
                 session.sendTouch(M.TOUCH_UP, 640, 360)
@@ -336,19 +336,19 @@ class AapSessionTest {
         }
 
         /**
-         * Микрофон принят: Open(maxUnacked=2) -> успех session_id=1; HU шлёт первые 2 кадра по 4096 Б
-         * (timestamp u64 BE мкс + PCM), остальные ждут Ack; после Ack(2) приходят ещё 2; Close -> успех.
+         * Microphone accepted: Open(maxUnacked=2) -> session_id=1 success; HU sends first 2 frame to 4096 B
+         * (timestamp u64 BE ms + PCMThe others are waiting Ack; after Ack(2) come more 2; Close -> success.
          */
         private fun micDialog() {
             sendMsg(7, M.MEDIA_MIC_REQUEST, AapPb().bool(1, true).v(4, 2).toByteArray())
             assertArrayEquals(Golden.hex("08 00 10 01"), expect(7, M.MEDIA_MIC_RESPONSE))
-            ready.countDown()                                   // тест подаёт 16384 Б PCM
+            ready.countDown()                                   // test feed 16384 B PCM
             fun data(): Pair<Long, Int> {
                 val p = expect(7, M.MEDIA_DATA)
                 micFlags = rxFlags[7 to M.MEDIA_DATA] ?: -1
                 var ts = 0L
                 for (i in 0 until 8) ts = (ts shl 8) or (p[i].toLong() and 0xFF)
-                // PCM внутри кадра должен быть ровно тем, что подали: кадр k, байт i = (k * 7 + i) & 0xFF
+                // PCM inside frame should be exactly what filed: frame k, byte i = (k * 7 + i) & 0xFF
                 val base = ((ts - 5_000_000L) / 128_000L).toInt()
                 for (i in 0 until p.size - 8) {
                     assertEquals("PCM кадра #$base, байт $i", ((base * 7 + i) and 0xFF).toByte(), p[8 + i])
@@ -415,7 +415,7 @@ class AapSessionTest {
             assertNull("ошибка телефона: ${phone.error}\n" + logs.joinToString("\n"), phone.error)
             assertTrue("HU не закрыл сокет штатно (EOF)", phone.sawEof && !phone.reset)
             assertTrue("сессия закончилась не чисто: ${endInfo[0]}\n" + logs.joinToString("\n"), session.exitOk)
-            // видео: SPS/PPS в onCodecConfig, кадры без AA-заголовков, pts из timestamp
+            // Video: SPS/PPS in onCodecConfig, frame without AA-header, pts from timestamp
             assertEquals(1, sink.configs.size)
             assertArrayEquals(Phone.SPS_PPS, sink.configs[0])
             assertArrayEquals(Phone.IDR, sink.frames[0].first)
@@ -427,10 +427,10 @@ class AapSessionTest {
             if (stress) {
                 assertEquals(302, sink.frames.size)
                 assertEquals(302L, session.stats.videoData)
-                // DOWN, 30 MOVE, UP в порядке отправки, координаты целы
+                // DOWN, 30 MOVE, UP in order of dispatch, coordinates are intact
                 val expected = listOf(Triple(0, 100, 200)) + (0 until 30).map { Triple(2, 100 + it, 200 + it) } + Triple(1, 130, 230)
                 assertEquals(expected, phone.touches.toList())
-                // uint64 нс: положительные и неубывающие
+                // uint64 ns: positive and non-declining
                 assertTrue("timestamp <= 0: ${phone.touchTs}", phone.touchTs.all { it > 0 })
                 assertEquals(phone.touchTs.sorted(), phone.touchTs.toList())
             } else {
@@ -445,7 +445,7 @@ class AapSessionTest {
                 val ms = sink as MicSink
                 assertEquals(1, ms.opens.get())
                 assertEquals("close от AA один раз, без повторного close при завершении сессии", listOf("AA закрыла микрофон"), ms.closes.toList())
-                // 4 кадра по 4096 Б, timestamp каждого +128 мс от предыдущего; зашифрованный bulk-кадр 0x0b
+                // 4 frame by 4096 B, timestamp each +128 ms from previous; encrypted bulk-frame 0x0b
                 assertEquals(listOf(5_000_000L, 5_128_000L, 5_256_000L, 5_384_000L), phone.micFrames.map { it.first })
                 assertTrue(phone.micFrames.all { it.second == 4096 })
                 assertEquals(0x0B, phone.micFlags)
@@ -465,7 +465,7 @@ class AapSessionTest {
     @Test fun touchFromForeignThreadDuringVideoStreamKeepsTls() = scenario("jvc", false, "hu_bye", stress = true)
     @Test fun touchFromForeignThreadDuringVideoStreamTls12() = scenario("hur", true, "hu_bye", stress = true)
 
-    /** Сокет, у которого запись можно сломать на лету. */
+    /** socket, which record can be broken on the fly. */
     class FailSocket : Socket() {
         @Volatile var failWrites = false
         override fun getOutputStream(): java.io.OutputStream {

@@ -1,9 +1,9 @@
 package com.yegorkapomidorka.headswap.aa
 
 /**
- * Модель ГУ, которая показывает кадры с постоянной частотой [fps] без пропусков (по своим часам или по счётчику кадров).
- * Тогда каждый кадр сверх [fps] в секунду остаётся в очереди навсегда, а уходит очередь только в паузах потока.
- * Счёт задержки этой модели в логе сравнивается с замером на экране: совпадают - ГУ устроена так.
+ * Model head unit, which shows frame with a constant frequency [fps] without passes (on its own clock or on the frame counter).
+ * Then each frame above [fps] per second remains in the queue forever, and leaves the queue only in the pauses of the stream.
+ * The delay account of this model in the log is compared with the measurement on the screen: the same - head unit is arranged like this.
  */
 class GuQueueModel(val fps: Int = 30) {
     private var level = 0.0
@@ -18,7 +18,7 @@ class GuQueueModel(val fps: Int = 30) {
         if (ms > maxMs) maxMs = ms
     }
 
-    /** Задержка показа последнего кадра в модели: кадры в очереди перед ним, мс. */
+    /** Late display of the latest frame in the model: frame in line in front of it, ms. */
     fun delayMs(nowMs: Long): Long {
         decay(nowMs)
         return ((level - 1.0).coerceAtLeast(0.0) * 1000 / fps).toLong()
@@ -28,7 +28,7 @@ class GuQueueModel(val fps: Int = 30) {
         maxMs = 0
     }
 
-    /** ГУ сбросила декодер (новая CarLife-сессия, IDR от AA после потери): очередь пуста. */
+    /** head unit reset decoder (new CarLife-session, IDR from AA after loss): queue is empty. */
     fun reset() {
         level = 0.0
         last = Long.MIN_VALUE
@@ -41,8 +41,8 @@ class GuQueueModel(val fps: Int = 30) {
 }
 
 /**
- * Разбор SPS для лога. ГУ без bitstream_restriction может держать в DPB до MaxDpbFrames уровня кадров перед
- * выводом (C.4.5.3, «bumping»); max_num_reorder_frames = 0 разрешает выводить кадр сразу после декодирования.
+ * SPS parsing for log. head unit without bitstream_restriction can keep in DPB to MaxDpbFrames level frame before
+ * output (C.4.5.3, "bumping"); max_num_reorder_frames = 0 allows you to output frame immediately after decoding.
  */
 object SpsVui {
     class Info(
@@ -59,7 +59,7 @@ object SpsVui {
 
     private val HIGH_PROFILES = setOf(100, 110, 122, 244, 44, 83, 86, 118, 128, 138, 139, 134, 135)
 
-    /** nal - SPS без стартового кода. */
+    /** nal - SPS without start code. */
     fun parse(nal: ByteArray): Info {
         require(nal.isNotEmpty() && nal[0].toInt() and 0x1F == 7) { "не SPS" }
         val rbsp = SpsCrop.removeEmulationPrevention(nal)
@@ -137,7 +137,7 @@ object SpsVui {
         repeat(cpbCnt) {
             r.ue(); r.ue(); r.skip(1)
         }
-        r.skip(20)                                      // 4 поля по 5 бит
+        r.skip(20)                                      // 4 field by 5 bit
     }
 
     private fun skipScalingList(r: IdrSplice.Bits, size: Int) {

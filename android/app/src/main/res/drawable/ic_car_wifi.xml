@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Машина (ic_car, уменьшенная) и над ней дуги Wi-Fi: сессия по воздуху. -->
+<!-- Machine (ic_car, reduced) and above it arcs Wi-Fi: session on wireless connection. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="32dp" android:height="32dp" android:viewportWidth="24" android:viewportHeight="24">
     <path android:pathData="M7.2 6.2a6.5 6.5 0 0 1 9.6 0M9.6 8.8a3.4 3.4 0 0 1 4.8 0" android:strokeWidth="2.2" android:strokeColor="#FF000000" android:strokeLineCap="round" android:strokeLineJoin="round" />
     <group android:translateX="3" android:translateY="6" android:scaleX="0.75" android:scaleY="0.75">

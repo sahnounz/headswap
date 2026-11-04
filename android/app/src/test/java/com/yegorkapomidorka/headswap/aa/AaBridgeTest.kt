@@ -51,7 +51,7 @@ class FakeLink : CarlifeLink {
     }
 
     val modules = CopyOnWriteArrayList<Pair<Int, Int>>()
-    /** Всё аудио-управление в порядке отправки: "A<канал>:0x<тип>" и "M<модуль>=<статус>". */
+    /** All audio-control events in send order: "A<channel>:0x<type>" and "M<module>=<status>". */
     val events = CopyOnWriteArrayList<String>()
     override fun sendModuleStatus(module: Int, status: Int): Boolean {
         if (!accept) return false
@@ -73,10 +73,10 @@ class FakeLink : CarlifeLink {
 }
 
 class FakePeer : AaPeer {
-    /** Проекция одного пальца (action, x, y) первого указателя - для старых проверок. */
+    /** One-finger projection (action, x, y) of the first pointer - for old checks. */
     val touches = CopyOnWriteArrayList<Triple<Int, Int, Int>>()
 
-    /** Полная форма: (action, action_index, пальцы). */
+    /** Full form: (action, action_index, fingers). */
     val events = CopyOnWriteArrayList<Triple<Int, Int, List<TouchPoint>>>()
     @Volatile var keyframes = 0
     override fun sendTouch(action: Int, actionIndex: Int, points: List<TouchPoint>) {
@@ -124,7 +124,7 @@ class AaBridgeCoreTest {
 
     @Test
     fun hyundaiCn7ForcesTranscode() {
-        // h638: на CN7 прямой проброс моргает и гаснет
+        // h638: on CN7 straight passthrough blinks and goes out
         core.transcodeEnabled = false
         core.onHuInfo("QTI", "sm6150_au for arm64", "other")
         assertFalse(core.huHyundaiCn7)
@@ -137,26 +137,26 @@ class AaBridgeCoreTest {
 
     @Test
     fun mobisFlagFromHuInfoOrChannelForcesTranscode() {
-        // h242: Tucson (Mobis CCNC) опознаётся по HU_INFO, запасной признак - канал 20022188
+        // h242: Tucson (Mobis CCNC) is recognized by HU_INFO, a secondary feature is the 20022188 channel
         assertFalse(core.huMobisNx4c)
         core.onHuInfo("Samsung", "SM-A", "a", "exynos")
         core.onHuStatistic("20082122")
         assertFalse(core.huMobisNx4c)
-        core.onHuInfo("Mobis", "AVN5", "other", "OTHER")      // другое ГУ Mobis по производителю не включает флаг
+        core.onHuInfo("Mobis", "AVN5", "other", "OTHER")      // other head unit Mobis by manufacturer does not include flag
         assertFalse(core.huMobisNx4c)
         core.transcodeEnabled = false
         core.onHuInfo("Mobis", "CCNC", "NX4C", "CCNC")
         assertTrue(core.huMobisNx4c)
         assertTrue(core.transcodeEnabled)
         assertEquals(1, logs.count { it == "MOBIS CCNC: режим Baidu включён" })
-        core.onHuStatistic("20022188")                        // повторно не пишет строку
+        core.onHuStatistic("20022188")                        // does not write the line again
         assertEquals(1, logs.count { it == "MOBIS CCNC: режим Baidu включён" })
         core.attach(link)
         assertFalse(core.huMobisNx4c)
         core.onHuStatistic("20022188")
         assertTrue(core.huMobisNx4c)
         core.attach(link)
-        core.onHuInfo(null, null, null, "CCNC")               // только board
+        core.onHuInfo(null, null, null, "CCNC")               // only board
         assertTrue(core.huMobisNx4c)
     }
 
@@ -164,15 +164,15 @@ class AaBridgeCoreTest {
     fun huThemeDrivesAaNightModeAndSurvivesPeerReconnect() {
         val p = FakePeer()
         core.peer = p
-        assertEquals(listOf(false), p.nights.toList())        // до CHANGE_MD_THEME - день
+        assertEquals(listOf(false), p.nights.toList())        // up to CHANGE_MD_THEME - day
         core.onCarlifeTheme(AaBridgeCore.THEME_DARK)
         core.onCarlifeTheme(AaBridgeCore.THEME_AUTO)
-        core.onCarlifeTheme(null)                              // без поля - тему не трогаем
+        core.onCarlifeTheme(null)                              // without field - do not touch the topic
         core.onCarlifeTheme(AaBridgeCore.THEME_DARK)
         assertEquals(listOf(false, true, false, true), p.nights.toList())
         assertEquals(AaBridgeCore.THEME_DARK, core.huTheme)
         val p2 = FakePeer()
-        core.peer = p2                                         // новая AA-сессия получает текущую тему сразу
+        core.peer = p2                                         // new AA-session gets current theme directly
         assertEquals(listOf(true), p2.nights.toList())
     }
 
@@ -184,10 +184,10 @@ class AaBridgeCoreTest {
         core.onCodecConfig(cfg)
         core.onFrame(idr, 1)
         assertEquals(1, link.sent.size)
-        assertArrayEquals(cfg + idr, link.sent[0])            // SPS+PPS+IDR в одном сообщении
+        assertArrayEquals(cfg + idr, link.sent[0])            // SPS+PPS+IDR in one message
         assertEquals(listOf(7, 8, 5), types(link.sent[0]))
         assertEquals(1, link.hides)
-        assertEquals(1, link.takeovers)                       // первый AA-IDR атомарно отключает кадры заглушки
+        assertEquals(1, link.takeovers)                       // AA-IDR frame stub
         assertEquals(AaBridgeCore.Source.AA, core.activeSource)
     }
 
@@ -199,7 +199,7 @@ class AaBridgeCoreTest {
         core.onFrame(p1, 2)
         assertEquals(0, link.sent.size)
         assertEquals(2L, core.dropped)
-        assertEquals(0, link.hides)                           // пока IDR не было, заглушка остаётся
+        assertEquals(0, link.hides)                           // while IDR was not, stub remains
         core.onFrame(idr, 3)
         core.onFrame(p1, 4)
         assertEquals(2, link.sent.size)
@@ -251,12 +251,12 @@ class AaBridgeCoreTest {
         core.peer = peer
         core.onCarlifeStart()
         core.onCodecConfig(cfg)
-        core.onFrame(idr, 1)                                  // gate открыт
+        core.onFrame(idr, 1)                                  // gate
         core.onFrame(p1, 2)
         assertEquals(2, link.sent.size)
         now = 10_000
-        core.onCarlifeStart()                                 // ГУ перезапустил видео: нужен новый IDR
-        core.onFrame(p1, 3)                                   // P до IDR отброшен
+        core.onCarlifeStart()                                 // head unit relaunched video: need a new IDR
+        core.onFrame(p1, 3)                                   // P to IDR
         assertEquals(2, link.sent.size)
         core.tick()
         assertEquals("ключевой кадр сразу: AA уже играет", 1, peer.keyframes)
@@ -265,7 +265,7 @@ class AaBridgeCoreTest {
         now += 4000
         core.tick()
         assertEquals(2, peer.keyframes)
-        core.onFrame(idr, 4)                                  // после IDR запросы прекращаются
+        core.onFrame(idr, 4)                                  // after IDR requests are terminated
         assertArrayEquals(cfg + idr, link.sent[2])
         now += AaBridgeCore.SPS_CROP_KICK_MS + 10_000
         core.tick()
@@ -279,15 +279,15 @@ class AaBridgeCoreTest {
         core.peer = peer
         core.onCarlifeStart()
         core.onCodecConfig(cfg)
-        core.onFrame(idr, 1)                                  // первый IDR сессии в now=0
+        core.onFrame(idr, 1)                                  // First IDR Session in now=0
         now = AaBridgeCore.SPS_CROP_KICK_MS
         core.tick()
         assertEquals("повторный кадр на первом старте", 1, peer.keyframes)
         now = 10_000
         core.onCarlifePause()
-        core.onCarlifeStart()                                 // цикл NATIVE -> PROJECTED от самого START
+        core.onCarlifeStart()                                 // NATIVE -> PROJECTED cycle from START itself
         assertEquals("START после PAUSE: цикл от START", 2, peer.keyframes)
-        core.onFrame(idr, 2)                                  // новый первый IDR после START
+        core.onFrame(idr, 2)                                  // new first IDR after START
         now += AaBridgeCore.SPS_CROP_KICK_MS + 10_000
         core.tick()
         assertEquals("повторного кадра после PAUSE/START нет", 2, peer.keyframes)
@@ -305,7 +305,7 @@ class AaBridgeCoreTest {
         core.tick()
         assertEquals(1, peer.keyframes)
         now = 20_000
-        core.attach(FakeLink())                               // USB вернулся при живой AA: новая CarLife-сессия
+        core.attach(FakeLink())                               // USB is back with a live AA: new CarLife-session
         core.onCarlifeStart()
         assertEquals("START новой сессии: цикл", 2, peer.keyframes)
         core.onFrame(idr, 2)
@@ -327,7 +327,7 @@ class AaBridgeCoreTest {
         core.peer = peer
         core.onCarlifeStart()
         core.onCodecConfig(cfg)
-        core.onFrame(idr, 1)                                  // passthrough без SPS-кропа (R1080), IDR в now=0
+        core.onFrame(idr, 1)                                  // passthrough without SPS-crop (R1080), IDR in now=0
         now = AaBridgeCore.SPS_CROP_KICK_MS - 1
         core.tick()
         assertEquals("раньше 2000 мс повторного кадра нет", 0, peer.keyframes)
@@ -348,11 +348,11 @@ class AaBridgeCoreTest {
         core.peer = peer
         core.onCarlifeStart()
         now = 1000
-        core.onCodecConfig(cfg)                               // AA видео началось, но IDR нет
-        core.tick()                                           // отсчёт ожидания
+        core.onCodecConfig(cfg)                               // AA video started, but IDR no
+        core.tick()                                           // Countdown to Expectations
         now = 2000
         core.tick()
-        assertEquals(0, peer.keyframes)                       // 1 с < 1.5 с
+        assertEquals(0, peer.keyframes)                       // 1 with < 1.5 with
         now = 2600
         core.tick()
         assertEquals(1, peer.keyframes)
@@ -365,10 +365,10 @@ class AaBridgeCoreTest {
         core.onCarlifeTouch(0, 40, 675)
         core.onCarlifeTouch(2, 41, 676)
         core.onCarlifeTouch(1, 41, 676)
-        core.onCarlifeTouch(3, 1, 1)                          // нет аналога
+        core.onCarlifeTouch(3, 1, 1)                          // no analogue
         assertEquals(listOf(Triple(0, 40, 675), Triple(2, 41, 676), Triple(1, 41, 676)), peer.touches.toList())
         core.peer = null
-        core.onCarlifeTouch(0, 5, 5)                          // AA не подключён: игнор без исключений
+        core.onCarlifeTouch(0, 5, 5)                          // AA not connected: Ignoring without exception
         assertEquals(3, peer.touches.size)
         assertTrue(logs.any { it.contains("DOWN 40,675") })
     }
@@ -431,17 +431,17 @@ class AaBridgeCoreTest {
         val c = AaBridgeCore({ l, _ -> logs.add(l) }, { timers.now }, audioSchedule = timers::schedule).also { it.attach(link) }
         val peer = FakePeer()
         c.peer = peer
-        c.onHuStatistic("20082114")                           // h425: ГУ копит MOVE ~190 мс и шлёт пачкой
+        c.onHuStatistic("20082114")                           // h425: head unit Sucks MOVE ~190 ms and sends a pack
         c.onCarlifeTouch(0, 10, 10)
-        c.onCarlifeTouch(2, 11, 11)                           // первый MOVE пачки уходит сразу
+        c.onCarlifeTouch(2, 11, 11)                           // the first MOVE pack leaves immediately
         c.onCarlifeTouch(2, 12, 12)
         c.onCarlifeTouch(2, 13, 13)
         c.onCarlifeTouch(2, 14, 14)
         assertEquals(listOf(Triple(0, 10, 10), Triple(2, 11, 11)), peer.touches.toList())
-        timers.advance(TouchBurstPacer.DEFAULT_INTERVAL_MS / 4)  // пачка из 4: шаг = интервал / 4
+        timers.advance(TouchBurstPacer.DEFAULT_INTERVAL_MS / 4)  // pack of 4: step = interval / 4
         assertEquals(Triple(2, 12, 12), peer.touches.last())
-        assertEquals(3, peer.touches.size)                    // остальные ещё в очереди
-        c.onCarlifeTouch(1, 14, 14)                           // UP: сначала очередь, потом UP
+        assertEquals(3, peer.touches.size)                    // Others are still in line.
+        c.onCarlifeTouch(1, 14, 14)                           // UP: first turn, then UP
         assertEquals(
             listOf(Triple(0, 10, 10), Triple(2, 11, 11), Triple(2, 12, 12), Triple(2, 13, 13), Triple(2, 14, 14), Triple(1, 14, 14)),
             peer.touches.toList(),
@@ -482,7 +482,7 @@ class AaBridgeCoreTest {
         core.onCarlifeTouch(0, 100, 100)
         core.onCarlifeTouch(5 or (1 shl 8), 100, 100, 300, 300)        // 261
         core.onCarlifeTouch(2, 90, 90, 310, 310)
-        core.onCarlifeTouch(2, 85, 85)                                 // px/py = 0: второй палец на прежнем месте
+        core.onCarlifeTouch(2, 85, 85)                                 // px/py = 0: the second finger in the same place
         core.onCarlifeTouch(2, 80, 80, 320, 320)
         core.onCarlifeTouch(6 or (1 shl 8), 80, 80, 320, 320)          // 262
         core.onCarlifeTouch(2, 81, 81)
@@ -509,10 +509,10 @@ class AaBridgeCoreTest {
         core.peer = peer
         core.onCarlifeTouch(0, 10, 10)
         core.onCarlifeTouch(261, 10, 10, 50, 50)
-        core.onCarlifeTouch(6, 12, 12, 52, 52)                         // поднят палец индекса 0
-        core.onCarlifeTouch(2, 55, 55)                                 // оставшийся палец теперь в x,y, id 1
+        core.onCarlifeTouch(6, 12, 12, 52, 52)                         // raised index finger 0
+        core.onCarlifeTouch(2, 55, 55)                                 // The remaining finger is now in x, y, id 1
         core.onCarlifeTouch(1, 56, 56)
-        core.onCarlifeTouch(0, 7, 7)                                   // новый жест: снова id 0
+        core.onCarlifeTouch(0, 7, 7)                                   // new gesture: again id 0
         core.onCarlifeTouch(1, 7, 7)
         assertEquals(
             listOf(
@@ -533,9 +533,9 @@ class AaBridgeCoreTest {
         val peer = FakePeer()
         core.peer = peer
         core.onCarlifeTouch(0, 10, 10)
-        core.onCarlifeTouch(261, 10, 10)                               // без pointer-полей: второй палец в x,y (как Baidu)
-        core.onCarlifeTouch(5 or (2 shl 8), 10, 10, 20, 20)            // третий палец: не передаём
-        core.onCarlifeTouch(1, 11, 11)                                 // POINTER_UP потерян: сначала снимаем второй
+        core.onCarlifeTouch(261, 10, 10)                               // without pointer-fields: second finger in x,y (as Baidu)
+        core.onCarlifeTouch(5 or (2 shl 8), 10, 10, 20, 20)            // Third finger: do not pass
+        core.onCarlifeTouch(1, 11, 11)                                 // POINTER_UP lost: first shoot the second
         assertEquals(
             listOf(
                 Triple(0, 0, pts(0, 10, 10)),
@@ -554,11 +554,11 @@ class AaBridgeCoreTest {
         core.onCarlifeHardKey(16)                             // SEEK_ADD
         core.onCarlifeHardKey(15)                             // SEEK_SUB
         core.onCarlifeHardKey(0x1F)                           // MEDIA_START
-        core.onCarlifeHardKey(0x2F)                           // DEL: нет аналога
+        core.onCarlifeHardKey(0x2F)                           // DEL: has no analogue
         assertEquals(listOf(87, 88, 126), peer.keys.toList())
         assertTrue(logs.any { it.contains("руль keycode=16 -> AA KEYCODE 87") })
         core.peer = null
-        core.onCarlifeHardKey(16)                             // AA не подключён: игнор без исключений
+        core.onCarlifeHardKey(16)                             // AA not connected: Ignoring without exception
         assertEquals(3, peer.keys.size)
         assertTrue(AaBridgeCore.HARD_KEY_TO_ANDROID.values.all { it in AapMessages.KEYCODES_SUPPORTED })
     }
@@ -590,14 +590,14 @@ class AaBridgeCoreTest {
     fun launchPhoneOnlyOnKia20032131() {
         val peer = FakePeer()
         core.peer = peer
-        core.onCarlifeLaunchPhone()                           // чужое ГУ: только лог
+        core.onCarlifeLaunchPhone()                           // Alien head unit: Log Only
         assertTrue(peer.keys.isEmpty())
         core.onHuStatistic("20032131")                        // h672 Kia Seltos
         core.onCarlifeLaunchPhone()
         now += 200
-        core.onCarlifeLaunchPhone()                           // вторая из пары: глотаем
+        core.onCarlifeLaunchPhone()                           // Second of the pair: swallowing
         now += 5000
-        core.onCarlifeLaunchPhone()                           // следующее нажатие
+        core.onCarlifeLaunchPhone()                           // Next pressing
         assertEquals(listOf(5, 5), peer.keys.toList())
         core.attach(link)
         assertTrue("новая сессия - флаг заново", !core.huKia20032131)
@@ -622,19 +622,19 @@ class AaBridgeCoreTest {
         core.peer = peer
         var call = PhoneCall.RINGING
         core.phoneCallProvider = { call }
-        core.onCarlifeHardKey(16)                             // чужое ГУ: перемотка как была
-        core.onCarlifeHardKey(0)                              // чужое ГУ: keycode 0 игнор
+        core.onCarlifeHardKey(16)                             // Alien head unit: Rewind As Was
+        core.onCarlifeHardKey(0)                              // Alien head unit: keycode 0 Ignore
         assertEquals(listOf(87), peer.keys.toList())
         peer.keys.clear()
-        core.onHuStatistic("20082114")                        // VW CNS2 Delphi (Дмитрий)
-        core.onCarlifeHardKey(15)                             // звонит: назад (зелёная слева) = принять
-        core.onCarlifeHardKey(16)                             // звонит: вперёд (красная справа) = отклонить
+        core.onHuStatistic("20082114")                        // VW CNS2 Delphi (Dmitry)
+        core.onCarlifeHardKey(15)                             // calls: back (green left) = take
+        core.onCarlifeHardKey(16)                             // Call: forward (red right) = reject
         call = PhoneCall.ACTIVE
-        core.onCarlifeHardKey(15)                             // разговор: назад глотаем
-        core.onCarlifeHardKey(16)                             // разговор: вперёд = положить трубку
+        core.onCarlifeHardKey(15)                             // Talk: back swallowing
+        core.onCarlifeHardKey(16)                             // talk: go ahead = put the phone down
         call = PhoneCall.IDLE
-        core.onCarlifeHardKey(16)                             // без звонка снова перемотка
-        core.onCarlifeHardKey(0)                              // удержание перемотки = пауза/плей
+        core.onCarlifeHardKey(16)                             // without calling again rewind
+        core.onCarlifeHardKey(0)                              // Rewind retention = pause/play
         assertEquals(listOf(5, 6, 6, 87, 85), peer.keys.toList())
         assertTrue(logs.any { it.contains("руль keycode=15 -> AA KEYCODE 5 (звонок RINGING)") })
     }
@@ -645,13 +645,13 @@ class AaBridgeCoreTest {
         core.peer = peer
         core.onCarlifeHardKey(6)                              // SELECTOR_NEXT
         core.onCarlifeHardKey(7)                              // SELECTOR_PREVIOUS
-        core.onCarlifeHardKey(0x14)                           // OK: нажатие шайбы
+        core.onCarlifeHardKey(0x14)                           // OK: pressing washer
         assertEquals(listOf(1, -1), peer.rotary.toList())
         assertEquals(listOf(23), peer.keys.toList())
         assertTrue(logs.any { it.contains("шайба keycode=6 -> AA rotary 1") })
         assertTrue(AapMessages.KEYCODE_ROTARY_CONTROLLER in AapMessages.KEYCODES_SUPPORTED)
         core.peer = null
-        core.onCarlifeHardKey(6)                              // AA не подключён: игнор без исключений
+        core.onCarlifeHardKey(6)                              // AA not connected: Ignoring without exception
         assertEquals(2, peer.rotary.size)
     }
 
@@ -661,15 +661,15 @@ class AaBridgeCoreTest {
         core.onCodecConfig(cfg)
         core.onFrame(idr, 1)
         assertEquals(AaBridgeCore.Source.AA, core.activeSource)
-        // AA завершилась после установки: заглушка с нужным текстом, CarLife не трогаем
+        // AA finished after installation: stub with the right text, CarLife do not touch
         core.onAaEnded(established = true)
         assertEquals(AaBridgeCore.Source.PLACEHOLDER, core.activeSource)
         assertEquals(AaBridgeCore.TEXT_AA_LOST, link.texts.last())
-        // сервер перезапущен: новая сессия с другим config -> новый SPS+PPS+IDR
+        // server restarted: new session with another config -> new SPS+PPS+IDR
         core.onAaConnecting()
         val sps2 = Golden.hex("00000001 67 4d401f ac2c a5")
         val cfg2 = sps2 + pps
-        core.onFrame(idr, 5)                                  // IDR без config от новой сессии: нечем клеить
+        core.onFrame(idr, 5)                                  // IDR without config from the new session: nothing to glue
         assertEquals(1, link.sent.size)
         core.onCodecConfig(cfg2)
         core.onFrame(p1, 6)
@@ -695,15 +695,15 @@ class AaBridgeCoreTest {
         core.onCodecConfig(cfg)
         core.onFrame(idr, 1)
         link.accept = false
-        core.onFrame(p1, 2)                                   // очередь CarLife переполнена: кадр потерян
+        core.onFrame(p1, 2)                                   // CarLife queue is full: frame is lost
         link.accept = true
-        core.onFrame(p1, 3)                                   // дальше P нельзя: ждём IDR
+        core.onFrame(p1, 3)                                   // P can not be further: waiting for IDR
         assertEquals(1, link.sent.size)
         core.onFrame(idr, 4)
         assertEquals(2, link.sent.size)
     }
 
-    // --- «Выйти» в AA (VIDEO_FOCUS NATIVE) -> CarLife GO_TO_DESKTOP ---
+    // --- "Exit" in AA (VIDEO_FOCUS NATIVE) -> CarLife GO_TO_DESKTOP ---
     @Test
     fun exitRequestSendsGoToDesktopThenNativeOnHuPause() {
         val peer = FakePeer()
@@ -717,7 +717,7 @@ class AaBridgeCoreTest {
         core.onCarlifePause()
         assertEquals(1, peer.natives)
         assertTrue(logs.any { it.contains("«Выйти»") })
-        core.onCarlifePause()                                 // повторный PAUSE: флаг уже снят
+        core.onCarlifePause()                                 // The PAUSE: flag has been removed.
         assertEquals(1, peer.natives)
     }
 
@@ -735,11 +735,11 @@ class AaBridgeCoreTest {
     fun exitRequestWithoutCarlifeStartOrLinkIsIgnored() {
         val peer = FakePeer()
         core.peer = peer
-        core.onAaNativeFocusRequest()                         // CarLife ещё не START
+        core.onAaNativeFocusRequest()                         // CarLife is not yet START
         core.onCarlifePause()
         assertEquals(0, link.desktops)
         assertEquals(0, peer.natives)
-        val bare = AaBridgeCore({ _, _ -> }, { now })         // ссылки на CarLife нет вовсе
+        val bare = AaBridgeCore({ _, _ -> }, { now })         // There is no CarLife.
         bare.peer = peer
         bare.onAaNativeFocusRequest()
         bare.onCarlifePause()
@@ -770,12 +770,12 @@ class AaBridgeCoreTest {
         core.onCarlifePause()
         assertEquals(1, peer.natives)
         val before = peer.keyframes
-        core.onCarlifeStart()                                 // ГУ вернулся: цикл NATIVE -> PROJECTED
+        core.onCarlifeStart()                                 // head unit is back: cycle NATIVE -> PROJECTED
         assertEquals(before + 1, peer.keyframes)
     }
 }
 
-/** Виртуальное время для таймеров аудио ядра: advance(ms) выполняет задачи по порядку, отменённые пропускает. */
+/** Virtual time for audio core timers: advance(ms) performs tasks in order that it misses. */
 class FakeTimers {
     private class T(val at: Long, val task: Runnable) : MicTimerHandle {
         var cancelled = false
@@ -814,7 +814,7 @@ class AaBridgeAudioTest {
 
     @Test
     fun delphiCallPausesMediaAndDropsTail() {
-        // h425: хвост музыки AA при входящем забивал USB на ~20 с - пауза сразу, хвост не шлём до play
+        // h425: The Music Tail AA the Incoming Cup USB on ~ 20 c - pause immediately, the tail will not be sent to play
         core.peer = FakePeer()
         var call = PhoneCall.IDLE
         core.phoneCallProvider = { call }
@@ -823,27 +823,27 @@ class AaBridgeAudioTest {
         core.onMediaStatus(AaMediaStatus(2, "YandexMusic", 10, null, null, null))
         core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 1)
         call = PhoneCall.RINGING
-        core.onMediaStatus(AaMediaStatus(3, "YandexMusic", 10, null, null, null))   // плеер встал под рингтон
-        core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 2)                   // хвост буфера AA
-        core.onCarlifeHardKey(0x20)                                                 // ГУ ушло в звонок: второй раз не паузим
+        core.onMediaStatus(AaMediaStatus(3, "YandexMusic", 10, null, null, null))   // The player is under the ringtone.
+        core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 2)                   // buffer tail AA
+        core.onCarlifeHardKey(0x20)                                                 // head unit went to the call: the second time will not pause
         core.onAudioStop(AapMessages.CH_AUDIO_MEDIA)
         assertEquals(listOf(0x30001, 0x30006, 0x30003), link.audio.map { it.type })
         call = PhoneCall.IDLE
-        core.onAudioStart(AapMessages.CH_AUDIO_MEDIA)                               // после звонка AA заиграл снова
+        core.onAudioStart(AapMessages.CH_AUDIO_MEDIA)                               // AA has played again
         core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 3)
         assertEquals(listOf(0x30001, 0x30006, 0x30003, 0x30001, 0x30006), link.audio.map { it.type })
     }
 
     @Test
     fun delphiTelephonyRingingPausesMediaAtOnce() {
-        // h425: телефония сообщает RINGING раньше, чем плеер AA сменит статус и AudioManager.mode станет RINGTONE
+        // h425: telephony reports RINGING before AA player changes status and AudioManager.mode becomes RINGTONE
         core.peer = FakePeer()
         core.onHuStatistic("20082114")
         core.onCarlifeStart()
         core.onMediaStatus(AaMediaStatus(2, "YandexMusic", 10, null, null, null))
         core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 1)
-        core.onPhoneCallState(1)                                                    // RINGING, статус плеера не менялся, mode ещё NORMAL
-        core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 2)                   // хвост буфера AA
+        core.onPhoneCallState(1)                                                    // RINGING, player status has not changed, mode is still NORMAL
+        core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 2)                   // buffer tail AA
         core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 3)
         assertEquals(listOf(0x30001, 0x30006, 0x30003), link.audio.map { it.type })
         assertEquals(1, link.mediaDrops)
@@ -852,7 +852,7 @@ class AaBridgeAudioTest {
 
     @Test
     fun delphiTelephonyIdleReleasesPauseWhenPlayerPlaying() {
-        // звонок сбросили быстро, плеер AA не успел встать и события play не будет: паузу снимает конец звонка
+        // call reset quickly, the player AA did not have time to get up and there will be no events play: pause removes the end of the call
         core.peer = FakePeer()
         core.onHuStatistic("20082114")
         core.onCarlifeStart()
@@ -860,7 +860,7 @@ class AaBridgeAudioTest {
         core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 1)
         core.onPhoneCallState(1)
         core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 2)
-        core.onPhoneCallState(0)                                                    // IDLE, плеер всё это время playing
+        core.onPhoneCallState(0)                                                    // IDLE, player all the time playing
         core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 3)
         assertEquals(listOf(0x30001, 0x30006, 0x30003, 0x30001, 0x30006), link.audio.map { it.type })
         assertTrue(logs.any { it.contains("BRIDGE звонок закончен, плеер AA играет") })
@@ -874,11 +874,11 @@ class AaBridgeAudioTest {
         core.onMediaStatus(AaMediaStatus(2, "YandexMusic", 10, null, null, null))
         core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 1)
         core.onPhoneCallState(1)
-        core.onMediaStatus(AaMediaStatus(3, "YandexMusic", 10, null, null, null))   // плеер встал под рингтон
+        core.onMediaStatus(AaMediaStatus(3, "YandexMusic", 10, null, null, null))   // The player is under the ringtone.
         core.onPhoneCallState(0)
-        core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 2)                   // хвост: плеер стоит, пауза держится
+        core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 2)                   // tail: player stands, pause holds
         assertEquals(listOf(0x30001, 0x30006, 0x30003), link.audio.map { it.type })
-        core.onMediaStatus(AaMediaStatus(2, "YandexMusic", 10, null, null, null))   // пользователь снова запустил
+        core.onMediaStatus(AaMediaStatus(2, "YandexMusic", 10, null, null, null))   // user started again
         core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 3)
         assertEquals(listOf(0x30001, 0x30006, 0x30003, 0x30001, 0x30006), link.audio.map { it.type })
     }
@@ -922,7 +922,7 @@ class AaBridgeAudioTest {
         assertEquals(3, link.audio[1].chan)
         assertEquals(0x00030006, link.audio[1].type)
         assertArrayEquals(d, link.audio[1].payload)
-        assertEquals(0x00030006, link.audio[2].type)                   // второй пакет без повторного INIT
+        assertEquals(0x00030006, link.audio[2].type)                   // second package without repeated INIT
     }
 
     @Test
@@ -971,12 +971,12 @@ class AaBridgeAudioTest {
     fun mediaAndGuidanceSwitchEachInitOnceAndStopIndependently() {
         core.onCarlifeStart()
         core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 1)
-        core.onAudioData(AapMessages.CH_AUDIO_SPEECH, pcm(100), 2)       // подсказка поверх музыки
+        core.onAudioData(AapMessages.CH_AUDIO_SPEECH, pcm(100), 2)       // hint on top of music
         core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 3)
         core.onAudioData(AapMessages.CH_AUDIO_SPEECH, pcm(100), 4)
-        core.onAudioStop(AapMessages.CH_AUDIO_SPEECH)                    // подсказка кончилась
-        timers.advance(1500)                                             // TTS_STOP уходит с задержкой 1500 мс
-        core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 5)        // музыка продолжается без нового INIT
+        core.onAudioStop(AapMessages.CH_AUDIO_SPEECH)                    // The hint is over.
+        timers.advance(1500)                                             // TTS_STOP leaves with a delay of 1500 ms
+        core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 5)        // Music continues without the new INIT
         assertEquals(
             listOf(
                 3 to 0x30001, 3 to 0x30006, 4 to 0x40001, 4 to 0x40003, 3 to 0x30006, 4 to 0x40003,
@@ -984,8 +984,8 @@ class AaBridgeAudioTest {
             ),
             link.audio.map { it.chan to it.type }
         )
-        assertEquals(0, link.audio[6].payload.size)                      // STOP без тела
-        // следующая подсказка: новый INIT
+        assertEquals(0, link.audio[6].payload.size)                      // STOP without body
+        // Next tip: new INIT
         core.onAudioData(AapMessages.CH_AUDIO_SPEECH, pcm(100), 6)
         assertEquals(listOf(4 to 0x40001, 4 to 0x40003), link.audio.takeLast(2).map { it.chan to it.type })
     }
@@ -993,14 +993,14 @@ class AaBridgeAudioTest {
     @Test
     fun mediaStopSendsPauseOnlyIfStreamWasInitedAndNextDataReinits() {
         core.onCarlifeStart()
-        core.onAudioStop(AapMessages.CH_AUDIO_MEDIA)                     // ничего не играло: ничего не шлём
+        core.onAudioStop(AapMessages.CH_AUDIO_MEDIA)                     // nothing played: nothing slurred
         assertEquals(0, link.audio.size)
         core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 1)
-        core.onAudioStop(AapMessages.CH_AUDIO_MEDIA)                     // PAUSE 0x30003, не STOP
-        core.onAudioStop(AapMessages.CH_AUDIO_MEDIA)                     // повторный PAUSE не дублируется
+        core.onAudioStop(AapMessages.CH_AUDIO_MEDIA)                     // PAUSE 0x30003, not STOP
+        core.onAudioStop(AapMessages.CH_AUDIO_MEDIA)                     // PAUSE is not duplicated
         core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 2)
         assertEquals(listOf(0x30001, 0x30006, 0x30003, 0x30001, 0x30006), link.audio.map { it.type })
-        assertEquals(listOf(3 to 1, 3 to 0, 3 to 1), link.modules.toList())   // MUSIC=1 на INIT, 0 на PAUSE
+        assertEquals(listOf(3 to 1, 3 to 0, 3 to 1), link.modules.toList())   // MUSIC=1 on INIT, 0 on PAUSE
     }
 
     @Test
@@ -1024,7 +1024,7 @@ class AaBridgeAudioTest {
 
     @Test
     fun carlifeStartAfterPauseFlushesPendingTtsStop() {
-        // h482: подсказка кончилась на экране ГУ, START пришёл раньше 1500 мс - TTS_STOP терялся, музыка глушилась
+        // h482: hint ended on the screen head unit, START came before 1500 ms - TTS_STOP lost, music jammed
         core.onCarlifeStart()
         core.onCarlifePause()
         core.onAudioData(AapMessages.CH_AUDIO_SPEECH, pcm(100), 1)
@@ -1038,7 +1038,7 @@ class AaBridgeAudioTest {
 
     @Test
     fun carlifeStartWithoutPauseKeepsAudio() {
-        // Desay G6S: START на каждое нажатие NAVI/MEDIA без PAUSE - повторный INIT рвал звук
+        // Desay G6S: START for every pressing of NAVI/MEDIA without PAUSE - repeated INIT ripping sound
         core.onCarlifeStart()
         core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 1)
         core.onCarlifeStart()
@@ -1060,7 +1060,7 @@ class AaBridgeAudioTest {
 
     @Test
     fun systemChannelAndNotStartedAreDropped() {
-        core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 1)          // CarLife ещё не START
+        core.onAudioData(AapMessages.CH_AUDIO_MEDIA, pcm(100), 1)          // CarLife is not yet START
         core.onCarlifeStart()
         core.onAudioData(AapMessages.CH_AUDIO_SYSTEM, pcm(100), 2)
         assertEquals(0, link.audio.size)
@@ -1093,7 +1093,7 @@ class AaBridgeAudioTest {
         assertEquals(listOf(0x30001, 0x30006), link.audio.map { it.type })
     }
 
-    // ---------------------------------------------------------------- NAVI, debounce TTS, очередь MEDIA, голос
+    // --------------------------------------------------- NAVI, debounce TTS, MEDIA queue, voice
     @Test
     fun naviStatusGoesBeforeFirstTtsInitOnlyOncePerSession() {
         core.onCarlifeStart()
@@ -1102,7 +1102,7 @@ class AaBridgeAudioTest {
         assertEquals(listOf("M2=1", "A4:0x40001", "A4:0x40003", "A4:0x40003"), link.events.toList())
         core.onAudioStop(SPEECH)
         timers.advance(1500)
-        core.onAudioData(SPEECH, pcm(640), 3)                            // новый INIT, но NAVI уже держится
+        core.onAudioData(SPEECH, pcm(640), 3)                            // new INIT, but NAVI already holds
         assertEquals(1, link.modules.count { it == 2 to 1 })
     }
 
@@ -1114,15 +1114,15 @@ class AaBridgeAudioTest {
         assertEquals(listOf("M2=1", "A4:0x40001", "A4:0x40003", "A4:0x40002", "M2=0"), link.events.toList())
         core.onCarlifeStart()
         core.onAudioData(SPEECH, pcm(640), 2)
-        assertEquals(2, link.modules.count { it == 2 to 1 })             // флаг сброшен: в новой сессии снова NAVI=1
+        assertEquals(2, link.modules.count { it == 2 to 1 })             // flag dropped: in the new session again NAVI=1
         core.onCarlifeClosed(link)
-        assertEquals(1, link.modules.count { it == 2 to 0 })             // закрытие сессии NAVI=0 не шлёт (USB мёртв)
+        assertEquals(1, link.modules.count { it == 2 to 0 })             // Closing session of NAVI=0 is non-slot (USB is dead)
     }
 
     @Test
     fun vwCns3TtsGetsSilencePrerollAfterInitOnlyOnRealInit() {
         core.onHuInfo("Volkswagen", "CNS3")
-        core.onHuStatistic("20082122")                                   // h222: шипение в начале подсказки
+        core.onHuStatistic("20082122")                                   // h222: hissing at the beginning of the hint
         core.onCarlifeStart()
         val speech = pcm(2048, 7)
         core.onAudioStart(SPEECH)
@@ -1130,16 +1130,16 @@ class AaBridgeAudioTest {
         val tts = link.audio.filter { it.chan == 4 }
         assertEquals(0x40001, tts[0].type)
         val pre = tts.drop(1).dropLast(1)
-        assertEquals(listOf(4096, 4096, 4096, 512), pre.map { it.payload.size })  // 400 мс 16 кГц моно = 12800 Б кусками Baidu
+        assertEquals(listOf(4096, 4096, 4096, 512), pre.map { it.payload.size })  // 400 ms 16 kHz mono = 12800 B pieces Baidu
         assertTrue(pre.all { p -> p.type == 0x40003 && p.payload.all { it == 0.toByte() } })
-        assertArrayEquals(speech, tts.last().payload)                    // речь после тишины, без изменений
-        // STOP отменён новым START: INIT не повторяется, пре-ролла тоже нет
+        assertArrayEquals(speech, tts.last().payload)                    // Speech after silence, no change
+        // STOP cancelled by new START: INIT not repeated, pre-roll also no
         core.onAudioStop(SPEECH)
         timers.advance(1000)
         core.onAudioStart(SPEECH)
         core.onAudioData(SPEECH, speech, 2)
         assertEquals(tts.size + 1, link.audio.count { it.chan == 4 })
-        // после настоящего TTS_STOP следующий INIT снова с пре-роллом
+        // after real TTS_STOP next INIT again with pre-roll
         core.onAudioStop(SPEECH)
         timers.advance(1500)
         val before = link.audio.size
@@ -1150,7 +1150,7 @@ class AaBridgeAudioTest {
     @Test
     fun ttsWithoutVwFlagHasNoPreroll() {
         core.onHuInfo("", "")
-        core.onHuStatistic("20622116")                                   // Desay: другая ГУ
+        core.onHuStatistic("20622116")                                   // Desay: Other head unit
         core.onCarlifeStart()
         core.onAudioData(SPEECH, pcm(640), 1)
         assertEquals(listOf(0x40001, 0x40003), link.audio.map { it.type })
@@ -1159,15 +1159,15 @@ class AaBridgeAudioTest {
     @Test
     fun ttsPrerollSettingSendsZerosOnAnyHuAndAutoSkipsNonVw() {
         core.ttsPrerollProvider = { TtsPreroll.MS100 }
-        core.onHuStatistic("20622116")                                   // не VW
+        core.onHuStatistic("20622116")                                   // not VW
         core.onCarlifeStart()
         core.onAudioData(SPEECH, pcm(640), 1)
         val tts = link.audio.filter { it.chan == 4 }
         assertEquals(listOf(0x40001, 0x40003, 0x40003), tts.map { it.type })
-        assertEquals(3200, tts[1].payload.size)                          // 100 мс 16 кГц моно, одним куском (< 4096)
+        assertEquals(3200, tts[1].payload.size)                          // 100 ms 16 kHz mono, one piece (< 4096)
         assertTrue(tts[1].payload.all { it == 0.toByte() })
         assertEquals(1, logs.count { it.contains("пре-ролл 100 мс тишины (3200 Б)") })
-        // Авто на не-VW: пре-ролла нет
+        // Auto on non-VW: pre-roll no
         val link2 = FakeLink()
         val c2 = AaBridgeCore({ _, _ -> }, audioSchedule = timers::schedule).also { it.attach(link2) }
         c2.ttsPrerollProvider = { TtsPreroll.AUTO }
@@ -1225,7 +1225,7 @@ class AaBridgeAudioTest {
     @Test
     fun voiceChunkSizesPrerollZerosWhenSet() {
         core.voiceChunkProvider = { VoiceChunk.B1024 }
-        core.onHuStatistic("20082122")                                   // VW CNS3, Авто пре-ролл 400 мс = 12800 Б
+        core.onHuStatistic("20082122")                                   // VW CNS3, Auto pre-roll 400 ms = 12800 B
         core.onCarlifeStart()
         core.onAudioData(SPEECH, pcm(640), 1)
         val pre = link.audio.filter { it.chan == 4 }.drop(1).dropLast(1)
@@ -1239,17 +1239,17 @@ class AaBridgeAudioTest {
         core.onAudioData(SPEECH, pcm(640), 1)
         core.onAudioStop(SPEECH)
         timers.advance(1000)
-        core.onAudioStart(SPEECH)                                        // SPEECH START отменяет отложенный STOP
+        core.onAudioStart(SPEECH)                                        // SPEECH START Cancels Deferred STOP
         core.onAudioData(SPEECH, pcm(640), 2)
         timers.advance(5000)
         assertEquals(listOf(0x40001, 0x40003, 0x40003), link.audio.map { it.type })
-        // данные ch4 тоже отменяют таймер
+        // ch4 data also cancels the timer
         core.onAudioStop(SPEECH)
         timers.advance(1400)
         core.onAudioData(SPEECH, pcm(640), 3)
         timers.advance(5000)
         assertEquals(0, link.audio.count { it.type == 0x40002 })
-        // и настоящий STOP наступает ровно через 1500 мс
+        // and the real STOP comes exactly through 1500 ms
         core.onAudioStop(SPEECH)
         timers.advance(1499)
         assertEquals(0, link.audio.count { it.type == 0x40002 })
@@ -1265,7 +1265,7 @@ class AaBridgeAudioTest {
         core.onAaEnded(established = true)
         assertEquals(1, link.audio.count { it.type == 0x40002 })
         timers.advance(5000)
-        assertEquals(1, link.audio.count { it.type == 0x40002 })         // таймер отменён: второго STOP нет
+        assertEquals(1, link.audio.count { it.type == 0x40002 })         // timer canceled: second STOP no
     }
 
     @Test
@@ -1273,10 +1273,10 @@ class AaBridgeAudioTest {
         core.onCarlifeStart()
         core.onAudioData(MEDIA, pcm(100), 1)
         core.onAudioData(SPEECH, pcm(100), 2)
-        core.onAudioStop(MEDIA)                                          // PAUSE откладывается
+        core.onAudioStop(MEDIA)                                          // PAUSE
         assertEquals(0, link.audio.count { it.type == 0x30003 })
         core.onAudioStop(SPEECH)
-        timers.advance(1500)                                             // фактический TTS_STOP
+        timers.advance(1500)                                             // Actual TTS_STOP
         assertEquals(1, link.audio.count { it.type == 0x40002 })
         timers.advance(299)
         assertEquals(0, link.audio.count { it.type == 0x30003 })
@@ -1291,15 +1291,15 @@ class AaBridgeAudioTest {
     fun mediaDataIsDroppedWhileTtsBusyAndMediaNotInitedThenReinitsAfterRelease() {
         core.onCarlifeStart()
         core.onAudioData(MEDIA, pcm(100), 1)
-        core.onAudioStop(MEDIA)                                          // PAUSE сразу: TTS не идёт
+        core.onAudioStop(MEDIA)                                          // PAUSE immediately: TTS Not coming.
         core.onAudioData(SPEECH, pcm(100), 2)
-        for (i in 0 until 1001) core.onAudioData(MEDIA, pcm(100), 10L + i)   // MEDIA не инициализирован, TTS занят
+        for (i in 0 until 1001) core.onAudioData(MEDIA, pcm(100), 10L + i)   // MEDIA not initialized, TTS busy
         assertEquals(listOf(0x30001, 0x30006, 0x30003, 0x40001, 0x40003), link.audio.map { it.type })
         assertEquals(3, logs.count { it.contains("MEDIA данные отброшены") })   // #1, #500, #1000
         core.onAudioStop(SPEECH)
         timers.advance(1500 + 299)
-        core.onAudioData(MEDIA, pcm(100), 3)                             // ещё в окне +300
-        assertEquals(1, link.audio.count { it.type == 0x30001 })         // повторного INIT пока нет
+        core.onAudioData(MEDIA, pcm(100), 3)                             // still in the window +300
+        assertEquals(1, link.audio.count { it.type == 0x30001 })         // INIT is not available yet
         timers.advance(1)
         core.onAudioData(MEDIA, pcm(100), 4)
         assertEquals(listOf(0x40002, 0x30001, 0x30006), link.audio.takeLast(3).map { it.type })
@@ -1310,13 +1310,13 @@ class AaBridgeAudioTest {
         core.onCarlifeStart()
         core.onAudioData(MEDIA, pcm(100), 1)
         core.onAudioData(SPEECH, pcm(100), 2)
-        core.onAudioData(MEDIA, pcm(100), 3)                             // ГУ сам дакает
+        core.onAudioData(MEDIA, pcm(100), 3)                             // head unit
         assertEquals(listOf(0x30001, 0x30006, 0x40001, 0x40003, 0x30006), link.audio.map { it.type })
     }
 
     @Test
     fun vwCns2DelphiRoutesAssistantSpeechToVrDuringVoiceSession() {
-        core.onHuStatistic("20082114")                                   // h425: ответ ассистента в TTS не слышно
+        core.onHuStatistic("20082114")                                   // h425: assistant response in TTS not heard
         core.micModeProvider = { MicMode.CAR }
         core.onCarlifeStart()
         core.onVoiceSession(1)
@@ -1328,7 +1328,7 @@ class AaBridgeAudioTest {
         val vr = link.audio.filter { it.chan == 5 }
         assertEquals(listOf(0x50002, 0x50003, 0x50003, 0x50003, 0x50003, 0x50004), vr.map { it.type })
         assertEquals("08807d10011810", hexs(vr[0].payload))             // {16000, 1, 16}
-        assertArrayEquals(s.copyOfRange(0, 1024), vr[1].payload)        // Авто на Delphi: пакеты по 1024 Б
+        assertArrayEquals(s.copyOfRange(0, 1024), vr[1].payload)        // Auto on Delphi: packages by 1024 B
         assertArrayEquals(s.copyOfRange(1024, 2048), vr[2].payload)
         assertTrue(link.audio.none { it.chan == 4 })
         assertTrue("VR=0 не раньше выхода из голоса", "M4=0" !in link.events)
@@ -1342,7 +1342,7 @@ class AaBridgeAudioTest {
         val l = FakeLink()
         val c = AaBridgeCore({ m, _ -> logs.add(m) }, clockMs = { timers.now }, audioSchedule = timers::schedule).also { it.attach(l) }
         c.ttsPrerollProvider = { TtsPreroll.MS0 }
-        c.onHuStatistic("20082114")                                      // h425: первая подсказка сессии молчит
+        c.onHuStatistic("20082114")                                      // h425: first session hint is silent
         c.onCarlifeStart()
         val a = pcm(2048, 1)
         val b = pcm(2048, 2)
@@ -1350,13 +1350,13 @@ class AaBridgeAudioTest {
         c.onAudioData(SPEECH, a, 1)
         timers.advance(100)
         c.onAudioData(SPEECH, b, 2)
-        assertTrue(l.audio.none { it.chan == 4 })                          // NAVI=1 ушёл, INIT ещё нет: речь копится
+        assertTrue(l.audio.none { it.chan == 4 })                          // NAVI=1 is gone, INIT is not yet: the speech is piling up
         assertTrue("M2=1" in l.events)
         timers.advance(200)
         val tts = l.audio.filter { it.chan == 4 }
         assertEquals(0x40001, tts[0].type)
         assertArrayEquals(a + b, tts.drop(1).flatMap { it.payload.toList() }.toByteArray())
-        // следующая фраза: NAVI=1 давно держится - без задержки
+        // The NAVI=1 has been around for a long time - without delay
         c.onAudioStop(SPEECH)
         timers.advance(1500)
         val before = l.audio.size
@@ -1375,9 +1375,9 @@ class AaBridgeAudioTest {
         c.onAudioData(SPEECH, pcm(2048), 1)
         c.onAudioStop(SPEECH)
         timers.advance(300)
-        assertEquals(listOf(0x40001, 0x40003, 0x40003), l.audio.filter { it.chan == 4 }.map { it.type })  // Авто на Delphi: по 1024 Б
+        assertEquals(listOf(0x40001, 0x40003, 0x40003), l.audio.filter { it.chan == 4 }.map { it.type })  // Auto on Delphi: by 1024 B
         timers.advance(1500)
-        assertEquals(0x40002, l.audio.last { it.chan == 4 }.type)        // STOP после выдачи, с обычной отсрочкой
+        assertEquals(0x40002, l.audio.last { it.chan == 4 }.type)        // STOP after issuance, with normal delay
     }
 
     @Test
@@ -1404,7 +1404,7 @@ class AaBridgeAudioTest {
         val c = AaBridgeCore({ l, _ -> logs.add(l) }, clockMs = { now })
         val peer = FakePeer()
         c.peer = peer
-        c.onCarlifeHardKey(0x21)                                         // h425: Delphi шлёт VR_START дважды за 1-2 мс
+        c.onCarlifeHardKey(0x21)                                         // h425: Delphi sends VR_START twice for 1-2 ms
         now += 2
         c.onCarlifeHardKey(0x21)
         assertEquals(listOf(AaBridgeCore.KEYCODE_SEARCH), peer.keys.toList())
@@ -1419,17 +1419,17 @@ class AaBridgeAudioTest {
         core.onAudioData(MEDIA, pcm(100), 1)
         core.onVoiceSession(1)
         assertEquals(listOf("A3:0x30001", "M3=1", "A3:0x30006", "A3:0x30003", "M3=0"), link.events.toList())
-        core.onAudioData(MEDIA, pcm(100), 2)                             // идёт голос: MEDIA_DATA не пересылаем
+        core.onAudioData(MEDIA, pcm(100), 2)                             // goes voice: MEDIA_DATA do not send
         assertEquals(3, link.audio.size)
-        // пачка 2/2/1/2/2: выход один, через 500 мс после последней двойки
+        // 2/2/1/2/2 pack: one output, through 500 ms after the last deuce
         core.onVoiceSession(2)
         timers.advance(200)
         core.onVoiceSession(2)
         timers.advance(200)
-        core.onVoiceSession(1)                                           // выход отменён
+        core.onVoiceSession(1)                                           // exit canceled
         timers.advance(1000)
         core.onAudioData(MEDIA, pcm(100), 3)
-        assertEquals(3, link.audio.size)                                 // голос всё ещё идёт
+        assertEquals(3, link.audio.size)                                 // voice is still coming.
         core.onVoiceSession(2)
         timers.advance(100)
         core.onVoiceSession(2)
@@ -1438,7 +1438,7 @@ class AaBridgeAudioTest {
         assertEquals(3, link.audio.size)
         timers.advance(1)
         assertEquals(1, logs.count { it.contains("голосовая сессия: выход, ") })
-        core.onAudioData(MEDIA, pcm(100), 5)                             // после выхода: INIT на первых данных
+        core.onAudioData(MEDIA, pcm(100), 5)                             // after release: INIT on first data
         assertEquals(listOf(0x30001, 0x30006, 0x30003, 0x30001, 0x30006), link.audio.map { it.type })
         timers.advance(5000)
         assertEquals(1, logs.count { it.contains("голосовая сессия: выход, ") })
@@ -1461,7 +1461,7 @@ class AaBridgeAudioTest {
     @Test
     fun ttsFirstPacketsLogPeakAndRms() {
         core.onCarlifeStart()
-        val pcm = ByteArray(8)                                           // сэмплы 0, 1000, -2000, 0
+        val pcm = ByteArray(8)                                           // Samples 0, 1000, -2000, 0
         pcm[2] = (1000 and 0xFF).toByte(); pcm[3] = (1000 shr 8).toByte()
         pcm[4] = ((-2000) and 0xFF).toByte(); pcm[5] = ((-2000) shr 8).toByte()
         for (i in 1..5) core.onAudioData(SPEECH, pcm, i.toLong())
@@ -1470,7 +1470,7 @@ class AaBridgeAudioTest {
         assertTrue(diag[0].contains("peak=2000") && diag[0].contains("rms=1118"))
         core.onAudioData(SPEECH, ByteArray(8), 6L)
         assertEquals(3, logs.count { it.contains("BRIDGE TTS пакет") })
-        // новая TTS-сессия: снова три пакета, нули помечены
+        // new TTS-session: three packs again, zeros marked
         core.onAudioStop(SPEECH)
         timers.advance(1500)
         for (i in 1..4) core.onAudioData(SPEECH, ByteArray(8), i.toLong())
@@ -1500,8 +1500,8 @@ class AaBridgeAudioTest {
             core.onCarlifeStart()
             core.onAudioData(MEDIA, pcm(100), 1)
             core.onAudioData(SPEECH, pcm(100), 2)
-            core.onAudioStop(MEDIA)                                      // без очереди и без PAUSE: сразу MEDIA_STOP
-            core.onAudioStop(SPEECH)                                     // без debounce: сразу TTS_STOP
+            core.onAudioStop(MEDIA)                                      // without queue and without PAUSE: directly MEDIA_STOP
+            core.onAudioStop(SPEECH)                                     // without debounce: directly TTS_STOP
             core.onVoiceSession(1)
             assertEquals(listOf(0x30001, 0x30006, 0x40001, 0x40003, 0x30002, 0x40002), link.audio.map { it.type })
             assertEquals(0, link.modules.size)
@@ -1515,7 +1515,7 @@ class AaBridgeAudioTest {
     }
 }
 
-/** AA-сессия моста против скриптового телефона по loopback: видео -> CarLife-ссылка, тачи CarLife -> телефон. */
+/** AA-bridge session vs script phone by loopback: video -> CarLife-link, touch CarLife -> phone. */
 class AaBridgeIntegrationTest {
     @Test
     fun aaVideoReachesCarlifeAndCarlifeTouchReachesPhoneThenPlaceholderOnEnd() {
@@ -1543,27 +1543,27 @@ class AaBridgeIntegrationTest {
         val phone = FakePhone(sock, "jvc", false, "hu_bye", externalTouch = true)
         phone.session = sessionRef.get()
         phone.start()
-        // ждём, пока видео дойдёт до CarLife-ссылки
+        // Wait until the video reaches CarLife-link
         val t0 = System.currentTimeMillis()
         while (link.sent.size < 2 && System.currentTimeMillis() - t0 < 20_000) Thread.sleep(20)
         assertEquals("видео не дошло: " + logs.joinToString("\n"), 2, link.sent.size)
-        assertArrayEquals(FakePhone.SPS_PPS + FakePhone.IDR, link.sent[0])           // SPS+PPS+IDR склеены
+        assertArrayEquals(FakePhone.SPS_PPS + FakePhone.IDR, link.sent[0])           // SPS+PPS+IDR
         assertEquals(listOf(7, 8, 5), AnnexB.nalTypes(link.sent[0]))
         assertArrayEquals(FakePhone.SMALL, link.sent[1])
         assertEquals(1, link.hides)
-        // тачи ГУ -> AA-телефон
+        // touch head unit -> AA-phone
         core.onCarlifeTouch(0, 40, 675)
         core.onCarlifeTouch(1, 40, 675)
-        // телефон после двух тачей сам завершает сессию (requestStop -> ByeBye)
+        // phone after two touch itself closes the session (requestStop -> ByeBye)
         phone.join(20_000)
         assertEquals(null, phone.error)
         assertEquals(listOf(Triple(0, 40, 675), Triple(1, 40, 675)), phone.touches.toList())
         assertTrue(phone.touchTs.all { it > 0 })
-        // AA закончилась: заглушка с текстом, USB (link) не закрывается
+        // AA is over: stub with text, USB (link) does not close
         val t1 = System.currentTimeMillis()
         while (link.texts.last() != AaBridgeCore.TEXT_AA_LOST && System.currentTimeMillis() - t1 < 10_000) Thread.sleep(20)
         assertEquals(AaBridgeCore.TEXT_AA_LOST, link.texts.last())
-        // сервер пропал: connection refused, коннектор повторяет подключение
+        // server is missing: connection refused, connector repeats connection
         server.close()
         val a0 = connector.attempts
         val t2 = System.currentTimeMillis()
@@ -1578,18 +1578,18 @@ class AaBridgeIntegrationTest {
 
     @Test
     fun refusedConnectionRetriesAndShowsStartServerText() {
-        val port = ServerSocket(0).use { it.localPort }        // порт свободен: connection refused
+        val port = ServerSocket(0).use { it.localPort }        // port free: connection refused
         val link = FakeLink()
         val logs = CopyOnWriteArrayList<String>()
         val core = AaBridgeCore({ l, _ -> logs.add(l) }).also { it.attach(link) }
         val creds = AapCerts.load(TestAssets.opener, "jvc")
-        // свой счётчик: общий AaState.serverFailures помнит «сервер работал» из соседних тестов
+        // own meter: common AaState.serverFailures remembers "server worked" from neighboring tests
         val connector = AaConnector(core, creds, { l, _ -> logs.add(l) }, options = { AapOptions(port = port) }, retryMs = 100, failures = ServerFailures())
         connector.start()
         val t0 = System.currentTimeMillis()
         while (connector.attempts < 4 && System.currentTimeMillis() - t0 < 10_000) Thread.sleep(20)
         assertTrue(connector.attempts >= 4)
-        // сервер в этом процессе ещё не работал: после первого отказа сразу просим включить
+        // the server in this process has not yet worked: after the first failure, please immediately turn on
         assertEquals(listOf(AaBridgeCore.TEXT_CONNECTING, AaBridgeCore.TEXT_START_SERVER), link.texts.toList())
         assertEquals(AaBridgeCore.Source.PLACEHOLDER, core.activeSource)
         assertEquals("в логе одна запись про недоступность", 1, logs.count { it.contains("BRIDGE сервер ГУ Android Auto недоступен") })
@@ -1624,16 +1624,16 @@ class AaBridgeIntegrationTest {
         phone.start()
         val t0 = System.currentTimeMillis()
         while (link.audio.size < 4 && System.currentTimeMillis() - t0 < 20_000) Thread.sleep(20)
-        // телефон ждёт два тача, потом сам завершает сессию
+        // phone waiting for two touch, then he completes the session
         core.onCarlifeTouch(0, 1, 1)
         core.onCarlifeTouch(1, 1, 1)
         phone.join(20_000)
         assertEquals("ошибка телефона (SDR с аудио / ack): ${phone.error}\n" + logs.joinToString("\n"), null, phone.error)
-        // порядок как у телефона: MEDIA init+data, SPEECH init+data, MEDIA stop (-> CarLife PAUSE, TTS идёт: пауза ждёт); SYSTEM (ch5) не пересылается
+        // Order as phone: MEDIA init+data, SPEECH init+data, MEDIA stop (-> CarLife PAUSE, TTS is coming: pause waiting); SYSTEM (ch5) is not sent
         val seq = link.audio.map { it.chan to it.type }
         assertEquals(listOf(3 to 0x30001, 3 to 0x30006, 4 to 0x40001, 4 to 0x40003), seq.take(4))
         val t1 = System.currentTimeMillis()
-        while (link.audio.size < 6 && System.currentTimeMillis() - t1 < 10_000) Thread.sleep(20)     // конец AA: stopAllAudio -> MEDIA_STOP + TTS_STOP
+        while (link.audio.size < 6 && System.currentTimeMillis() - t1 < 10_000) Thread.sleep(20)     // End AA: stopAllAudio -> MEDIA_STOP + TTS_STOP
         assertEquals(setOf(3 to 0x30002, 4 to 0x40002), link.audio.drop(4).take(2).map { it.chan to it.type }.toSet())
         assertEquals(3840, link.audio[1].payload.size)
         assertEquals(640, link.audio[3].payload.size)

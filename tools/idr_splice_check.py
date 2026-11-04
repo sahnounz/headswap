@@ -1,11 +1,11 @@
-"""Проверка своего IDR (android/.../aa/IdrSplice.kt) на дампе H.264 от AA, без телефона.
+"""Check your IDR (android/.../aa/IdrSplice.kt) on the H.264 dump from AA, without phone.
 
-python -X utf8 tools/idr_splice_check.py <дамп.h264> [--every 60] [--pcm-only]
+python -X utf8 tools/idr_splice_check.py <dump.h264> [--every 60] [--pcm-only]
 
-Тот же алгоритм, что в приложении: каждые N кадров после опорного кадра AA вставляется IDR из его декодированной картинки
-(I_PCM / I16x16 без остатка), frame_num/POC следующих P-кадров сдвигаются. ffmpeg декодирует исходный и склеенный поток,
-кадры сравниваются по md5, плюс «поздний вход» (ГУ потеряла всё до нашего IDR). Печатает параметры SPS/PPS, размеры IDR
-(лимит 560 000 Б - буфер C++-ГУ) и итог. Нужны numpy и ffmpeg в PATH.
+The same algorithm as in the application: every N frame after the reference frame AA is inserted by IDR from its decoded picture
+(I_PCM / I16x16 without remainder), frame_num/POC of the following P-frame are shifted. ffmpeg decodes the source and glued stream,
+frame is compared by md5, plus "late entry" (head unit lost everything before our IDR). Prints parameters SPS/PPS, dimensions IDR
+(limit 560 000 B - buffer C++-head unit) and the result. Need numpy and ffmpeg in PATH.
 """
 import argparse
 import hashlib
@@ -168,7 +168,7 @@ def parse_sps(nal):
 
 
 def uncrop_sps(nal):
-    """SPS без кропа (как SpsCrop.uncrop): декодер отдаёт кадр кодированного размера со скрытыми, но опорными строками."""
+    """SPS without crop (as SpsCrop.uncrop): decoder gives frame coded size with hidden but reference lines."""
     s = parse_sps(nal)
     if s["crop"] == [0, 0, 0, 0]:
         return nal
@@ -196,9 +196,9 @@ def parse_pps(nal):
     return p
 
 
-# ---------- заголовок слайса ----------
+# ---------- header slice --------
 def slice_fields(rbsp, sps, pps_map, nal_type):
-    """Позиции frame_num и pic_order_cnt_lsb в RBSP слайса."""
+    """frame_num and pic_order_cnt_lsb positions in RBSP slices."""
     r = BR(rbsp)
     r.u(8)
     first_mb = r.ue()
@@ -215,7 +215,7 @@ def slice_fields(rbsp, sps, pps_map, nal_type):
     return first_mb, fn_pos, fn, poc_pos, poc
 
 
-# ---------- предсказание intra 16x16 и chroma ----------
+# ---------- intra 16x16 and chroma prediction ---------
 def clip(a):
     return np.clip(a, 0, 255)
 
@@ -289,13 +289,13 @@ def chroma_pred(C, mx, my, mode):
     return clip((a + b * (xx - 3) + c * (yy - 3) + 16) >> 5)
 
 
-# ---------- сборка IDR ----------
+# --------- Assembly IDR --------
 def build_idr(Y, U, V, sps, pps, idr_pic_id, use_i16=True):
     w, h = sps["w_mbs"], sps["h_mbs"]
     bw = BW()
     bw.u(8, 0x65)                       # nal_ref_idc 3, IDR
     bw.ue(0)                            # first_mb_in_slice
-    bw.ue(7)                            # slice_type I (все слайсы)
+    bw.ue(7)                            # slice_type I (all slides)
     bw.ue(pps["id"])
     bw.u(sps["log2_fn"], 0)             # frame_num
     bw.ue(idr_pic_id)
@@ -310,11 +310,11 @@ def build_idr(Y, U, V, sps, pps, idr_pic_id, use_i16=True):
     if pps["redundant"]:
         bw.ue(0)
     bw.u(1, 0); bw.u(1, 0)              # no_output_of_prior_pics, long_term_reference
-    bw.se(0 - pps["init_qp"])           # QP = 0: у I16x16 деблокинг не срабатывает (alpha(0) = 0)
+    bw.se(0 - pps["init_qp"])           # QP = 0: I16x16 does not work with deblocking (alpha(0) = 0)
     if pps["dbk_ctrl"]:
         bw.ue(1)                        # disable_deblocking_filter_idc
     assert not pps["cabac"], "CABAC: нужен свой кодер mb_type"
-    kind = np.zeros((h, w), np.int8)    # 1 = I_PCM, 2 = I16x16 без остатка
+    kind = np.zeros((h, w), np.int8)    # 1 = I_PCM, 2 = I16x16 without balance
     n_i16 = 0
     for my in range(h):
         for mx in range(w):
@@ -357,7 +357,7 @@ def build_idr(Y, U, V, sps, pps, idr_pic_id, use_i16=True):
     return escape(rbsp), n_i16
 
 
-# ---------- склейка ----------
+# ---------- glue --------
 def read_yuv(path, w, h):
     raw = np.fromfile(path, np.uint8)
     fs = w * h * 3 // 2
@@ -375,7 +375,7 @@ def splice(data, frames, every, use_i16=True, first=None):
     sps_map, pps_map = {}, {}
     out = bytearray()
     pic = -1
-    fn_off = poc_off = None             # сдвиг frame_num / POC после нашего IDR, до IDR от AA
+    fn_off = poc_off = None             # frame_num/POC shift after our IDR, to IDR from AA
     idr_id = 0
     splices = []
     skip_pic = False
@@ -423,7 +423,7 @@ def _decode(path, out):
 
 
 def _md5(path):
-    """md5 видимых кадров (с кропом SPS), как их покажет ГУ."""
+    """md5 visible frame (with crop SPS) as shown by head unit."""
     r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-err_detect", "explode", "-i", path, "-f", "framemd5", "-"],
                        check=True, capture_output=True, text=True)
     return [line.split(",")[-1].strip() for line in r.stdout.splitlines() if line and not line.startswith("#")]
@@ -449,7 +449,7 @@ def main():
     w, h = sps["w_mbs"] * 16, sps["h_mbs"] * 16
     with tempfile.TemporaryDirectory() as tmp:
         ref_yuv, full_h264, out_h264 = (os.path.join(tmp, n) for n in ("ref.yuv", "full.h264", "out.h264"))
-        # картинки для своего IDR - кодированного размера, как у декодера телефона с SPS без кропа
+        # pictures for your IDR - coded size like the decoder phone with SPS without crop
         open(full_h264, "wb").write(b"".join(b"\x00\x00\x00\x01" + (uncrop_sps(n) if n[0] & 0x1F == 7 else n) for n in nals))
         _decode(full_h264, ref_yuv)
         ref = read_yuv(ref_yuv, w, h)

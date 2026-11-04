@@ -12,9 +12,9 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Почему умер процесс. Java-краш пишется в лог перехватчиком до передачи системному обработчику.
- * Нативный краш, ANR, kill по памяти перехватить нельзя: на следующем старте (SDK 30+) читаем
- * ApplicationExitInfo и пишем в новый лог все смерти, которых ещё не видели.
+ * Why the process died. Java-krash is written in log by the interceptor before being transmitted to the system handler.
+ * Native crash, ANR, kill from memory can not be intercepted: at the next start (SDK 30+) read
+ * ApplicationExitInfo and write in the new log all deaths that have not yet been seen.
  */
 object CrashLog {
     private const val PREFS = "crashlog"
@@ -76,7 +76,7 @@ object CrashLog {
         prefs.edit().putLong(KEY_SEEN, list.last().timestamp).apply()
     }
 
-    /** ANR - текстовый дамп потоков; нативный краш - tombstone в protobuf (SDK 31+), из него берём печатные строки. */
+    /** ANR - text dump threads; native crash - tombstone in protobuf (SDK 31+), from it we take the printed lines. */
     @TargetApi(30)
     private fun dumpTrace(x: ApplicationExitInfo) {
         val bytes = try {

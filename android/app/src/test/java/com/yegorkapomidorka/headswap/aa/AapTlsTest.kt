@@ -9,8 +9,8 @@ import java.io.FileInputStream
 import java.io.InputStream
 
 /**
- * Сертификаты берутся из app/src/main/assets (рабочий каталог unit-тестов - app/).
- * В публичном клоне ключей AA нет: тест, который их открывает, пропускается (Assume).
+ * Certificates are taken from app/src/main/assets (work directory of unit-tests - app/).
+ * There is no AA public key clone: the test that opens them is skipped (Assume).
  */
 object TestAssets {
     val opener: (String) -> InputStream = { path ->
@@ -33,7 +33,7 @@ class AapTlsTest {
 
     @Test
     fun jvcLoadsWithoutFallback() {
-        // странный notBefore (UTCTime с -0700): если JVM-парсер его не съест, этот тест это покажет
+        // strange notBefore (UTCTime with -0700): if JVM-parser does not eat it, this test will show it
         val l = AapCerts.loadWithFallback(TestAssets.opener, "jvc")
         assertEquals("откат на hur: ${l.error}", "jvc", l.creds.certSet)
         assertEquals(null, l.error)
@@ -46,7 +46,7 @@ class AapTlsTest {
     }
 
     private fun check(set: String, tls12: Boolean) {
-        // AapTlsSelfTest.run глотает любые Throwable (в т.ч. пропуск теста), поэтому проверяем наличие заранее
+        // AapTlsSelfTest.run swallows any Throwable (including test pass), so check availability in advance
         TestAssets.opener("aa/$set/cert.pem").close()
         val r = AapTlsSelfTest.run(TestAssets.opener, set, tls12)
         println("TLS selftest set=$set tls12=$tls12 -> ${r.ok} ${r.detail}")
@@ -61,7 +61,7 @@ class AapTlsTest {
 
     @Test
     fun clientCertificateReachesServer() {
-        // клиент jvc, сервер hur: сервер требует сертификат клиента; handshake проходит только если он принят
+        // jvc client, hur: server requires client certificate; handshake only passes if it is accepted
         val client = AapTls(AapCerts.load(TestAssets.opener, "jvc"))
         val server = AapTls(AapCerts.load(TestAssets.opener, "hur"), serverMode = true)
         var toServer = client.handshakeStep()

@@ -12,7 +12,7 @@ import com.yegorkapomidorka.headswap.R
 import com.yegorkapomidorka.headswap.about.About
 import com.yegorkapomidorka.headswap.about.OpenSource
 
-/** «О приложении»: авторы (имя и ник в Telegram, без ссылки) и сторонние открытые лицензии (тап открывает полный текст). Данные - [About]. */
+/** "About the application": authors (name and nickname in Telegram, without reference) and third-party open licenses (tap opens full text). Data - [About]. */
 class AboutScreen(host: MainActivity) : Screen(host) {
     override val view: View
 
@@ -39,7 +39,7 @@ class AboutScreen(host: MainActivity) : Screen(host) {
         view = scaffold(c, c.getString(R.string.about_title), { host.back() }, body)
     }
 
-    /** Строка карточки: название и подпись слева, значок справа; нажатие на всю строку. Без [onClick] строка не нажимается. */
+    /** Card line: title and signature on the left, icon on the right; click on the entire line. Without [onClick], the line is not pressed. */
     private fun row(title: String, sub: String, iconRes: Int?, onClick: (() -> Unit)?): View {
         val c = ctx
         return c.hbox(14).apply {
@@ -58,7 +58,7 @@ class AboutScreen(host: MainActivity) : Screen(host) {
         }
     }
 
-    /** Полный текст лицензии в окне с прокруткой; «Страница проекта» открывает проект в браузере. */
+    /** Full license text in the scrolling window; Project Page opens the project in the browser. */
     private fun showLicense(lic: OpenSource) {
         val c = ctx
         val text = About.reflow(About.readText(c, lic.asset)).ifEmpty { c.getString(R.string.about_license_unavailable) }

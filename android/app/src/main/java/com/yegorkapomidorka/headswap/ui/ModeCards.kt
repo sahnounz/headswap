@@ -8,11 +8,11 @@ import android.widget.RadioButton
 import com.yegorkapomidorka.headswap.AppTheme
 import com.yegorkapomidorka.headswap.R
 
-/** Части шага «Выберите режим» (OnboardingMode.dc.html). */
+/** Select Mode (OnboardingMode.dc.html) parts. */
 
 /**
- * Карточка-радио режима. Выбранная: фон pric, обводка 2dp pri, иконка на pri. [chips] - плашки под описанием
- * (названия лаунчеров), у Android Auto их нет.
+ * Mode radio card. Selected: background pric, contour 2dp pri, icon on pri. [chips] - covers under the description
+ * (name launcher), Android Auto does not have any.
  */
 fun Context.modeCard(iconRes: Int, title: String, body: String, chips: List<String>, selected: Boolean, onPick: () -> Unit): View {
     val c = this
@@ -63,7 +63,7 @@ fun Context.modeCard(iconRes: Int, title: String, body: String, chips: List<Stri
     }
 }
 
-/** Блок «Внимание» (warnc / onwarnc) со значком-треугольником. */
+/** Attention block (warnc/onwarnc) with triangle icon. */
 fun Context.modeWarning(title: String, body: String, risk: String): View {
     val c = this
     return hbox(12).apply {

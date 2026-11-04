@@ -3,8 +3,8 @@ package com.yegorkapomidorka.headswap.ui
 import android.content.Context
 
 /**
- * Текст для пользователя без Context: ресурс + аргументы формата, либо готовая строка (например, сообщение исключения).
- * Чистая логика (HomeLogic, Readiness) отдаёт UiText, в строку его превращает UI или уведомление через [get].
+ * Text for a user without Context: resource + format arguments, or a ready string (e.g., an exception message).
+ * Pure logic (HomeLogic, Readiness) gives UiText, turns it into a string UI or notification via [get].
  */
 sealed class UiText {
     data class Res(val id: Int, val args: List<Any> = emptyList()) : UiText()
@@ -24,7 +24,7 @@ sealed class UiText {
 
         fun raw(text: String): UiText = Raw(text)
 
-        /** Аргумент может сам быть UiText: резолвится тем же контекстом. */
+        /** The argument may itself be UiText: solved by the same context. */
         private fun Any.resolve(ctx: Context): Any = if (this is UiText) get(ctx) else this
     }
 }

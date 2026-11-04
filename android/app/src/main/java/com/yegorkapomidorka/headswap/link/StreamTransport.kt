@@ -20,16 +20,16 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Один байтовый поток с внешним заголовком [chan u32][len u32]: USB AOA и debug-TCP.
- * Код чтения и записи перенесён из CarLifeSession без изменений поведения: одна FIFO-очередь на все каналы,
- * единственный писатель, заголовок отдельным write и тело кусками <= 16384 (Wire.writeSequence), flush на сообщение.
+ * One byte stream with external header [chan u32][len u32]: USB AOA and debug-TCP.
+ * Read and write code moved from CarLifeSession without behavior changes: one FIFO-queue to all channels,
+ * single writer, header single write and body pieces <= 16384 (Wire.writeSequence), flush per message.
  */
 class StreamTransport(
     private val input: InputStream,
     private val output: OutputStream,
     override val caps: TransportCaps,
     override val label: String,
-    /** Закрыть исходный дескриптор (pfd.close); зовётся первым в close(), как раньше в сессии. */
+    /** Close the original descriptor (pfd.close); called first in close(), as before in the session. */
     private val closeFd: () -> Unit = {},
     private val clock: () -> Long = { SystemClock.elapsedRealtime() },
 ) : CarTransport {
@@ -147,7 +147,7 @@ class StreamTransport(
                     videoBytes.addAndGet(-o.inner.size.toLong())
                     videoFrames.decrementAndGet()
                 }
-                // заголовок отдельным write, тело следом кусками <= 16384 (спека §1.4); Mobis CCNC - тело одним write, как Baidu
+                // header Separate writeThe body followed by pieces. 16384 (singing <= 1.4); Mobis CCNC The body alone. writeHow to Baidu
                 val t0 = System.nanoTime()
                 val parts = if (wholeWrites) Wire.writeWhole(o.chan, o.inner) else Wire.writeSequence(o.chan, o.inner)
                 for (part in parts) output.write(part)
@@ -165,7 +165,7 @@ class StreamTransport(
     }
 
     companion object {
-        /** USB-аксессуар (AOA) или debug-TCP, открытый как ParcelFileDescriptor. */
+        /** USB-accessory (AOA) or debug-TCP, open as ParcelFileDescriptor. */
         fun fromPfd(pfd: ParcelFileDescriptor, caps: TransportCaps, label: String) = StreamTransport(
             FileInputStream(pfd.fileDescriptor), FileOutputStream(pfd.fileDescriptor), caps, label,
             closeFd = { pfd.close() },

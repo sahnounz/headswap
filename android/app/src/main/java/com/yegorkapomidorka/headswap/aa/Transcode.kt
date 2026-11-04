@@ -19,75 +19,75 @@ interface DesktopSurfaceListener {
     fun onFirstFrame(generation: Long) {}
 }
 
-/** Куда транскодер отдаёт результат (реализует ядро моста). Вызовы идут с нитей MediaCodec. */
+/** Where the transcoder gives the result (realizes the core of the bridge). Challenges come with thread MediaCodec. */
 interface TranscodeOutput {
-    /** SPS+PPS энкодера (Annex-B, 4-байтные старт-коды). */
+    /** SPS+PPS encoder (Annex-B, 4-byte start codes). */
     fun onEncoderConfig(csd: ByteArray)
 
-    /** Кадр энкодера (Annex-B). */
+    /** frame encoder (Annex-B). */
     fun onEncoderFrame(data: ByteArray, key: Boolean)
 
     fun onTranscodeError(msg: String)
 
-    /** Декодеру нужен новый IDR от AA (кадр потерян). */
+    /** decoder needs a new IDR from AA (frame is lost). */
     fun onNeedAaKeyFrame()
 }
 
 /**
- * AA H.264 -> декодер (Surface) -> Surface входа энкодера -> H.264 для CarLife. Реализация на MediaCodec
- * (AaTranscoder); ядро моста работает с интерфейсом, чтобы логика проверялась на JVM.
+ * AA H.264 -> decoder (Surface) -> Surface input encoder -> H.264 for CarLife. Realization on MediaCodec
+ * (AaTranscoder); the bridge core works with the interface so that logic is tested on JVM.
  */
 interface VideoTranscoder {
     /** Non-null only for an encoder accepting raw surface frames instead of compressed AA video. */
     val surfaceInput: SurfaceVideoInput? get() = null
 
     /**
-     * CODEC_CONFIG AA (SPS+PPS). Новый SPS -> декодер будет пересоздан на следующем IDR.
-     * Не блокирует, обрабатывается на нити транскодера; "nofeedthread" в tuning - старый синхронный путь.
+     * CODEC_CONFIG AA (SPS+PPS). The new SPS -> decoder will be re-created on the next IDR.
+     * Does not block, processed on thread transcoder; "nofeedthread" in tuning is the old synchronous path.
      */
     fun feedConfig(annexB: ByteArray)
 
     /**
-     * Кадр AA (access unit). Первый кадр декодеру должен быть IDR.
-     * Не блокирует, обрабатывается на нити транскодера (очередь полна -> кадр теряется до IDR, onNeedAaKeyFrame);
-     * "nofeedthread" в tuning - старый синхронный путь.
+     * frame AA (access unit). The first frame decoder should be IDR.
+     * Does not block, processed on thread transcoder (queue full -> frame is lost to IDR, onNeedAaKeyFrame);
+     * "nofeedthread" in tuning is an old synchronous path.
      */
     fun feedFrame(annexB: ByteArray, ptsUs: Long)
 
     /**
-     * Сбросить декодер (новая AA-сессия): энкодер остаётся жить. Не блокирует, выполняется на нити транскодера
-     * после уже принятых кадров; "nofeedthread" в tuning - старый синхронный путь.
+     * reset decoder (new AA-session): encoder stays alive. Does not block, runs on thread transcoder
+     * after already taken frame; "nofeedthread" in tuning is the old synchronous path.
      */
     fun resetDecoder()
 
     fun requestSyncFrame()
 
-    /** Начать переход с кадра заглушки в картинку AA (зум-растворение) с первого следующего кадра. Без GL - ничего. */
+    /** Start the transition from frame stub to picture AA (zoom-solution) with the first next frame. Without GL - nothing. */
     fun startIntro(banner: android.graphics.Bitmap) {}
 
-    /** Целевая частота выхода (0 = не ограничивается). */
+    /** Target frequency of exit (0 = not limited). */
     val targetFps: Int get() = 0
 
-    /** Сменить целевую частоту на лету, без пересоздания кодека. */
+    /** Change the target frequency on the fly, without recreating the codec. */
     fun setTargetFps(fps: Int) {}
 
-    /** Текущий битрейт энкодера, бит/с (0 = неизвестен). */
+    /** Current bitrate encoder, bit/s (0 = unknown). */
     val currentBitrate: Int get() = 0
 
-    /** Сменить битрейт энкодера на лету (адаптация под скорость слива ГУ), без пересоздания кодека. Ошибки не бросает. */
+    /** Replace bitrate encoder on the fly (adaptation to the drain speed head unit), without recreating the codec. Errors do not throw. */
     fun setBitrate(bps: Int) {}
 
-    /** Строка статистики за окно с прошлого вызова (задержка декодер->энкодер, fps, повторы). */
+    /** Stats line out the window from the previous call (decoder->encoder delay, fps, repeats). */
     fun statsLine(): String
 
     fun stop()
 }
 
-/** Разбор Annex-B потока H.264 (чистая JVM-логика): NAL-ы и access unit-ы. */
+/** Annex-B flow parsing H.264 (pure JVM-logic): NAL- and access unit-. */
 object H264Stream {
     class AccessUnit(val data: ByteArray, val idr: Boolean)
 
-    /** NAL-ы потока целиком, каждый с 4-байтным старт-кодом. */
+    /** NAL-s stream entirely, each with a 4-byte start code. */
     fun nalUnits(stream: ByteArray): List<ByteArray> {
         val d = AnnexB.normalize(stream)
         val starts = ArrayList<Int>()
@@ -110,16 +110,16 @@ object H264Stream {
 
     fun nalType(nal: ByteArray): Int = if (nal.size > 4) nal[4].toInt() and 0x1F else -1
 
-    /** SPS и PPS (первые) из конфига/потока. */
+    /** SPS and PPS (first) from config/stream. */
     fun spsPps(stream: ByteArray): Pair<ByteArray?, ByteArray?> {
         val nals = nalUnits(stream)
         return Pair(nals.firstOrNull { nalType(it) == 7 }, nals.firstOrNull { nalType(it) == 8 })
     }
 
     /**
-     * Делит поток на access unit-ы: новая картинка начинается на слайсе с first_mb_in_slice == 0
-     * (старший бит первого байта после заголовка NAL = 1) либо на SPS/PPS/SEI/AUD после слайсов.
-     * Возвращает (SPS+PPS первого кадра, список AU).
+     * Divides the stream by access unit-y: new image starts on slide with first_mb_in_slice == 0
+     * (older first byte bit after header NAL = 1) or on SPS/PPS/SEI/AUD after slices.
+     * Returns (SPS+PPS first frame, list AU).
      */
     fun split(stream: ByteArray): Pair<ByteArray?, List<AccessUnit>> {
         val nals = nalUnits(stream)

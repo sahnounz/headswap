@@ -16,8 +16,8 @@ import android.os.SystemClock
 import android.view.Surface
 
 /**
- * H.264-энкодер (Surface input) и рисовалка заглушки моста (текст, пока AA не подключился).
- * Кадры отдаются в Annex-B с 4-байтными стартовыми кодами; codec config приходит отдельно (onConfig).
+ * H.264-encoder (Surface input) and the stub bridge drawing (text until AA connected).
+ * frame is given in Annex-B with 4 byte start codes; codec config comes separately (onConfig).
  */
 class VideoSource(
     val width: Int,
@@ -25,9 +25,9 @@ class VideoSource(
     private val fps: Int,
     private val bitrate: Int,
     private val listener: Listener,
-    /** Видимая часть кадра (SPS-кроп, h529): надпись рисуется только в ней, вне её фон. null = весь кадр. */
+    /** Visible part of frame (SPS-crop, h529): the inscription is drawn only in it, outside its background. null = whole frame. */
     private val area: Rect? = null,
-    /** Энкодер в формате Baidu (Mobis CCNC, h242): VBR, level 256, повтор кадра 100 мс. */
+    /** encoder in Baidu format (Mobis CCNC, h242): VBR, level 256, repeat frame 100 ms. */
     private val baidu: Boolean = false,
 ) {
     interface Listener {
@@ -39,7 +39,7 @@ class VideoSource(
     @Volatile var framesRendered = 0L
         private set
 
-    /** Текст заглушки: крупная надпись и живой индикатор вместо видео AA. */
+    /** Text stub: large inscription and live indicator instead of video AA. */
     @Volatile var banner: String? = null
 
     @Volatile private var running = false
@@ -61,7 +61,7 @@ class VideoSource(
         var s: Surface? = null
         try {
             if (baidu) {
-                // формат Baidu (h242): с level 256, при отказе без него, дальше обычная лесенка
+                // format Baidu (h242): with level 256, if failed without it, then ordinary ladder
                 var done = false
                 for (withLevel in listOf(true, false)) {
                     try {
@@ -81,7 +81,7 @@ class VideoSource(
             s = c.createInputSurface()
             c.start()
         } catch (e: Exception) {
-            // codec ещё null: stop() вышел бы сразу, аппаратный энкодер освобождаем здесь
+            // codec more null: stop() would come out immediately, hardware encoder free here
             try {
                 s?.release()
             } catch (_: Exception) {
@@ -109,7 +109,7 @@ class VideoSource(
         }
     }
 
-    /** Как Baidu MediaFormatUtils :41-60: Baseline, VBR, level 256 (AVCLevel3), I-frame 1 с, повтор кадра 100 мс. */
+    /** As Baidu MediaFormatUtils :41-60: Baseline, VBR, level 256 (AVCLevel3), I-frame 1 s, repeat frame 100 ms. */
     private fun formatBaidu(withLevel: Boolean): MediaFormat {
         val f = MediaFormat.createVideoFormat(MIME, width, height)
         f.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
@@ -146,7 +146,7 @@ class VideoSource(
         }
     }
 
-    /** Битрейт на лету (воздух: политика битрейта ведёт и заглушку). false = кодека нет или параметр не принят. */
+    /** bitrate On the Flywireless connection: Policy bitrate Leads and stub). false = no codec or parameter is not accepted. */
     fun setBitrate(bps: Int): Boolean {
         val c = codec ?: return false
         return try {
@@ -217,8 +217,8 @@ class VideoSource(
         var next = SystemClock.elapsedRealtime()
         try {
             while (running) {
-                // программный Canvas: lockHardwareCanvas на Surface энкодера валит media.codec на Xiaomi с vndk v30
-                // (Redmi 9T/9S, POCO X3 Pro: SIGSEGV в FenceTime::Snapshot::getFlattenedSize, за ним abort нашего процесса)
+                // Canvas: lockHardwareCanvas on Surface encoder rolls media.codec on Xiaomi with vndk v30
+                // (Redmi 9T/9S, POCO X3 Pro: SIGSEGV in FenceTime::Snapshot::getFlattenedSize, followed by abort of our process)
                 val canvas = s.lockCanvas(null)
                 try {
                     draw(canvas)
@@ -235,7 +235,7 @@ class VideoSource(
         }
     }
 
-    /** Текущий кадр заглушки в Bitmap: с него транскодер начинает зум-растворение в картинку AA. Любая нить. */
+    /** Current frame stub in Bitmap: with it transcoder starts zoom resolution into picture AA. Any thread. */
     fun snapshot(): Bitmap? {
         val msg = banner ?: return null
         val w = area?.width() ?: width
@@ -258,11 +258,11 @@ class VideoSource(
     private fun drawBanner(c: Canvas, width: Int, height: Int, msg: String, n: Long, text: Paint, fill: Paint) {
         val w = width.toFloat()
         val h = height.toFloat()
-        // плоские цвета: на CBR 4 Мбит/с градиенты слабого энкодера идут полосами
+        // flat colors: on CBR 4 Mbit/s the gradients of the weak encoder go in strips
         c.drawColor(BG)
         drawLogo(c, w / 2, h * 0.34f, minOf(h * 0.36f, w * 0.3f), n / fps.toFloat(), fill)
 
-        // словесный знак: Head белым, swap янтарным
+        // Verbal sign: Head white, swap amber
         text.textAlign = Paint.Align.LEFT
         text.typeface = WORDMARK
         text.textSize = h * 0.085f
@@ -277,7 +277,7 @@ class VideoSource(
         text.color = AMBER
         c.drawText(swap, x, yWord, text)
 
-        // статус моста: по нему видно, чего ждём (сервер ГУ, разблокировка, кадр)
+        // bridge status: it shows what we are waiting for (server head unit, unlock, frame)
         text.typeface = Typeface.DEFAULT_BOLD
         text.textAlign = Paint.Align.CENTER
         text.color = STATUS
@@ -291,8 +291,8 @@ class VideoSource(
     }
 
     /**
-     * Перенос по словам на минимум строк, но строки примерно равной ширины:
-     * на 4:3 «...перезапустите сервер ГУ» иначе оставляет «ГУ» одно на второй строке.
+     * Transferring words to a minimum of lines, but lines are approximately equal in width:
+     * on 4:3 "...restart the head unit server" otherwise leaves "head unit" one on the second line.
      */
     private fun wrapBalanced(msg: String, maxW: Float, p: Paint): List<String> {
         val words = msg.split(' ')
@@ -313,7 +313,7 @@ class VideoSource(
         }
         val base = greedy(maxW)
         if (base.size < 2) return base
-        // сужаем лимит, пока число строк не растёт: последняя строка добирает слова у предыдущих
+        // narrowing the limit until the number of lines grows: the last line gets words from previous ones
         var best = base
         var limit = p.measureText(msg) / base.size
         while (limit < maxW) {
@@ -328,9 +328,9 @@ class VideoSource(
     }
 
     /**
-     * Глиф иконки (ic_launcher_foreground.xml, 48×48): дуги-стрелки раз в [SWAP_S] меняются местами
-     * поворотом на 180° вокруг экрана, на каждом обмене от логотипа расходится янтарное кольцо.
-     * Состояние только от t: snapshot() с любой нити рисует тот же кадр.
+     * Glyph Iconsic_launcher_foreground.xml, 48×48): arch-arrows once in [SWAP_S] Change places
+     * turning on the 180 ° around the screen, on each exchange from the logo diverges amber ring.
+     * State only from t: snapshot() with any thread draws same frame.
      */
     private fun drawLogo(c: Canvas, cx: Float, cy: Float, size: Float, t: Float, p: Paint) {
         val phase = t % SWAP_S
@@ -343,7 +343,7 @@ class VideoSource(
         c.translate(cx - 24f * s, cy - 24f * s)
         c.scale(s, s)
 
-        // волна обмена: кольцо от радиуса дуг наружу, тает к концу цикла
+        // exchange wave: ring from arc radius outward, melts by the end of the cycle
         val r = phase / SWAP_S
         p.style = Paint.Style.STROKE
         p.strokeWidth = 1.2f
@@ -360,7 +360,7 @@ class VideoSource(
         drawArrow(c, ARC_AMBER, HEAD_AMBER, AMBER, p)
         c.restore()
 
-        // экран в центре неподвижен
+        // the screen in the center is still
         p.style = Paint.Style.STROKE
         p.color = Color.WHITE
         p.strokeWidth = 2f
@@ -390,16 +390,16 @@ class VideoSource(
     companion object {
         const val MIME = "video/avc"
 
-        private val BG = Color.rgb(0x0E, 0x14, 0x1A) // фон иконки
+        private val BG = Color.rgb(0x0E, 0x14, 0x1A) // Icon Background
         private val AMBER = Color.rgb(0xF2, 0xB3, 0x3D)
         private val STATUS = Color.rgb(0xB8, 0xC4, 0xCC)
         private val WORDMARK: Typeface = Typeface.create("sans-serif-black", Typeface.NORMAL)
 
-        /** Цикл обмена стрелок и длительность самого поворота внутри него, секунды. */
+        /** The cycle of exchange of arrows and the duration of the turn itself inside it, seconds. */
         private const val SWAP_S = 2.2f
         private const val SPIN_S = 0.8f
 
-        // дуги — окружность r=15 вокруг (24,24): 195°..318° и её отражение 15°..138°
+        // Arcs: a circle of radius r=15 around (24,24), spanning 195°..318°, and its reflection at 15°..138°.
         private val ARC_WHITE = Path().apply { addArc(RectF(9f, 9f, 39f, 39f), 195f, 123f) }
         private val ARC_AMBER = Path().apply { addArc(RectF(9f, 9f, 39f, 39f), 15f, 123f) }
         private val HEAD_WHITE = triangle(39.24f, 10.28f, 40.5f, 19.9f, 31.06f, 17.64f)

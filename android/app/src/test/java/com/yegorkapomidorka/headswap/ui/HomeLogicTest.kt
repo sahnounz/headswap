@@ -28,15 +28,15 @@ class HomeLogicTest {
 
     @Test
     fun checkingWhileAutoProbeRuns() {
-        // проба при открытии идёт, итога ещё нет: не «Проверьте», а «Проверяю», без кнопок
+        // test at the opening is, the result is not yet: not "Check", but "Check", without buttons
         val s = HomeLogic.compute(inp(checking = true))
         assertEquals(UiText.res(R.string.home_title_checking), s.title)
         assertEquals(StageState.ACTIVE to UiText.res(R.string.home_stage_checking), s.stages[0].second)
         assertEquals(null, s.primary)
-        // прошлый итог пробы важнее: пока идёт повторная, экран не мигает
+        // the last result of the test is more important: while it goes again, the screen does not blink
         assertEquals(UiText.res(R.string.home_title_ready), HomeLogic.compute(inp(checking = true, serverRunning = true)).title)
         assertEquals(Phase.OFF, HomeLogic.compute(inp(checking = true, serverRunning = false)).phase)
-        // мост важнее пробы
+        // Bridge is more important than trial
         assertEquals(Phase.WAITING, HomeLogic.compute(inp(checking = true, running = true, status = "мост: жду кабель")).phase)
     }
 
@@ -51,12 +51,12 @@ class HomeLogicTest {
 
     @Test
     fun offWhenNothingStarted() {
-        // проба получила отказ: точно не запущен
+        // test failed: exactly not started
         val s = HomeLogic.compute(inp(serverRunning = false))
         assertEquals(Phase.OFF, s.phase)
         assertEquals(PrimaryAction.START_SERVER, s.primary)
         assertEquals(StageState.TODO, s.stages[0].second.first)
-        // сервер ГУ включает пользователь: янтарный тон (не warn), заголовок-призыв и блок из трёх пунктов
+        // head unit server includes user: amber tone (not warn), header-call and block of three points
         assertEquals(Tone.PRI, s.tone)
         assertEquals(UiText.res(R.string.home_title_off), s.title)
         assertEquals(UiText.res(R.string.home_sub_start_chain), s.sub)
@@ -73,7 +73,7 @@ class HomeLogicTest {
 
     @Test
     fun unknownWhenProbeGaveNoAnswer() {
-        // проба не дала ответа (сбой или ещё не было): не утверждаем ни «запущен», ни «не запущен»
+        // test did not give an answer (failure or not yet): neither "launched" nor "not launched"
         val s = HomeLogic.compute(inp(serverRunning = null))
         assertEquals(Phase.OFF, s.phase)
         assertEquals(Tone.PRI, s.tone)
@@ -89,17 +89,17 @@ class HomeLogicTest {
 
     @Test
     fun parkedTextDependsOnServerProbe() {
-        // проба после поездки подтверждает сервер: прежний текст про фон
+        // test after the trip confirms the server: previous text about background
         val up = HomeLogic.compute(inp(ended = true, serverRunning = true))
         assertEquals(Phase.PARKED, up.phase)
         assertEquals(UiText.res(R.string.home_sub_parked), up.sub)
         assertEquals(UiText.res(R.string.notif_parked), up.notifText)
-        // проба не дала ответа: нейтральный текст
+        // No answer given: neutral text
         val unknown = HomeLogic.compute(inp(ended = true, serverRunning = null))
         assertEquals(Phase.PARKED, unknown.phase)
         assertEquals(UiText.res(R.string.home_sub_parked_unknown), unknown.sub)
         assertEquals(UiText.res(R.string.notif_parked_unknown), unknown.notifText)
-        // сервер остановили: «Запустите сервер ГУ»
+        // server stopped: "Start the server head unit"
         val down = HomeLogic.compute(inp(ended = true, serverRunning = false))
         assertEquals(Phase.OFF, down.phase)
         assertEquals(UiText.res(R.string.home_title_off), down.title)
@@ -111,7 +111,7 @@ class HomeLogicTest {
         val up = HomeLogic.compute(inp(running = true, status = status, protocol = true, serverRunning = true))
         assertEquals(Phase.WAITING, up.phase)
         assertEquals(UiText.res(R.string.home_title_connecting), up.title)
-        // без итога пробы прежнее «Запустите сервер ГУ»
+        // without sample result former "Start the server head unit"
         val unknown = HomeLogic.compute(inp(running = true, status = status, protocol = true, serverRunning = null))
         assertEquals(Phase.OFF, unknown.phase)
         assertEquals(UiText.res(R.string.home_title_off), unknown.title)
@@ -120,20 +120,20 @@ class HomeLogicTest {
     @Test
     fun freshRefusalOnWorkedServerIsStartServerImmediately() {
         val status = "мост: жду сервер ГУ AA"
-        // свежий старт моста: отказ не в окне после закрытия своей сессии - сервер не запущен, ждать нечего
+        // fresh start of the bridge: failure is not in the window after closing its session - the server is not running, there is nothing to wait for
         val fresh = HomeLogic.compute(inp(running = true, status = status, protocol = true, worked = true, refusedFresh = true, refusedMs = 500))
         assertEquals(Phase.OFF, fresh.phase)
         assertEquals(UiText.res(R.string.home_title_off), fresh.title)
         assertEquals(PrimaryAction.START_SERVER, fresh.primary)
-        // сразу после закрытия своей сессии отказ норма: «Подключаюсь»
+        // Immediately after the closure of its session, the refusal norm: “I connect”
         val afterBye = HomeLogic.compute(inp(running = true, status = status, protocol = true, worked = true, refusedFresh = false, refusedMs = 500))
         assertEquals(Phase.WAITING, afterBye.phase)
         assertEquals(UiText.res(R.string.home_title_connecting), afterBye.title)
-        // проба сказала «отказ»: просим запустить, даже внутри окна
+        // sample said "failure": please run, even inside the window
         val stopped = HomeLogic.compute(inp(running = true, status = status, protocol = true, worked = true, serverRunning = false, refusedFresh = false, refusedMs = 500))
         assertEquals(Phase.OFF, stopped.phase)
         assertEquals(UiText.res(R.string.home_title_off), stopped.title)
-        // проба сказала «запущен»: свежесть отказа не важна
+        // test said "launched": freshness of refusal is not important
         val running = HomeLogic.compute(inp(running = true, status = status, protocol = true, worked = true, serverRunning = true, refusedFresh = true))
         assertEquals(Phase.WAITING, running.phase)
     }
@@ -176,7 +176,7 @@ class HomeLogicTest {
 
     @Test
     fun parkedAfterSessionEnded() {
-        // мост сам штатно закрыл установленную сессию: «Машина отключена», сервер ГУ в фоне «работает», без «проверяю» и кнопок
+        // The bridge itself closed the set session: “The machine is disconnected”, head unit server in the background “works”, without “checking” and buttons
         val s = HomeLogic.compute(inp(ended = true, serverRunning = true))
         assertEquals(Phase.PARKED, s.phase)
         assertEquals(Tone.PRI, s.tone)
@@ -190,7 +190,7 @@ class HomeLogicTest {
         assertEquals(StageState.PEND, s.stages[1].second.first)
         assertEquals(UiText.res(R.string.home_stage_hu_parked), s.stages[1].second.second)
         assertEquals(UiText.res(R.string.notif_parked), s.notifText)
-        // отказы и зависания прошлых подключений PARKED не меняют: SERVER_DOWN только при живом мосте
+        // failures and hangs of past PARKED connections do not change: SERVER_DOWN only when the bridge is live
         val stale = HomeLogic.compute(inp(ended = true, serverRunning = true, refusedMs = 60_000, hangs = 3, worked = true))
         assertEquals(Phase.PARKED, stale.phase)
     }
@@ -209,7 +209,7 @@ class HomeLogicTest {
         assertEquals(true, s.logLink)
         assertEquals(UiText.res(R.string.home_title_server_down), s.notifTitle)
         assertEquals(UiText.res(R.string.notif_server_down), s.notifText)
-        // короткий отказ (~6 с после ByeBye) норма: обычное «Подключаюсь», без красного и без «Запустите сервер ГУ»
+        // A short rejection ( ~ 6 S after ByeBye) Normal: normal "Connecting", without red and without "Start server head unit»
         val short = HomeLogic.compute(inp(running = true, status = status, protocol = true, refusedMs = HomeLogic.REFUSED_DOWN_MS - 1, worked = true))
         assertEquals(Phase.WAITING, short.phase)
         assertEquals(false, short.showChain)
@@ -222,7 +222,7 @@ class HomeLogicTest {
         assertEquals(Phase.ERROR, s.phase)
         assertEquals(UiText.res(R.string.home_title_server_down), s.title)
         assertEquals(UiText.res(R.string.notif_server_down), s.notifText)
-        // одно зависание ещё не вывод: обычное «Подключаюсь»
+        // one hang not yet output: the usual "I connect"
         val one = HomeLogic.compute(inp(running = true, status = status, protocol = true, hangs = 1, worked = true))
         assertEquals(Phase.WAITING, one.phase)
         assertEquals(UiText.res(R.string.home_title_connecting), one.title)
@@ -230,7 +230,7 @@ class HomeLogicTest {
 
     @Test
     fun serverDownNeedsEvidenceThatItWasUp() {
-        // новичок: сервер ни разу не работал, длинный отказ и зависания не дают красного - прежнее «Запустите сервер ГУ»
+        // Newcomer: the server has never worked, a long failure and hangs do not give red - the former "Start the server head unit"
         val fresh = HomeLogic.compute(inp(running = true, status = "мост: жду сервер ГУ AA", refusedMs = 60_000))
         assertEquals(Phase.OFF, fresh.phase)
         assertEquals(UiText.res(R.string.home_title_off), fresh.title)
@@ -240,12 +240,12 @@ class HomeLogicTest {
 
     @Test
     fun serverDownOnlyWhileBridgeAttemptsAndNotOnceConnected() {
-        // моста нет (кабеля нет): прошлые отказы ничего не значат
+        // No bridge (no cable): past failures mean nothing
         assertEquals(Phase.OFF, HomeLogic.compute(inp(serverRunning = false, refusedMs = 60_000, hangs = 3, worked = true)).phase)
-        // сессия идёт: обычное «Всё работает», даже если счётчики ещё не обнулились
+        // session is going: the usual "Everything works", even if the meters are not yet zeroed
         val connected = HomeLogic.compute(inp(running = true, status = "мост: AA -> CarLife", refusedMs = 60_000, hangs = 3, worked = true))
         assertEquals(Phase.CONNECTED, connected.phase)
-        // обрыв USB: grace держит сессию, отказов нет
+        // break USB: grace hold session, no failures
         val grace = HomeLogic.compute(inp(running = true, status = "мост: USB потерян, AA жива 8 с", refusedMs = 60_000, worked = true))
         assertEquals(Phase.RECONNECTING, grace.phase)
     }

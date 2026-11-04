@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Одноразовое окно после обновления до 3.0: прямой проброс видео и частота кадров «Авто» по умолчанию -->
+<!-- Single window after upgrading to 3.0: direct passthrough video and default frequency frame "Auto" -->
 <resources>
     <string name="u30_title">Прямой проброс видео</string>
     <string name="u30_lead">Режим включён по умолчанию.</string>

@@ -13,7 +13,7 @@ import android.os.Handler
 import android.os.Looper
 import com.yegorkapomidorka.headswap.link.diag.WLog
 
-/** Состояние запроса сети машины (в отчёте как [label]). */
+/** Machine network request status (in the report as [label]). */
 enum class CarNetState(val label: String) {
     IDLE("idle"),
     REQUESTING("requesting"),
@@ -22,13 +22,13 @@ enum class CarNetState(val label: String) {
 }
 
 /**
- * Вход телефона в Wi-Fi машины через WifiNetworkSpecifier: локальная сеть без интернета, интернет остаётся на основной
- * сети (bindProcessToNetwork не используем). Колбэки приходят на главной нити. Запрос держится, пока не вызван [release]
- * (или сеть не пропала: тогда [state] сбрасывается в IDLE и вызывающий решает, просить ли заново).
- * Первая попытка WPA2, при отказе с паролем - одна повторная WPA3; без пароля сеть открытая.
- * SSID и пароль в WL не попадают, из исключений в лог идёт только имя класса.
+ * Phone input to Wi-Fi machine via WifiNetworkSpecifier: local network without internet, internet remains on main
+ * network (bindProcessToNetwork not used). The callbacks come to main thread. Request is held until called [release]
+ * (or network is not lost: then [state] resets to IDLE and caller decides whether to ask again).
+ * The first attempt of WPA2, if you fail with a password - one repeated WPA3; without a password, the network is open.
+ * SSID and the password in WL do not fall into the log, only the class name goes to the log.
  *
- * [onState] - зеркало состояния для отчёта: пишет только экземпляр сервиса, проверка из настроек его не передаёт.
+ * [onState] - status mirror for the report: writes only an instance of the service, checking from the settings does not transmit it.
  */
 class CarNetwork(ctx: Context, private val onState: (CarNetState) -> Unit = {}) {
     private val app = ctx.applicationContext
@@ -41,11 +41,11 @@ class CarNetwork(ctx: Context, private val onState: (CarNetState) -> Unit = {}) 
             onState(v)
         }
 
-    /** Сеть машины, пока [state] == AVAILABLE. */
+    /** Machine network until [state] == AVAILABLE. */
     @Volatile var current: Network? = null
         private set
 
-    /** Интерфейс сети машины (wlan0/wlan1): по нему отбираем адреса для маяка. Известен вместе с [current]. */
+    /** Machine network interface (wlan0/wlan1): we select addresses for the beacon. Known together with [current]. */
     @Volatile var ifaceName: String? = null
         private set
 
@@ -63,8 +63,8 @@ class CarNetwork(ctx: Context, private val onState: (CarNetState) -> Unit = {}) 
     )
 
     /**
-     * Запросить сеть. Уже просим или получили - ничего не делаем. [onAvailable] зовётся, когда известны и сеть, и имя
-     * интерфейса; [onUnavailable] - сеть не нашлась, отказ в диалоге или ошибка запроса (reason - короткий код).
+     * Request a network. We already ask or received - we do nothing. [onAvailable] is called when both the network and the name are known
+     * interface; [onUnavailable] - network not found, dialogue failure or request error (reason - short code).
      */
     fun request(
         ssid: String,
@@ -80,10 +80,10 @@ class CarNetwork(ctx: Context, private val onState: (CarNetState) -> Unit = {}) 
         start(Params(ssid, pass, timeoutMs, onAvailable, onUnavailable, onLost), Sec.entries.first { it.label == first })
     }
 
-    /** Удачная защита из [CarWifi], если просим именно сохранённую сеть машины. */
+    /** Good protection from [CarWifi], if we ask for the saved network of the machine. */
     private fun rememberedSec(ssid: String): String? = CarWifi(app).let { if (it.ssid == ssid) it.sec else null }
 
-    /** Снять запрос (и сеть, если её держал только он). Можно звать сколько угодно раз. */
+    /** Remove the request (and network, if only he held it). You can call as many times as you want. */
     fun release(why: String) {
         val c = cb
         cb = null
@@ -110,7 +110,7 @@ class CarNetwork(ctx: Context, private val onState: (CarNetState) -> Unit = {}) 
                 .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .setNetworkSpecifier(spec)
                 .build()
-        } catch (e: Exception) {      // длина SSID, короткий пароль: message может содержать SSID, в лог только класс
+        } catch (e: Exception) {      // length SSID, short password: message can contain SSID, in log only class
             cb = null
             fail(p, sec, e.javaClass.simpleName)
             return
@@ -139,7 +139,7 @@ class CarNetwork(ctx: Context, private val onState: (CarNetState) -> Unit = {}) 
         private var net: Network? = null
         private var ready = false
 
-        /** Колбэк прошлой попытки или уже снятый запрос. */
+        /** Colback of a previous attempt or already withdrawn request. */
         private fun stale() = cb !== this
 
         fun unregister() {
@@ -147,7 +147,7 @@ class CarNetwork(ctx: Context, private val onState: (CarNetState) -> Unit = {}) 
             registered = false
             try {
                 cm.unregisterNetworkCallback(this)
-            } catch (_: IllegalArgumentException) {      // таймаут: система регистрацию уже сняла
+            } catch (_: IllegalArgumentException) {      // Timeout: registration system has already been removed
             }
         }
 
@@ -155,7 +155,7 @@ class CarNetwork(ctx: Context, private val onState: (CarNetState) -> Unit = {}) 
             if (!stale()) net = network
         }
 
-        /** Имя интерфейса берём отсюда: в onAvailable LinkProperties ещё нет. */
+        /** The name of the interface is taken from here: onAvailable LinkProperties does not yet exist. */
         override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
             if (stale() || ready || network != net) return
             val name = linkProperties.interfaceName ?: return
@@ -174,7 +174,7 @@ class CarNetwork(ctx: Context, private val onState: (CarNetState) -> Unit = {}) 
             unregister()
             WLog.ev(NET, "car-unavailable", "sec" to sec.label)
             if (CarSecPolicy.retryWpa3(rememberedSec(p.ssid), sec.label, p.pass.isNotEmpty())) {
-                start(p, Sec.WPA3)      // сеть могла быть WPA3: одна повторная попытка
+                start(p, Sec.WPA3)      // network could be WPA3: one retry
                 return
             }
             cb = null

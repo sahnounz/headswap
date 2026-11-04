@@ -18,16 +18,16 @@ import com.yegorkapomidorka.headswap.AppLog
 import com.yegorkapomidorka.headswap.R
 
 /**
- * Одноразовое окно «Отказ от спецвозможностей» для тех, кто обновился до 2.6.0: службы спецвозможностей больше нет,
- * сервер ГУ включают вручную. Новички узнают это из онбординга, им окно не нужно.
+ * One-time window "Opt out of special features" for those who have upgraded to 2.6.0: accessibility service is no more,
+ * The head unit server is manually enabled. Beginners will learn this from the onboarding, they do not need a window.
  */
 object UpgradeNotice {
     enum class Launch { NONE, ONBOARDING, NOTICE_30, NOTICE, NOTICE_40 }
 
     /**
-     * Обычное открытие приложения: что показать, не больше одного окна за запуск. Сначала окно 3.0 ([Upgrade30Notice]),
-     * окно 2.6.0 (если его ещё не видели) - при следующем запуске, окно 4.0 ([Upgrade40Notice]) - после них: старые
-     * объявления не вытесняются новым. Флаг «показано» ставится в каждом случае (см. MainActivity).
+     * Normal application opening: what to show, no more than one window per startup. First window 3.0 ([Upgrade30Notice]),
+     * window 2.6.0 (if not seen yet) - on the next startup, window 4.0 ([Upgrade40Notice]) - after them: old
+     * Ads are not replaced by new ones. The flag "shown" is placed in each case (see MainActivity).
      */
     fun onLaunch(onboardingDone: Boolean, v30Shown: Boolean, noticeShown: Boolean, v40Shown: Boolean): Launch = when {
         !onboardingDone -> Launch.ONBOARDING
@@ -50,7 +50,7 @@ object UpgradeNotice {
         dialog.show()
     }
 
-    /** Поля вокруг панели: по бокам 16 dp, сверху и снизу 24 dp, чтобы на коротком экране панель не липла к краям. */
+    /** Fields around the panel: on the sides of the 16 dp, at the top and bottom of the 24 dp, so that on the short screen the panel does not stick to the edges. */
     private fun content(c: Context, dialog: Dialog): View {
         val panel = object : LinearLayout(c) {
             override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -86,7 +86,7 @@ object UpgradeNotice {
             lp(MATCH, WRAP),
         )
 
-        // Прокручивается всё содержимое, кнопка «Понятно» остаётся внизу панели, вне прокрутки.
+        // Scrolls all the content, the button "Understood" remains at the bottom of the panel, out of scrolling.
         val scroll = ScrollView(c).apply {
             isVerticalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
@@ -115,7 +115,7 @@ object UpgradeNotice {
         )
     }
 
-    /** Блок «Плюсы» / «Минусы»; withNotif = под последним пунктом картинка-карточка уведомления. */
+    /** Block "Pluses" / "Minuses"; withNotif = under the last item picture-card notification. */
     private fun section(c: Context, head: Int, fg: Int, bg: Int, icon: Int, items: List<Int>, withNotif: Boolean): View {
         val box = c.vbox(6)
         box.addView(
@@ -148,7 +148,7 @@ object UpgradeNotice {
         }
     }
 
-    /** Картинка: карточка уведомления «Android Auto Developer» в шторке. Только для вида, нажатий нет. */
+    /** Picture: notification card «Android Auto Developer» in the curtain. Only for the view, no taps. */
     private fun notifCard(c: Context): View {
         val night = c.isNight
         val title = if (night) Color.WHITE else Color.parseColor("#1B1B1B")
@@ -172,7 +172,7 @@ object UpgradeNotice {
                 lp(0, WRAP, 1f),
             )
         }
-        // Запас под тень: иначе её обрежет прокрутка.
+        // Stock under the shade: otherwise it will be cropped by scrolling.
         return FrameLayout(c).apply {
             clipChildren = false
             pad(c, 3, 2, 3, 6)

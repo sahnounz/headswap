@@ -1,8 +1,8 @@
 package com.yegorkapomidorka.headswap.aa
 
-/** Состояние звонка телефона (на устройстве - PhoneCalls поверх TelephonyManager; в JVM-тестах - заглушка). */
+/** Phone call status (on the device - PhoneCalls on top of TelephonyManager; in JVM-tests - stub). */
 interface CallStateSource {
-    /** Подписка: [onState] получает TelephonyManager.CALL_STATE_* (0 IDLE, 1 RINGING, 2 OFFHOOK). false = не вышло (нет разрешения). */
+    /** Subscription: [onState] Get TelephonyManager.CALL_STATE_* (0 IDLE, 1 RINGING, 2 OFFHOOK). false = Failed (no permission). */
     fun start(onState: (Int) -> Unit): Boolean
 
     fun stop()
@@ -13,10 +13,10 @@ interface CallStateSource {
     }
 
     companion object {
-        /** API, с которого TelephonyCallback требует READ_PHONE_STATE; ниже PhoneStateListener работает без разрешения. */
+        /** API, from which TelephonyCallback requires READ_PHONE_STATE; below PhoneStateListener works without permission. */
         const val PERMISSION_SDK = 31
 
-        /** Слушать ли телефонию: флажок «Сообщать ГУ о звонках» включён и (на API 31+) выдан READ_PHONE_STATE. */
+        /** Listen to telephony: the check box "Report head unit calls" is enabled and (on API 31+) issued by READ_PHONE_STATE. */
         fun shouldListen(enabled: Boolean, sdk: Int, permissionGranted: Boolean) =
             enabled && (sdk < PERMISSION_SDK || permissionGranted)
 

@@ -59,7 +59,7 @@ class HotspotBeaconTest {
 
     @Test
     fun hotspotNames() {
-        // h420: Xiaomi/Qualcomm держит хотспот на wlan1; wlan0 - всегда STA
+        // h420: Xiaomi/Qualcomm keeps hotspot on wlan1; wlan0 is always STA
         for (n in listOf("swlan0", "ap0")) assertTrue(n, HotspotDetect.apIface(n, emptySet()))
         for (n in listOf("swlan0", "ap0")) assertTrue("$n без данных о STA", HotspotDetect.apIface(n, null))
         assertTrue(HotspotDetect.apIface("wlan1", emptySet()))
@@ -81,7 +81,7 @@ class HotspotBeaconTest {
 
     @Test
     fun beaconAndResponderOnLoopback() {
-        val lo = LanIface("wlan9", v4("127.0.0.1"), 30, v4("127.0.0.1"))   // broadcast = loopback: маяк приходит сюда
+        val lo = LanIface("wlan9", v4("127.0.0.1"), 30, v4("127.0.0.1"))   // broadcast = loopback: lighthouse comes here
         DatagramSocket(InetSocketAddress(InetAddress.getLoopbackAddress(), 0)).use { hu ->
             hu.soTimeout = 3000
             val b = HotspotBeacon(ifaces = { listOf(lo) }, intervalMs = 100, sweepMs = 60_000, beaconPort = hu.localPort, probePort = 0)
@@ -91,7 +91,7 @@ class HotspotBeaconTest {
                 val p = DatagramPacket(buf, buf.size)
                 hu.receive(p)
                 assertEquals("CarlifeHost", String(buf, 0, p.length))
-                // опрос 8999 -> JSON готовности обратно отправителю
+                // 8999 -> JSON ready back to sender
                 var port = -1
                 for (i in 0 until 50) {
                     port = b.probePortBound
@@ -104,7 +104,7 @@ class HotspotBeaconTest {
                     val r = DatagramPacket(buf, buf.size)
                     hu.receive(r)
                     val s = String(buf, 0, r.length)
-                    if (s == "CarlifeHost") continue   // маяк продолжает идти
+                    if (s == "CarlifeHost") continue   // The lighthouse continues.
                     assertEquals(String(BeaconCodec.READY), s)
                     break
                 }

@@ -37,13 +37,13 @@ import com.yegorkapomidorka.headswap.R
 import kotlin.math.roundToInt
 
 
-/** Ключ «пакет/класс» для запуска пакета: первый вход из каталога лаунчерных приложений. */
+/** Package/class key to run the package: first entry from the launcher application directory. */
 private fun keyFor(pkg: String?): String? =
     pkg?.let { p -> LauncherModel.catalog.firstOrNull { it.packageName == p }?.key }
 
 /**
- * Живые окна чужих приложений поверх содержимого. Лежат в корне, а не внутри экранов: TextureView должен пережить
- * уход на главный, иначе текстура умрёт под работающим приложением.
+ * Live windows of other people's applications on top of the content. Lie at the root, not inside the screens: TextureView should survive
+ * leaving for the main one, otherwise the texture will die under the working application.
  */
 @Composable
 fun EmbedLayers() {
@@ -53,12 +53,12 @@ fun EmbedLayers() {
     val cardRect = model.navCardRect
     val navKey = keyFor(model.navigatorPkg)
 
-    // навигатор: размер карточки, на весь экран справа от рейки - в режиме «Навигатор»
+    // Navigator: card size, on the entire screen to the right of the rail - in "Navigator" mode
     val navTarget = if (area == Area.Navigator) areaRect else cardRect
     LaunchedEffect(navKey, navTarget?.width, navTarget?.height) {
         EmbedHost.want(EmbedHost.nav, navKey, navTarget?.width?.roundToInt() ?: 0, navTarget?.height?.roundToInt() ?: 0)
     }
-    // приложение: одно окно на все приложения, смена приложения = launch в тот же дисплей
+    // Application: one window for all applications, changing the application = launch to the same display
     val appKey = model.appKey
     LaunchedEffect(appKey, areaRect?.width, areaRect?.height) {
         EmbedHost.want(EmbedHost.app, appKey, areaRect?.width?.roundToInt() ?: 0, areaRect?.height?.roundToInt() ?: 0)
@@ -72,7 +72,7 @@ fun EmbedLayers() {
     }
 
     val navShown = navKey != null && (area == Area.Navigator || (area == Area.Home && model.cardView == CardView.NAVIGATOR))
-    // подпись окна навигатора в углу карточки (макет v2); на весь экран не нужна
+    // signature of the navigator window in the corner of the card (v2 layout); no full screen required
     val navPkg = model.navigatorPkg
     val navTag = if (area != Area.Navigator && navPkg != null) remember(navPkg) { LauncherModel.packageLabel(navPkg) } else null
     EmbedLayer(EmbedHost.nav, navTarget, shown = navShown, interactive = area == Area.Navigator,
@@ -106,8 +106,8 @@ internal fun EmbedLayer(
     val shape = RoundedCornerShape(if (rounded) m.dp(m.spec.radius) else m.dp(0))
     val w = with(density) { rect.width.roundToInt().toDp() }
     val h = with(density) { rect.height.roundToInt().toDp() }
-    // Скрытый слой уводим за экран: AndroidView в Compose забирает касания в своих границах даже с INVISIBLE,
-    // и спрятанная карточка навигатора глушила стрелки «Все приложения». Сам TextureView при этом живёт.
+    // Hidden layer is removed behind the screen: AndroidView in Compose takes touch within its boundaries even with INVISIBLE.
+    // and the hidden card of the navigator jammed the arrows "All applications". TextureView itself lives on.
     Box(
         Modifier.absoluteOffset { if (shown) IntOffset(rect.left.roundToInt(), rect.top.roundToInt()) else OFFSCREEN }
             .size(w, h).clip(shape),
@@ -120,7 +120,7 @@ internal fun EmbedLayer(
                     surfaceTextureListener = object : TextureView.SurfaceTextureListener {
                         override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) = EmbedHost.textureAvailable(slot, st)
                         override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) = Unit
-                        // текстура принадлежит слоту: под ней работает продюсер дочернего дисплея
+                        // texture belongs to the slot: a child display producer works under it
                         override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean = synchronized(slot.lock) { slot.texture !== st }
                         override fun onSurfaceTextureUpdated(st: SurfaceTexture) = Unit
                     }
@@ -147,31 +147,31 @@ internal fun EmbedLayer(
                     }
                 }
             } else if (onCardTap != null && !interactive) {
-                // карточка навигатора: тап разворачивает окно, касания в приложение не идут
+                // Navigation card: tap opens the window, touch does not go to the application
                 Pressable(Modifier.fillMaxSize(), onTap = onCardTap) {}
             }
             if (tag != null && status == EmbedStatus.READY) {
-                // подпись без обработки касаний: тап проходит к карточке под ней
+                // signature without touching: tap passes to the card under it
                 Box(
                     Modifier.align(Alignment.BottomStart).padding(start = m.dp(m.spec.g8), bottom = m.dp(m.spec.g8))
                         .clip(RoundedCornerShape(m.dp(m.spec.radius))).background(LocalPalette.current.tagBg)
                         .padding(horizontal = m.dp(m.spec.g8), vertical = m.dp(m.spec.b4)),
                 ) { Txt(tag, m.spec.tag, color = Pal.SEC2) }
             }
-            // лента: «Вид карточки» на карте поверх окна навигатора (в рейке ему места нет)
+            // tape: "Card view" on the map above the window of the navigator (there is no place for it in the rail)
             if (cardViewButton) MapCardViewButton(Modifier.align(Alignment.TopEnd))
         }
     }
 }
 
-/** Карточка на месте навигации: живое окно навигатора (рисует слой), выбор навигатора или большие часы. */
+/** The card is in place of navigation: a live window of the navigator (draws a layer), the choice of the navigator or a large clock. */
 @Composable
 fun NavCard(modifier: Modifier) {
     val model = LauncherModel
     val m = LocalMetrics.current
     val s = m.spec
     CardBox(modifier.onGloballyPositioned { if (model.cardView == CardView.NAVIGATOR) model.navCardRect = it.boundsInRoot() }, background = LocalPalette.current.mapBg) {
-        // копия кнопки ленты для часов и выбора навигатора: окна навигатора поверх нет, а значит, нет и его копии
+        // a copy of the button of the tape for the clock and the choice of the navigator: there is no window on top of the navigator, which means that there is no copy of it
         if (s.strip) MapCardViewButton(Modifier.align(Alignment.TopEnd).zIndex(1f))
         when {
             model.cardView == CardView.CLOCK -> ClockFace()
@@ -191,7 +191,7 @@ fun NavCard(modifier: Modifier) {
     }
 }
 
-/** Стеклянная кнопка «Вид карточки» в правом верхнем углу карты (только лента 1280x480). */
+/** Glass button "View card" in the upper right corner of the map (only 1280x480 tape). */
 @Composable
 private fun MapCardViewButton(modifier: Modifier) {
     val m = LocalMetrics.current
@@ -200,7 +200,7 @@ private fun MapCardViewButton(modifier: Modifier) {
         modifier.padding(top = m.dp(s.g8), end = m.dp(s.g8)).border(m.dp(1), GlassBorder, CircleShape))
 }
 
-/** Вид «Часы»: крупные часы и дата. */
+/** Type of watch: large clock and date. */
 @Composable
 private fun ClockFace() {
     val m = LocalMetrics.current
@@ -214,7 +214,7 @@ private fun ClockFace() {
     }
 }
 
-/** Область под встроенным приложением: слой рисуется поверх, здесь только фон. */
+/** The area under the built-in application: the layer is drawn on top, there is only a background. */
 @Composable
 fun EmbedAreaBackdrop() {
     Box(Modifier.fillMaxSize().background(LocalPalette.current.bgSolid))

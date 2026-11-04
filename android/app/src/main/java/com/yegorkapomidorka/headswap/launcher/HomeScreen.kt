@@ -39,7 +39,7 @@ import com.yegorkapomidorka.headswap.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** Подложка карточки главного экрана. */
+/** Main screen card substrate. */
 @Composable
 fun CardBox(modifier: Modifier = Modifier, background: Color = Pal.SURFACE, shape: Shape? = null, content: @Composable BoxScope.() -> Unit) {
     val m = LocalMetrics.current
@@ -48,16 +48,16 @@ fun CardBox(modifier: Modifier = Modifier, background: Color = Pal.SURFACE, shap
     }
 }
 
-/** Главный экран: строка статуса, верхний ряд (музыка | навигация) и нижний (приложения | телефон). */
+/** Main screen: status bar, top row (music | navigation) and bottom (applications | phone). */
 @Composable
 fun HomeScreen() {
     val m = LocalMetrics.current
     val s = m.spec
-    // нижний ряд прибит к краю экрана, как блок навигации на рейке: снизу без поля
+    // bottom row nailed to the edge of the screen, like a navigation unit on the rail: bottom without field
     Column(Modifier.fillMaxSize().padding(start = m.dp(s.g), top = m.dp(s.g8), end = m.dp(s.m), bottom = m.dp(if (s.strip) s.m else 0))) {
         StatusBar()
         Spacer(Modifier.height(m.dp(s.g8)))
-        // «Карта слева»: оба ряда в обратном порядке (row-reverse), рейка и содержимое карточек не зеркалятся
+        // “Map to the left”: both rows in reverse order (row-reverse), the rail and the contents of the cards do not mirror
         val mirror = LauncherModel.mapLeft
         Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(m.dp(s.g))) {
             val top = buildList<@Composable RowScope.() -> Unit> {
@@ -82,7 +82,7 @@ fun HomeScreen() {
     }
 }
 
-/** Слоты быстрого ряда: первые n приложений списка и «+» сразу за ними. */
+/** Fast-series slots: the first n applications of the list and the “+” just behind them. */
 sealed interface QuickSlot {
     data class App(val ref: AppRef) : QuickSlot
     data object Plus : QuickSlot
@@ -112,7 +112,7 @@ private fun QuickAppsRow() {
         for (slot in slots) {
             Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
                 when (slot) {
-                    // без подписей: в быстром ряду иконок достаточно, подписи только обрезались («Доба…»)
+                    // without signatures: there are enough icons in the quick row, the signatures were only cropped ("Day...")
                     is QuickSlot.App -> AppTile(slot.ref, labelled = false, onLong = { LauncherModel.confirmRemove = slot.ref })
                     QuickSlot.Plus -> PlusTile(labelled = false)
                     QuickSlot.Empty -> Unit
@@ -122,7 +122,7 @@ private fun QuickAppsRow() {
     }
 }
 
-/** Узкая лента: сетка приложений без подписей, первые 5 + «+». */
+/** Narrow tape: a network of applications without signatures, the first 5 + "+". */
 @Composable
 private fun AppsGrid(columns: Int, rows: Int) {
     val m = LocalMetrics.current
@@ -148,8 +148,8 @@ private fun AppsGrid(columns: Int, rows: Int) {
 
 @Composable
 fun rememberAppIcon(ref: AppRef): ImageBitmap? {
-    // initialValue produceState берёт только при первой композиции: при смене ref (листание страниц,
-    // слот переиспользуется) value осталась бы иконкой прошлого приложения - сбрасываем сами.
+    // initialValue produceState takes only at the first composition: when changing ref (pages,
+    // value would remain an icon of the previous application - we reset ourselves.
     val icon by produceState(LauncherModel.cachedIcon(ref), ref) {
         value = LauncherModel.cachedIcon(ref)
         if (value == null) value = withContext(Dispatchers.IO) { LauncherModel.loadIcon(ref) }
@@ -157,7 +157,7 @@ fun rememberAppIcon(ref: AppRef): ImageBitmap? {
     return icon
 }
 
-/** Иконка-кружок приложения (+ подпись в быстром ряду). Тап запускает; долгий тап в нижнем ряду главного - «Убрать?». */
+/** Application icon-circle (+ signature in the quick row). Tap launches; long tap in the bottom row of the main one - "Remove?" */
 @Composable
 fun AppTile(
     ref: AppRef, labelled: Boolean, onLong: (() -> Unit)? = null, iconPx: Int? = null,
@@ -191,7 +191,7 @@ fun AppCircle(ref: AppRef, sizePx: Int) {
     }
 }
 
-/** Закреплённый «+»: открывает выбор приложения для нижнего ряда. */
+/** Fixed “+”: opens the application selection for the bottom row. */
 @Composable
 fun PlusTile(labelled: Boolean, iconPx: Int? = null, onTap: () -> Unit = { LauncherActions.openPicker() }) {
     val m = LocalMetrics.current

@@ -1,21 +1,23 @@
-# NNNN. Решение одной фразой в утвердительной форме
+# NNNN. Short decision title
 
-- Статус: принято | заменено NNNN | отменено
-- Дата: ГГГГ-ММ-ДД
-- Источники: PR #N, коммит, кейс hNN, `path/File.kt`
+- Status: accepted | superseded by NNNN | under consideration
+- Date: YYYY-MM-DD
+- Sources: PR #N, case hNN, discussion (date), file:line
 
-## Контекст
+## Context
 
-Какая проблема, на каких машинах проявилась, какие были ограничения. 2–5 предложений.
+What problem was being solved, and under which constraints? Two to four lines.
 
-## Решение
+## Decision
 
-Что сделали. Где это в коде.
+What was chosen, and where is it implemented? Include file and function references.
 
-## Альтернативы
+## Alternatives
 
-- Вариант — почему нет (проверено на машине / не проверено / дороже).
+- What was tried or considered, and why was it rejected? Include a log or PR reference when available.
 
-## Последствия
+## Consequences
 
-Что теперь нельзя ломать, что стало сложнее, когда пересмотреть.
+- Trade-offs, risks, limits, and conditions that would justify revisiting the decision.
+
+If the reason is unknown, write `Why: ? (ask Yegor)`; do not invent it.

@@ -8,7 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CustomVideoModeTest {
-    /** Расчёт геометрии без проверки диапазона ввода: конструктор воспроизводит и размеры вне диапазона Dev-экрана (800x480, 1024x600). */
+    /** Calculation of geometry without checking the input range: the designer reproduces and sizes outside the Dev- screen range (800x480, 1024x600). */
     private fun layout(w: Int, h: Int) = CustomVideoMode(w, h)
 
     private fun assertLayout(w: Int, h: Int, aa: String, mw: Int, mh: Int) {
@@ -26,7 +26,7 @@ class CustomVideoModeTest {
         assertLayout(1920, 640, "1920x1080", 0, 440)       // WIDE_640
         assertLayout(1280, 640, "1280x720", 0, 80)         // WIDE_2_1
         assertLayout(2240, 976, "1920x1080", 0, 244)       // WIDE_976
-        assertLayout(1024, 600, "1280x720", 256, 120)      // R1024 (вне диапазона Dev: высота < 640)
+        assertLayout(1024, 600, "1280x720", 256, 120)      // R1024 (out of range Dev: height < 640)
         assertLayout(800, 480, "800x480", 0, 0)            // R800
         assertLayout(1920, 720, "1920x1080", 0, 360)       // WIDE_HD
         assertLayout(1728, 648, "1920x1080", 192, 432)     // WIDE_MID
@@ -57,10 +57,10 @@ class CustomVideoModeTest {
         assertNull(CustomVideoMode.from(639, 640))
         assertNull(CustomVideoMode.from(1000, 639))
         assertNull(CustomVideoMode.from(2242, 800))
-        assertNull(CustomVideoMode.from(1281, 720))        // нечётная ширина
-        assertNull(CustomVideoMode.from(1280, 721))        // нечётная высота
-        assertNull(CustomVideoMode.from(1920, 1082))       // высота > 1080
-        assertNull(CustomVideoMode.from(1082, 1920))       // вертикальный шире 1080
+        assertNull(CustomVideoMode.from(1281, 720))        // odd width
+        assertNull(CustomVideoMode.from(1280, 721))        // odd height
+        assertNull(CustomVideoMode.from(1920, 1082))       // height > 1080
+        assertNull(CustomVideoMode.from(1082, 1920))       // Vertical Wider 1080
         assertNull(CustomVideoMode.from(0, 0))
         assertEquals(CustomResError.WIDTH_RANGE, CustomVideoMode.check(2242, 800))
         assertEquals(CustomResError.HEIGHT_RANGE, CustomVideoMode.check(1920, 1082))
@@ -76,14 +76,14 @@ class CustomVideoModeTest {
 
     @Test
     fun portraitUsesPortraitPlates() {
-        assertLayout(960, 1280, "1080x1920", 120, 640)     // 1:1 из 1080x1920
+        assertLayout(960, 1280, "1080x1920", 120, 640)     // 1:1 from 1080x1920
         assertLayout(720, 1280, "720x1280", 0, 0)
         assertLayout(640, 960, "720x1280", 80, 320)
-        val tall = CustomVideoMode(1080, 2240)             // выше 1920: аспект вписывается в 1080x1920
+        val tall = CustomVideoMode(1080, 2240)             // above 1920: the aspect fits into 1080x1920
         assertEquals("1080x1920", tall.aaResolution)
         assertEquals(1920, tall.areaH)
         assertEquals(926, tall.areaW)
-        AapMessages.serviceDiscoveryResponse(CustomVideoMode(960, 1280).sdOptions(false))   // код 7 есть, не бросает
+        AapMessages.serviceDiscoveryResponse(CustomVideoMode(960, 1280).sdOptions(false))   // 7 code is, does not throw
     }
 
     @Test
@@ -101,7 +101,7 @@ class CustomVideoModeTest {
                 assertEquals(tag, m.aaW - m.marginW, m.areaW)
                 assertEquals(tag, m.aaH - m.marginH, m.areaH)
                 assertTrue(tag, m.needsTranscode)
-                // без масштаба область = кадр, иначе вписанный аспект
+                // without scale area = frame, otherwise inscribed aspect
                 if (w <= 1920) assertTrue(tag, m.areaW == w && m.areaH == h)
                 else assertEquals(tag, w.toDouble() / h, m.areaW.toDouble() / m.areaH, 0.01)
             }
@@ -114,7 +114,7 @@ class CustomVideoModeTest {
         val e = VideoMode.WIDE_976
         val pts = listOf(0 to 0, 2239 to 975, 1120 to 488, 3000 to 2000, 57 to 601, 2239 to 0, 0 to 975, -5 to -300)
         for ((x, y) in pts) assertEquals("$x,$y", e.mapTouch(x, y), c.mapTouch(x, y))
-        assertEquals(0 to 0, c.mapTouch(0, 0))                       // углы кадра -> углы области
+        assertEquals(0 to 0, c.mapTouch(0, 0))                       // frame -> Area Angles
         assertEquals(1919 to 835, c.mapTouch(2239, 975))
         assertEquals(1919 to 0, c.mapTouch(2239, 0))
         assertEquals(0 to 835, c.mapTouch(0, 975))
@@ -125,22 +125,22 @@ class CustomVideoModeTest {
         val c = layout(1920, 640)
         assertEquals(VideoMode.WIDE_640.mapTouch(2000, 900), c.mapTouch(2000, 900))
         assertEquals(57 to 601, c.mapTouch(57, 601))
-        assertEquals(7 to 9, layout(1280, 720).mapTouch(7, 9))        // полей нет - 1:1
+        assertEquals(7 to 9, layout(1280, 720).mapTouch(7, 9))        // fields no - 1:1
     }
 
     @Test
     fun bitrateClamp() {
-        assertEquals(2_000_000, layout(640, 640).bitrate)             // 1.78M -> нижний предел
+        assertEquals(2_000_000, layout(640, 640).bitrate)             // 1.78M -> Lower limit
         assertEquals(4_000_000, layout(1280, 720).bitrate)
         assertEquals(6_000_000, layout(1920, 720).bitrate)
-        assertEquals(8_000_000, layout(2240, 1080).bitrate)           // верхний предел
+        assertEquals(8_000_000, layout(2240, 1080).bitrate)           // upper limit
         assertEquals(8_000_000, layout(2240, 976).bitrate)
-        assertEquals(8_000_000, layout(1920, 1080).bitrate)           // 9M -> верхний предел
+        assertEquals(8_000_000, layout(1920, 1080).bitrate)           // 9M -> upper limit
     }
 
     @Test
     fun transcodeIsMandatory() {
-        assertTrue(layout(1280, 720).needsTranscode)                   // даже без полей
+        assertTrue(layout(1280, 720).needsTranscode)                   // Even without fields.
         assertSame(VideoMode.R720, layout(2240, 976).effective(transcode = false))
         assertSame(VideoMode.R720, layout(1280, 720).effective(transcode = false))
         assertEquals(layout(2240, 976), layout(2240, 976).effective(transcode = true))
@@ -159,7 +159,7 @@ class CustomVideoModeTest {
     fun resolveFallsBackToPreset() {
         assertSame(VideoMode.WIDE, CustomVideoMode.resolve(false, 2240, 976, VideoMode.WIDE))
         assertEquals(CustomVideoMode(2240, 976), CustomVideoMode.resolve(true, 2240, 976, VideoMode.WIDE))
-        // невалидные сохранённые значения = пресет
+        // invalid stored values = preset
         assertSame(VideoMode.WIDE, CustomVideoMode.resolve(true, 639, 976, VideoMode.WIDE))
         assertSame(VideoMode.WIDE, CustomVideoMode.resolve(true, 1281, 720, VideoMode.WIDE))
         assertSame(VideoMode.WIDE, CustomVideoMode.resolve(true, 1082, 1920, VideoMode.WIDE))

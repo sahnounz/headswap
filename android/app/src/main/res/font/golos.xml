@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Golos Text (OFL, Google Fonts), вариативный шрифт: веса 400/500/600/700 -->
+<!-- Golos Text (OFL, Google Fonts), variable font: weights 400/500/600/700 -->
 <font-family xmlns:android="http://schemas.android.com/apk/res/android">
     <font
         android:font="@font/golos_text_vf"

@@ -73,7 +73,7 @@ class LauncherLogicTest {
     @Test fun allAppsIsWholeCatalogInItsOrder() {
         val c = (1..30).map { AppRef("p$it", "p$it.Main") }
         assertEquals(c, CatalogLists.all(c))
-        assertEquals(c.take(2), CatalogLists.all(c.take(2) + c.take(2))) // дубли компонента не показываются дважды
+        assertEquals(c.take(2), CatalogLists.all(c.take(2) + c.take(2))) // component duplicates are not shown twice
         assertEquals(emptyList<AppRef>(), CatalogLists.all(emptyList()))
     }
 
@@ -92,7 +92,7 @@ class LauncherLogicTest {
         assertEquals(4, pages)
         val seen = (0 until pages).flatMap { Pager.slice(CatalogLists.all(c), it, perPage) }
         assertEquals(c, seen)
-        // запомненная страница после удаления приложений не вылетает за конец
+        // Remembered page after removal of applications does not fly for the end
         assertEquals(1, Pager.clamp(Int.MAX_VALUE / 2, 9, perPage))
     }
 
@@ -126,7 +126,7 @@ class LauncherLogicTest {
             quickSlots(emptyList(), 5))
         assertEquals(listOf(QuickSlot.App(apps[0]), QuickSlot.App(apps[1]), QuickSlot.Plus),
             quickSlots(apps.take(2), 2).take(3))
-        // больше пяти: плюс закреплён шестым, лишние в быстрый ряд не попадают
+        // more than five: plus fixed sixth, extras in the quick row do not fall
         val full = quickSlots(apps, 5)
         assertEquals(6, full.size)
         assertEquals(QuickSlot.App(apps[4]), full[4])
@@ -151,7 +151,7 @@ class LauncherLogicTest {
     @Test fun afterBackClosesWhenTaskIsGoneOrInBackground() {
         assertEquals(TaskCheck.AfterBack.CLOSED, TaskCheck.afterBack(0, last = false))
         assertEquals(TaskCheck.AfterBack.CLOSED, TaskCheck.afterBack(1, last = true))
-        // moveTaskToBack: задача осталась первой, но не видна
+        // moveTaskToBack: task remains first, but not visible
         assertEquals(TaskCheck.AfterBack.CLOSED, TaskCheck.afterBack(TaskCheck.MOVED_TO_BACK, last = false))
     }
 
@@ -163,17 +163,17 @@ class LauncherLogicTest {
     }
 
     @Test fun backNeverBlocksTouchesForLongAndGivesUpBeforeTwoSeconds() {
-        // касания: не дольше секунды после Back, даже если состояние так и не узнали
+        // touch: no longer than a second after Back, even if the condition never recognized
         assertTrue(TaskCheck.blockedAfterBack(1_000, 900))
         assertTrue(TaskCheck.blockedAfterBack(1_899, 900))
         assertFalse(TaskCheck.blockedAfterBack(1_900, 900))
         assertFalse(TaskCheck.blockedAfterBack(5_000, 900))
-        assertFalse(TaskCheck.blockedAfterBack(1_000, 0)) // Back не было / проверка закончилась
+        assertFalse(TaskCheck.blockedAfterBack(1_000, 0)) // Back was not / inspection ended
         assertTrue(TaskCheck.BACK_BLOCK_MS <= 1_000)
-        // решение при неизвестном состоянии - на последней проверке, не позже 1,5 с от Back
+        // solution in unknown condition - at the last check, no later than 1,5 with from Back
         assertEquals(1_500L, TaskCheck.BACK_CHECKS.sum())
         assertTrue(TaskCheck.BACK_CHECKS.sum() > TaskCheck.BACK_BLOCK_MS)
-        // -1 на всех проверках кончается UNKNOWN: EmbedHost считает приложение ушедшим и возвращает на главный
+        // -1 on all checks ends UNKNOWN: EmbedHost considers the application gone and returns to the main
         var result = TaskCheck.afterBack(-1, last = false)
         for (i in 1 until TaskCheck.BACK_CHECKS.size) {
             assertEquals(TaskCheck.AfterBack.UNKNOWN_MORE, result)
@@ -190,9 +190,9 @@ class LauncherLogicTest {
             assertEquals(Area.Home, BackNav.target(a, Area.Home))
             assertEquals(a, BackNav.remembered(a))
         }
-        // из выбора приложения, открытого из настроек, - обратно в настройки
+        // from the selection of the application open from the settings - back to the settings
         assertEquals(Area.Settings, BackNav.target(Area.Picker, Area.Settings))
-        // себя же и встроенные окна не запоминаем: идём на главный
+        // We do not remember ourselves and built-in windows: we go to the main
         assertEquals(Area.Home, BackNav.target(Area.Settings, Area.Settings))
         assertEquals(Area.Home, BackNav.target(Area.AllApps, Area.Navigator))
         assertNull(BackNav.remembered(Area.Home))
@@ -201,7 +201,7 @@ class LauncherLogicTest {
     }
 
     @Test fun backInsideAboutStepsLicenseThenSystemThenLeaves() {
-        // открыт текст лицензии -> список лицензий -> «Система» -> шагов внутри настроек больше нет
+        // open license text -> license list -> "System" -> steps inside the settings are no longer
         assertEquals(SettingsPage.ABOUT to false, BackNav.settingsStep(SettingsPage.ABOUT, licenseOpen = true))
         assertEquals(SettingsPage.SYSTEM to false, BackNav.settingsStep(SettingsPage.ABOUT, licenseOpen = false))
         for (p in SettingsPage.entries.filter { it != SettingsPage.ABOUT }) assertNull(BackNav.settingsStep(p, licenseOpen = false))
@@ -218,15 +218,15 @@ class LauncherLogicTest {
         assertTrue(TaskCheck.needsRelaunch(1, stale = false))
         assertFalse(TaskCheck.needsRelaunch(2, stale = true))
         assertTrue(TaskCheck.needsRelaunch(TaskCheck.MOVED_TO_BACK, stale = false))
-        // -1 без Back с неизвестным итогом не мигает «Запускаем…» при каждом показе
+        // -1 without Back with an unknown result does not flash "Start..." at each show
         assertFalse(TaskCheck.needsRelaunch(-1, stale = false))
         assertTrue(TaskCheck.needsRelaunch(-1, stale = true))
     }
 
     @Test fun vanishedNeedsTopSeenBefore() {
-        assertFalse(TaskCheck.vanished(0, seenTop = false)) // приложение ещё стартует
+        assertFalse(TaskCheck.vanished(0, seenTop = false)) // app is still starting
         assertTrue(TaskCheck.vanished(0, seenTop = true))
-        assertFalse(TaskCheck.vanished(1, seenTop = true)) // диалог другого пакета в той же задаче - не закрытие
+        assertFalse(TaskCheck.vanished(1, seenTop = true)) // dialogue of another package in the same task - not closing
         assertFalse(TaskCheck.vanished(TaskCheck.MOVED_TO_BACK, seenTop = true))
         assertFalse(TaskCheck.vanished(-1, seenTop = true))
     }
@@ -234,26 +234,26 @@ class LauncherLogicTest {
     @Test fun playerChipHasPhoneAndLastOnlinePlayer() {
         val none = PlayerChip.slots(emptySet(), null, null)
         assertEquals(listOf(PlayerChip.Slot(PlayerChip.Kind.PHONE, null, true)), none)
-        // ничего не слушали: первый установленный онлайн-плеер
+        // Listening to Nothing: The First Online Player Installed
         val all = setOf(PlayerChip.YANDEX, PlayerChip.YT_MUSIC, PlayerChip.VK, "x")
         assertEquals(listOf(PlayerChip.Kind.PHONE, PlayerChip.Kind.YANDEX), PlayerChip.slots(all, null, null).map { it.kind })
-        // второй слот подменяется тем, что слушали последним
+        // The second slot is replaced by the last one you listen to
         val vk = PlayerChip.slots(all, PlayerChip.VK, PlayerChip.VK)
         assertEquals(listOf(PlayerChip.Kind.PHONE, PlayerChip.Kind.VK), vk.map { it.kind })
         assertEquals(listOf(false, true), vk.map { it.selected })
-        // последний удалён - снова первый установленный
+        // last deleted - first installed again
         assertEquals(PlayerChip.YT_MUSIC, PlayerChip.slots(setOf(PlayerChip.YT_MUSIC), null, PlayerChip.VK)[1].pkg)
-        // выбран другой плеер (не из чипа): подсвечена ни одна кнопка
+        // selected another player (not from the chip): not a single button is highlighted
         assertEquals(listOf(false, false), PlayerChip.slots(setOf(PlayerChip.YANDEX), "com.spotify", null).map { it.selected })
     }
 
     @Test fun playerChipSlotsFromSettings() {
         val all = setOf(PlayerChip.YANDEX, PlayerChip.YT_MUSIC, PlayerChip.VK, "com.aimp")
-        // закреплённый второй слот важнее последнего услышанного
+        // The second slot is more important than the last one heard
         assertEquals(PlayerChip.YT_MUSIC, PlayerChip.slots(all, null, PlayerChip.VK, fixedOnline = PlayerChip.YT_MUSIC)[1].pkg)
-        // закреплённый удалён - снова последний
+        // deleted - last again
         assertEquals(PlayerChip.VK, PlayerChip.onlineSlot(all - PlayerChip.YT_MUSIC, PlayerChip.VK, PlayerChip.YT_MUSIC))
-        // первый слот - свой плеер из настроек, выбран и когда играет он, и когда плеер не задан
+        // the first slot - its player from the settings, selected and when it plays, and when the player is not set
         val local = PlayerChip.slots(all, "com.aimp", null, local = "com.aimp")
         assertEquals("com.aimp", local[0].pkg)
         assertTrue(local[0].selected)
@@ -270,12 +270,12 @@ class LauncherLogicTest {
     @Test fun settingsGridBordersMatchOnAllResolutions() {
         for (row in LauncherSpecs.TABLE) {
             val s = LauncherSpecs.forSize(row[0], row[1])
-            val h = row[1] - s.g8 - s.statusH - s.g8 - s.m // высота сетки под статусом
+            val h = row[1] - s.g8 - s.statusH - s.g8 - s.m // grid height under status
             val gap = s.g8
             assertEquals(0, SettingsGrid.top(0, h, gap))
             assertEquals(h, SettingsGrid.bottom(SettingsGrid.ROWS - 1, h, gap))
             for (i in 0 until SettingsGrid.ROWS - 1) {
-                // между рядами ровно зазор, ряды одной высоты +-1 px
+                // between rows exactly clearance, rows of the same height +-1 px
                 assertEquals(gap, SettingsGrid.top(i + 1, h, gap) - SettingsGrid.bottom(i, h, gap))
                 val a = SettingsGrid.bottom(i, h, gap) - SettingsGrid.top(i, h, gap)
                 val b = SettingsGrid.bottom(i + 1, h, gap) - SettingsGrid.top(i + 1, h, gap)
@@ -288,9 +288,9 @@ class LauncherLogicTest {
         assertEquals(ThemeChoice.DARK, ThemeChoice.restore("GOLD_LIGHT"))
         assertEquals(ThemeChoice.DARK, ThemeChoice.restore("GOLD"))
         assertEquals(ThemeChoice.LIGHT, ThemeChoice.restore("LIGHT"))
-        assertFalse(ThemeChoice.light(ThemeChoice.AUTO, null)) // ГУ ещё ничего не прислала
-        assertTrue(ThemeChoice.light(ThemeChoice.AUTO, 0)) // день
-        assertFalse(ThemeChoice.light(ThemeChoice.AUTO, 1)) // ночь
+        assertFalse(ThemeChoice.light(ThemeChoice.AUTO, null)) // head unit has not sent anything yet
+        assertTrue(ThemeChoice.light(ThemeChoice.AUTO, 0)) // Day
+        assertFalse(ThemeChoice.light(ThemeChoice.AUTO, 1)) // Night
         assertFalse(ThemeChoice.light(ThemeChoice.AUTO, 2))
         assertTrue(ThemeChoice.light(ThemeChoice.LIGHT, 1))
     }

@@ -12,9 +12,9 @@ import com.yegorkapomidorka.headswap.BuildConfig
 import com.yegorkapomidorka.headswap.link.diag.WLog
 
 /**
- * Триггер автостарта: ACL_CONNECTED/DISCONNECTED выбранной машины ([CarProfile]) запускают и гасят ожидание по Wi-Fi.
- * В манифесте выключен (enabled=false), включается [CarProfile.enableTrigger], когда машина выбрана. Чужие устройства игнорируются.
- * На Android 12+ без BLUETOOTH_CONNECT система эти рассылки не доставляет.
+ * Autostart trigger: ACL_CONNECTED/DISCONNECTED selected machine ([CarProfile]) starts and extinguishes waiting by Wi-Fi.
+ * The manifest is off (enabled=false), [CarProfile.enableTrigger] is turned on when the machine is selected. Alien devices are ignored.
+ * On Android 12+ without BLUETOOTH_CONNECT, the system does not deliver these mailings.
  */
 class CarAclReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -22,7 +22,7 @@ class CarAclReceiver : BroadcastReceiver() {
         if (action != BluetoothDevice.ACTION_ACL_CONNECTED && action != BluetoothDevice.ACTION_ACL_DISCONNECTED) return
         if (!BuildConfig.WIRELESS_BETA) return
         val mac = CarProfile(context).btMac ?: return
-        AppLog.init(context)      // рассылка может поднять процесс раньше activity и сервиса
+        AppLog.init(context)      // mailing can raise the process before activity and service
         val addr = device(intent)?.address
         if (!CarMac.same(addr, mac)) {
             if (ignoreLog.tryAcquire()) WLog.ev(WLog.TRIGGER, "ignore", "action" to action.substringAfterLast('.'))
@@ -32,13 +32,13 @@ class CarAclReceiver : BroadcastReceiver() {
             WLog.ev(WLog.TRIGGER, "acl-connected", "dev" to WLog.maskMac(addr))
             try {
                 context.startForegroundService(Intent(context, BridgeService::class.java).setAction(BridgeService.ACTION_WIFI_B_AUTO))
-            } catch (e: Exception) {      // ForegroundServiceStartNotAllowedException и пр.: из фона без исключений запуск запрещён
+            } catch (e: Exception) {      // ForegroundServiceStartNotAllowedException etc.: from the background without exception, launch is prohibited
                 AppLog.e("ACL: старт сервиса", e)
                 WLog.ev(WLog.TRIGGER, "fgs-fail", "err" to e.javaClass.simpleName)
             }
         } else {
             WLog.ev(WLog.TRIGGER, "acl-disconnected", "dev" to WLog.maskMac(addr))
-            // сервиса нет - гасить нечего; startService на пустой сервис из фона не нужен
+            // no service - there is nothing to extinguish; startService does not need an empty service from the background
             if (!BridgeService.alive) return
             try {
                 context.startService(Intent(context, BridgeService::class.java).setAction(BridgeService.ACTION_WIFI_B_AUTO_OFF))
@@ -55,7 +55,7 @@ class CarAclReceiver : BroadcastReceiver() {
         else intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
 
     private companion object {
-        /** Чужих устройств у телефона много (наушники, часы): в лог не чаще раза в минуту. */
+        /** The phone has many other devices (earphones, watches): in the log no more than once a minute. */
         val ignoreLog = MinInterval(60_000L) { SystemClock.elapsedRealtime() }
     }
 }

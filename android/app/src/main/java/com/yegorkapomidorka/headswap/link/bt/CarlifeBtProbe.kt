@@ -22,21 +22,21 @@ import java.io.IOException
 import java.util.UUID
 
 /**
- * Ветка A (Bluetooth + Wi-Fi Direct): RFCOMM-серверы `carlife`, как у Baidu MD (BluetoothClient:28-29,76,119).
- * Если ГУ умеет беспроводной CarLife через Wi-Fi Direct, она сама подключается сюда. Обмен: WIRELESS_INFO_REQUEST,
- * TARGET_INFO_REQUEST, по реквизитам из TARGET_INFO телефон входит в P2P-группу ГУ ([P2pJoin]), на IP_REQUEST
- * отвечает MD_WIFI_IP с адресом в группе. Дальше ГУ подключает TCP-каналы к Tcp6Listener (пускает [ownsPeer]).
- * Bluetooth-соединение держим, пока ждём машину и идёт сессия. Секретов в лог не пишет (см. BtSummary).
+ * A branch (Bluetooth + Wi-Fi Direct): RFCOMM-`carlife` servers, as in Baidu MD (BluetoothClient:28-29,76,119).
+ * If head unit can wirelessly CarLife through Wi-Fi Direct, it connects itself here. Exchange: WIRELESS_INFO_REQUEST,
+ * TARGET_INFO_REQUEST, according to the details from TARGET_INFO, the phone is part of P2P-group head unit ([P2pJoin]), on IP_REQUEST
+ * answers MD_WIFI_IP with an address in the group. Next head unit connects TCP-channels to Tcp6Listener (runs [ownsPeer]).
+ * Bluetooth-connection is kept while waiting for the car and the session. Secrets in the log does not write (see BtSummary).
  */
 class CarlifeBtProbe(
     private val ctx: Context,
-    /** ГУ подключилась к RFCOMM (нить bt-accept-*). */
+    /** head unit is connected to RFCOMM (thread bt-accept-*). */
     private val onAccept: () -> Unit = {},
-    /** ГУ прислала реквизиты Wi-Fi Direct, mac - адрес её Bluetooth (нить bt-accept-*). */
+    /** head unit sent the details of Wi-Fi Direct, mac - its address is Bluetooth (thread bt-accept-*). */
     private val onTargetInfo: (mac: String?) -> Unit = {},
-    /** Wi-Fi Direct занят (обычно включён хотспот телефона), главная нить. */
+    /** Wi-Fi Direct busy (usually included hotspot phone), main thread. */
     private val onP2pBusy: () -> Unit = {},
-    /** Wi-Fi на телефоне выключен (false, Wi-Fi Direct не войдёт) или включён (true) на входе в группу ГУ (главная нить). */
+    /** Wi-Fi on the phone is disabled (false, Wi-Fi Direct will not be included) or enabled (true) at the entrance to the group head unit (main thread). */
     private val onWifi: (on: Boolean) -> Unit = {},
 ) {
     @Volatile private var running = false
@@ -45,19 +45,19 @@ class CarlifeBtProbe(
     @Volatile private var accepts = 0
     @Volatile private var active: BluetoothSocket? = null
     private val p2p = P2pJoin(ctx, onBusy = { onP2pBusy() }, onWifi = { on -> onWifi(on) }, onJoined = { ip -> onP2pJoined(ip) }, onLost = { onP2pLost() })
-    /** Адрес телефона в группе ГУ (после входа) и запрос IP от ГУ: MD_WIFI_IP уходит, когда есть оба. */
+    /** The phone address in the head unit group (after login) and IP request from head unit: MD_WIFI_IP leaves when there are both. */
     @Volatile private var p2pIp: String? = null
     @Volatile private var ipRequested = false
     private val txLock = Any()
     private val main = Handler(Looper.getMainLooper())
-    /** Последние реквизиты от ГУ, даже пропущенные «уже в группе»: по ним входим заново после распада группы (h211). */
+    /** The last details from head unit, even missed "already in the group": they are re-entered after the breakup of the group (h211). */
     @Volatile private var lastTarget: P2pTarget? = null
-    /** Поколение восстановления после распада группы: новый BT-сеанс, вход в группу или стоп его отменяют. */
+    /** Generation recovery after the breakup of the group: new BT-session, group login or stop it is canceled. */
     @Volatile private var rejoinGen = 0
     @Volatile private var rejoining = false
     private var adapterReceiver: BroadcastReceiver? = null
 
-    /** Входящий TCP из P2P-группы ГУ: пускаем в Tcp6Listener наравне с подсетями маяка. */
+    /** Incoming TCP from P2P-group head unit: run in Tcp6Listener on a par with the subnets of the lighthouse. */
     fun ownsPeer(a: java.net.InetAddress): Boolean = p2p.owns(a)
 
     fun hasPermission(): Boolean =
@@ -74,7 +74,7 @@ class CarlifeBtProbe(
         lastTarget = null
         rejoinGen++
         rejoining = false
-        accepts = 0     // за этот запуск: в строке `stop` accepts= считаются подключения ГУ с последнего start
+        accepts = 0     // for this launch: in the line `stop` accepts= are considered connections head unit with the last start
         val adapter = ctx.getSystemService(BluetoothManager::class.java)?.adapter
         when {
             adapter == null -> return fail("нет адаптера")
@@ -97,19 +97,19 @@ class CarlifeBtProbe(
     }
 
     /**
-     * Ожидание без толку: нет ни RFCOMM от ГУ, ни входа в группу, либо слушатели умерли. h211: ГУ закрыла RFCOMM сразу
-     * после приглашения и за ~5 с вернула ACL; старые слушатели и P2P по мёртвой цели держались минутами, а ГУ
-     * открыла SPP только после чистого перезапуска.
+     * Waiting for no use: there is no RFCOMM from head unit, neither entry to the band, nor listeners died. h211: head unit closed RFCOMM immediately
+     * after the invitation and for ~ 5 the National Museum of Art ACLThe old listener and P2P They kept the target for minutes, and head unit
+     * opened SPP only after a clean restart.
      */
     fun idle(): Boolean = active == null && p2pIp == null || synchronized(lock) { running && servers.isEmpty() }
 
-    /** stop + start: новые записи SDP, P2P по старой цели снимается. */
+    /** stop + start: new entries of SDP, P2P for old purpose are being removed. */
     fun restart(why: String) {
         stop(why)
         start()
     }
 
-    /** Состояние Bluetooth телефона в лог: по логу иначе не понять, чей BT выключали (h211). */
+    /** Bluetooth status of the phone in log: by log it is otherwise impossible to understand whose BT was turned off (h211). */
     private fun watchAdapter() {
         if (adapterReceiver != null) return
         val r = object : BroadcastReceiver() {
@@ -155,7 +155,7 @@ class CarlifeBtProbe(
             val s = try {
                 ss.accept()
             } catch (e: IOException) {
-                // не stop(): слушатель умер сам (BT телефона выключили); restart по следующему ACL поднимет заново
+                // not stop(): listener died by himself (BT phone turned off); restart on the next ACL will pick up again
                 if (running) {
                     synchronized(lock) { servers.remove(ss) }
                     WLog.ev(WLog.BT, "listen-dead", "uuid" to tag, "err" to e.message)
@@ -179,10 +179,10 @@ class CarlifeBtProbe(
         val parser = BtFrameParser()
         var why = "?"
         var targetAsked = false
-        active?.let { old -> try { old.close() } catch (_: IOException) {} }      // ГУ переподключилась: старый канал закрываем
+        active?.let { old -> try { old.close() } catch (_: IOException) {} }      // head unit reconnected: old channel close
         active = s
         ipRequested = false
-        rejoinGen++      // ГУ переподключила BT: TARGET_INFO придёт обычным обменом, свои запросы снимаем
+        rejoinGen++      // head unit reconnected BT: TARGET_INFO will come with the usual exchange, we remove our requests
         rejoining = false
         try {
             val inp = s.inputStream
@@ -250,14 +250,14 @@ class CarlifeBtProbe(
         if (rejoining) WLog.ev(WLog.P2P, "rejoin-joined", "ipRequested" to ipRequested)
         rejoining = false
         rejoinGen++
-        // MD_WIFI_IP только на IP_REQUEST, как Baidu (BluetoothWirlessHelper:65-69, 289-291): без запроса не шлём
+        // MD_WIFI_IP on IP_REQUEST only, as Baidu (BluetoothWirlessHelper:65-69, 289-291): without request do not send
         sendIpIfReady()
     }
 
     /**
-     * Группа ГУ распалась (главная нить). Если Bluetooth тоже упал, ГУ переподключит его и пришлёт TARGET_INFO сама.
-     * Если жив (h211: Mazda G6S на заднем ходу снимает Wi-Fi Direct, RFCOMM держит), новый TARGET_INFO не придёт до сна
-     * машины: входим заново по последним реквизитам и просим TARGET_INFO сами, пока не войдём.
+     * The head unit group has broken up (main thread). If Bluetooth also fell, head unit will reconnect it and send TARGET_INFO itself.
+     * If he is alive (h211: Mazda G6S in reverse shoots Wi-Fi Direct, RFCOMM holds), the new TARGET_INFO will not come to sleep
+     * machines: re-enter the latest details and ask TARGET_INFO yourself until we enter.
      */
     private fun onP2pLost() {
         p2pIp = null
@@ -299,9 +299,9 @@ class CarlifeBtProbe(
     }
 
     /**
-     * ГУ отвечает TARGET_INFO, а группу не поднимает (h211, h185): закрываем только активный сокет, слушатели остаются.
-     * Цикл accept принимает переподключение ГУ, и TARGET_INFO приходит обычным обменом. Попытку входа снимаем: иначе
-     * тот же TARGET_INFO после переподключения попадёт в SKIP «попытка идёт». [stop] тут нельзя: он оборвёт слушателей.
+     * head unit answers TARGET_INFO, and the group does not raise (h211, h185): close only active socket, listeners remain.
+     * The accept cycle takes the head unit reconnection, and the TARGET_INFO comes with a normal exchange. Trying to log in: otherwise
+     * the same TARGET_INFO after reconnection will get in SKIP "attempt goes". [stop] here is impossible: it will break listeners.
      */
     private fun dropBt(s: BluetoothSocket, attempts: Int) {
         rejoining = false
@@ -313,7 +313,7 @@ class CarlifeBtProbe(
         try { s.close() } catch (_: IOException) {}
     }
 
-    /** MD_WIFI_IP после IP_REQUEST и входа в группу; на повторный запрос того же адреса отвечаем снова. */
+    /** MD_WIFI_IP after IP_REQUEST and group login; we will reply to the same address again. */
     private fun sendIpIfReady() {
         val ip = p2pIp ?: return
         val s = active ?: return

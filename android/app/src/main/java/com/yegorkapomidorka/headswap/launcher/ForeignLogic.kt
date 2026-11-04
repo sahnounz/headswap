@@ -3,25 +3,25 @@ package com.yegorkapomidorka.headswap.launcher
 import com.yegorkapomidorka.headswap.desktop.DesktopAppCatalog
 
 /**
- * Сторонний лаунчер (DexPrefs.desktopComponent) в дочернем окне над нашей панелью «Назад / Домой / Недавние»:
- * выбор рабочего стола, действия кнопок, защита от перезапуска по кругу и состав «Недавних». Без Android и Compose.
+ * Third-party launcher (DexPrefs.desktopComponent) in the child window above our Back / Home / Recent panel:
+ * desktop selection, button actions, circle restart protection and the composition of "Recent". Without Android and Compose.
  */
 internal object ForeignDesktop {
-    /** Сколько пакетов помнит история сеанса. */
+    /** How many packets do you remember the session history? */
     const val HISTORY_MAX = 30
 
     enum class NavKey { BACK, HOME, RECENTS }
 
     enum class NavStep {
-        /** Back в дочернее окно (закрылась задача лаунчера - его перезапускает вызывающий, один раз). */
+        /** Back in the child window (the launcher task is closed - it restarts caller once). */
         BACK_IN_WINDOW,
         CLOSE_RECENTS,
-        /** Поднять лаунчер над всем, что открыто в окне; «Недавние» при этом закрываются. */
+        /** Raise the launcher over anything that is open in the window; "Recent" is closed. */
         RAISE_LAUNCHER,
         OPEN_RECENTS,
     }
 
-    /** Что сделать по кнопке панели; [recentsOpen] - оверлей «Недавние» сейчас на экране. */
+    /** What to do with the panel button; [recentsOpen] - the recent overlay is now on the screen. */
     fun press(key: NavKey, recentsOpen: Boolean): NavStep = when (key) {
         NavKey.BACK -> if (recentsOpen) NavStep.CLOSE_RECENTS else NavStep.BACK_IN_WINDOW
         NavKey.HOME -> NavStep.RAISE_LAUNCHER
@@ -29,8 +29,8 @@ internal object ForeignDesktop {
     }
 
     /**
-     * Действующий чужой лаунчер: выбор из настроек, пока его вход годен ([usable]) и откат не включён на этом же экране ГУ.
-     * null - работает наш рабочий стол (лаунчер не выбран, пропал, отключён или откатили).
+     * A valid alien launcher: selection from the settings while its input is valid ([usable]) and rollback is not included on the same screen head unit.
+     * null - our desktop works (launcher is not selected, missing, disabled or rolled back).
      */
     fun resolve(component: String?, usable: Boolean, brokenKey: String?, displayId: Int): AppRef? {
         val ref = AppRef.parse(component ?: return null) ?: return null
@@ -38,26 +38,26 @@ internal object ForeignDesktop {
         return ref
     }
 
-    /** Метка отката: тот же лаунчер на том же экране ГУ не пробуем снова, новый сеанс или новый выбор - пробуем. */
+    /** The same launcher on the same screen head unit do not try again, a new session or a new choice - try. */
     fun brokenKey(ref: AppRef, displayId: Int): String = "${ref.key}@$displayId"
 
     /**
-     * Откат на наш рабочий стол нужен, только если лаунчер не стартовал: окно ушло в FAILED, пока в нём лаунчер.
-     * Упавший после запуска лаунчер не заменяем: ● и ◀ перезапускают его. FAILED у приложения из «Недавних» - не откат,
-     * просто поднимаем лаунчер.
+     * You need to roll back to our desktop only if launcher has not started: the window went to FAILED, while launcher. is in it
+     * Fallen after the launch of launcher is not replaceable: ● and ◀ restart it. FAILED for the application from the "Recent" - no rollback,
+     * just raise launcher.
      */
     fun afterWindowFailed(trackedIsLauncher: Boolean): Failed = if (trackedIsLauncher) Failed.FALLBACK else Failed.RAISE_LAUNCHER
 
     enum class Failed { FALLBACK, RAISE_LAUNCHER }
 
-    /** История сеанса: свежий снимок задач экрана ([current], null - не удалось узнать) первым, затем прежняя. */
+    /** Session history: a fresh snapshot of screen tasks ([current], null I couldn’t find it first, then the old one. */
     fun mergeHistory(history: List<String>, current: List<String>?): List<String> =
         ((current ?: emptyList()) + history).distinct().take(HISTORY_MAX)
 
     /**
-     * «Недавние»: пакеты истории сеанса, у которых есть вход в каталоге, без самого лаунчера (наш пакет каталог уже
-     * отфильтровал). [known] - список задач экрана удалось получить: тогда пустой результат честно пуст. Не удалось и
-     * истории нет - заглушка: все приложения каталога (по одному входу на пакет).
+     * "Recent": session history packets that have a directory login, without the launcher itself (our catalog package already
+     * filtered). [known] - the list of screen tasks could be obtained: then the empty result is honestly empty. Failed and
+     * no history - stub: all directory applications (one input per package).
      */
     fun recents(history: List<String>, known: Boolean, launcherPkg: String, catalog: List<DesktopAppCatalog.Entry>): List<AppRef> {
         val entries = catalog.filter { it.packageName != launcherPkg }.distinctBy { it.packageName }

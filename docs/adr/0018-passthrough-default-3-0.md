@@ -1,29 +1,30 @@
-# 0018. С 3.0 видео по умолчанию идёт прямым пробросом, частота кадров «Авто»
+# 0018. Since 3.0, video defaults to passthrough and Auto frame rate
 
-- Статус: принято
-- Дата: 2026-11-01
-- Источники: PR #129, заменяет 0004, `aa/AaSettings.kt` (`transcode`, `migrateTo30`), `aa/FpsSetting.kt`, `aa/CarPreset.kt`, `ui/Upgrade30Notice.kt`
+- Status: accepted
+- Date: 2026-11-01
+- Sources: PR #129, supersedes 0004, `aa/AaSettings.kt` (`transcode`, `migrateTo30`), `aa/FpsSetting.kt`, `aa/CarPreset.kt`, `ui/Upgrade30Notice.kt`
 
-## Контекст
+## Context
 
-Прямой проброс со своим IDR (0005) и SPS-кропом (#120) работает на Vezel, VW, Tucson/Mobis, Corolla Cross, Mazda G6S.
-Перекодирование греет телефон, тратит батарею и добавляет ~60 мс задержки.
+Passthrough with locally generated IDR frames (0005) and SPS cropping (#120) works on Vezel, VW, Tucson/Mobis,
+Corolla Cross, and Mazda G6S. Transcoding heats the phone, consumes battery, and adds about 60 ms of latency.
 
-## Решение
+## Decision
 
-Прямой проброс — режим по умолчанию: `transcode = false`, `FpsSetting.DEFAULT = AUTO`; все пресеты «Мой автомобиль»
-тоже на пробросе и «Авто», разрешения прежние. Исключение — Elantra 7 (ГУ CN7): проброс моргает (h638), пресет
-ставит перекодирование 1280×480 на 15 кадрах, а без пресета мост сам включает перекодирование по флагу `huHyundaiCn7`
-(как у Pioneer RM56 и Mobis CCNC). Обновившихся один раз переводит `AaPrefs.migrateTo30()` (из MainActivity
-и BridgeService, на случай запуска от USB). Один раз показывается окно «Прямой проброс видео»: если что-то не так —
-включить перекодирование, как раньше.
+Make passthrough the default: `transcode = false`, `FpsSetting.DEFAULT = AUTO`. All car presets also use
+passthrough and Auto, retaining their resolutions. Elantra 7 (CN7) is an exception because passthrough flickers (h638):
+its preset uses 1280×480 transcoding at 15 fps. Without a preset, `huHyundaiCn7` forces transcoding automatically,
+as for Pioneer RM56 and Mobis CCNC.
 
-## Альтернативы
+`AaPrefs.migrateTo30()` migrates existing users once. Both MainActivity and BridgeService call it to cover USB startup.
+A one-time passthrough notice explains how to re-enable transcoding if needed.
 
-- Менять только значение по умолчанию — нет: у тех, кто трогал переключатель, осталось бы перекодирование.
+## Alternatives
 
-## Последствия
+- Only changing the default would leave transcoding enabled for users who previously changed the switch, so this was rejected.
 
-- В пробросе частоту задаёт AA, битрейт не регулируется (0008).
-- Прежний выбор fps миграция перезаписывает на «Авто». Пресеты CR-V (h72: полосы на «Авто») и Outlander (h10, h41:
-  заработало на 15) проверить на новых значениях.
+## Consequences
+
+- AA controls the frame rate in passthrough; bitrate cannot be adjusted (0008).
+- Migration overwrites the previous frame rate selection with Auto. Validate the new defaults on CR-V
+  (h72: artifacts on Auto) and Outlander (h10, h41: worked at 15 fps).

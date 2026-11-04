@@ -23,10 +23,10 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Surface -> OpenGL -> Surface: декодер AA рисует в SurfaceTexture, GL-нить копирует кадр на Surface входа
- * энкодера (копия на GPU, без ByteBuffer) и сама перерисовывает последний кадр, если новых нет idleRedrawMs.
- * Нужна потому, что встроенный KEY_REPEAT_PREVIOUS_FRAME_AFTER в Android повторяет кадр всего ~10 раз
- * (kRepeatLastFrameCount) и умолкает: на статичном экране AA через секунду ГУ остался бы без кадров.
+ * Surface -> OpenGL -> Surface: decoder AA draws in SurfaceTexture, GL-thread copies frame to Surface input
+ * encoder (copy on GPU, without ByteBuffer) and redraws the last frame itself if no new idleRedrawMs.
+ * It is necessary because the built-in KEY_REPEAT_PREVIOUS_FRAME_AFTER in Android repeats frame total ~ 10 once
+ * (kRepeatLastFrameCount) and silent: on the static screen AA in a second head unit would be left without frame.
  */
 class GlRelay(
     private val outSurface: Surface,
@@ -34,11 +34,11 @@ class GlRelay(
     private val height: Int,
     private val idleRedrawMs: Long = 100,
     private val log: (String) -> Unit = {},
-    /** Размер исходного кадра AA (по умолчанию как выход) и вырезаемый из него прямоугольник. */
+    /** The size of the original frame AA (default as an output) and the rectangle cut from it. */
     private val srcWidth: Int = width,
     private val srcHeight: Int = height,
     crop: VideoCrop = VideoCrop.NONE,
-    /** Целевая частота выхода: гейт не отдаёт кадр в энкодер чаще (0 = без ограничения). */
+    /** Target output frequency: the gate does not give frame in encoder more often (0 = no limit). */
     targetFps: Int = 0,
     limitHighFps: Boolean = false,
 ) {
@@ -56,7 +56,7 @@ class GlRelay(
     private var uMatrix = 0
     private val tm = FloatArray(16)
     private val quad: FloatBuffer = ByteBuffer.allocateDirect(16 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer().apply {
-        // x, y, u, v; кроп = центральный прямоугольник вместо всей текстуры (uSTMatrix применяется шейдером поверх)
+        // x, y, u, v; crop = central rectangle instead of the entire texture (uSTMatrix is applied by shader on top)
         put(floatArrayOf(
             -1f, -1f, crop.u0, crop.v0, 1f, -1f, crop.u1, crop.v0,
             -1f, 1f, crop.u0, crop.v1, 1f, 1f, crop.u1, crop.v1,
@@ -65,7 +65,7 @@ class GlRelay(
     }
     @Volatile private var haveFrame = false
 
-    // переход заглушка -> AA (зум-растворение), только GL-нить
+    // stub -> AA (Zum-dissolution), GL-thread only
     private var introProgram = 0
     private var iPos = 0
     private var iTex = 0
@@ -75,29 +75,29 @@ class GlRelay(
     private var iVideo = 0
     private var bannerTex = 0
     private var introArmed = false
-    /** Время первого кадра перехода (0 = ещё не нарисован). */
+    /** The time of the first frame transition (0 = not yet drawn). */
     private var introStartNs = 0L
 
-    /** Последний кадр в текстуре гейт пропустил и он ещё не показан: tick отдаст его, как только гейт откроется. Только GL-нить. */
+    /** The last frame in the texture of the gate missed and it is not shown: tick will give it as soon as the gate opens. Only GL-thread. */
     private var skipped = false
     private var lastFreshNs = 0L
     @Volatile private var released = false
     private var lastDrawNs = 0L
     @Volatile private var initError: Throwable? = null
 
-    /** Сюда декодер выводит кадры. */
+    /** Here decoder outputs frame. */
     lateinit var inputSurface: Surface
         private set
 
     val fresh = AtomicLong()
     val redraws = AtomicLong()
 
-    /** Сколько свежих кадров AA гейт не пустил в энкодер сразу (показаны позже перерисовкой или заменены следующим). */
+    /** How many fresh frame AA gates did not let in encoder immediately (shown later by redrawing or replaced by the following). */
     val gated = AtomicLong()
 
     val targetFps: Int get() = gate.targetFps
 
-    /** Целевая частота на лету, без пересоздания кодека. Любая нить. */
+    /** Target frequency on the fly, without recreating the codec. Any thread. */
     fun setTargetFps(fps: Int) {
         gate.targetFps = fps
     }
@@ -114,7 +114,7 @@ class GlRelay(
             }
             latch.countDown()
         }
-        // при отказе освобождаем EGL и нить: окно EGL держит Surface энкодера, и запасной путь (декодер прямо в энкодер) к нему не подключится
+        // when failure free EGL and thread: window EGL keeps Surface encoder, and the backup path (decoder directly in encoder) will not connect to it
         if (!latch.await(5, TimeUnit.SECONDS)) {
             stop()
             throw IllegalStateException("GL-нить не поднялась")
@@ -130,12 +130,12 @@ class GlRelay(
         override fun run() {
             if (released) return
             if (haveFrame && introArmed) {
-                // переход: рисуем каждый период гейта, иначе на статичном AA анимация шла бы по 10 кадров в секунду
+                // transition: draw every period of the gate, otherwise on a static AA animation would go on 10 frame per second
                 if (drawGated()) redraws.incrementAndGet()
             } else if (haveFrame) {
                 val now = SystemClock.elapsedRealtimeNanos()
-                // перерисовка: статика (нет новых кадров idleRedrawMs) или последний кадр, который задержал гейт и за период новых не пришло
-                // (пока поток идёт, задержанный кадр заменяется свежим и tick его не трогает: частота выхода остаётся ровной)
+                // redrawing: static (no new frame idleRedrawMs) or the last frame, which delayed the gate and during the period of new did not come
+                // (while the stream is flowing, the delayed frame is replaced with fresh and tick does not touch it: the exit frequency remains even)
                 val idle = now - lastDrawNs >= idleRedrawMs * 1_000_000
                 val lateSkipped = skipped && now - lastFreshNs >= gate.periodNs()
                 if ((idle || lateSkipped) && drawGated()) redraws.incrementAndGet()
@@ -145,8 +145,8 @@ class GlRelay(
     }
 
     /**
-     * Переход с кадра заглушки в AA: первый кадр после вызова = заглушка целиком, дальше за INTRO_MS она
-     * увеличивается и тает, а AA под ней «отъезжает» с лёгкого зума на место. Bitmap после загрузки в GL освобождается.
+     * Switching from frame stub to AA: first frame after calling = stub whole, further behind INTRO_MS it
+     * increases and melts, and AA under it "remove" from the light zoom to the place. Bitmap after loading in GL is released.
      */
     fun startIntro(banner: Bitmap) {
         if (released) return
@@ -188,16 +188,16 @@ class GlRelay(
         log("GlRelay: переход заглушка -> AA взведён (${banner.width}x${banner.height})")
     }
 
-    /** Новая AA-сессия: старый кадр больше не повторять до первого нового. */
+    /** New AA-session: old frame no more repeat until first new. */
     fun clear() {
         haveFrame = false
     }
 
-    /** Кадр в энкодер только если гейт пускает; иначе он остаётся в текстуре (updateTexImage уже сделан) до следующей перерисовки. */
+    /** frame in encoder only if the gate lets; otherwise it stays in texture (updateTexImage already done) until the next redraw. */
     private fun drawGated(fresh: Boolean = false): Boolean {
         if (!gate.shouldEmit(SystemClock.elapsedRealtimeNanos())) {
             skipped = true
-            if (fresh) gated.incrementAndGet()      // повторные отказы tick-а одного кадра не считаем
+            if (fresh) gated.incrementAndGet()      // re-failures tick-a one frame do not count
             return false
         }
         skipped = false
@@ -213,7 +213,7 @@ class GlRelay(
             try {
                 handler.removeCallbacks(tick)
                 st?.release()
-                // init() мог упасть до inputSurface: без проверки исключение пропустило бы освобождение EGL ниже
+                // init() could fall to inputSurface: without checking the exception would miss the release of EGL below
                 if (::inputSurface.isInitialized) inputSurface.release()
                 if (display != EGL14.EGL_NO_DISPLAY) {
                     EGL14.eglMakeCurrent(display, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT)
@@ -318,7 +318,7 @@ class GlRelay(
         GLES20.glEnableVertexAttribArray(texAttr)
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
         lastDrawNs = SystemClock.elapsedRealtimeNanos()
-        // timestamp кадра для энкодера: монотонное время, как у surface-источников
+        // timestamp frame for encoder: monotonous time, as in surface-sources
         EGLExt.eglPresentationTimeANDROID(display, eglSurface, System.nanoTime())
         EGL14.eglSwapBuffers(display, eglSurface)
     }
@@ -346,13 +346,13 @@ class GlRelay(
     companion object {
         private const val EGL_RECORDABLE_ANDROID = 0x3142
 
-        /** Длительность перехода заглушка -> AA. Дольше - на низком CBR-битрейте растворение рассыпается на блоки. */
+        /** The duration of the transition stub -> AA. Longer - on a low CBR-bitrate, dissolution crumbles into blocks. */
         private const val INTRO_MS = 700L
 
-        // uT 0..1, e = ease-out cubic. AA: зум 1.08 -> 1 (кроп-координаты сжимаются к центру до uSTMatrix).
-        // Заглушка: зум 1 -> 1.35 и прозрачность 1 -> 0 (чуть быстрее зума, чтобы к концу не висела дымкой).
-        // uT общий для обоих шейдеров: точность обязана совпадать (GLSL ES), в вершинном по умолчанию highp, во
-        // фрагментном mediump - Mali (Exynos 9611) на этом падает при линковке, Adreno прощает. Явный mediump в обоих.
+        // uT 0..1, e = ease-out cubic. AA: zoom 1.08 -> 1 (crop-coordinates are compressed to center to uSTMatrix).
+        // stub: zoom 1 -> 1.35 and transparency 1 -> 0 (slightly faster than the zoom, so that by the end does not hang haze).
+        // uT common to both shaders: accuracy must match (GLSL ES), in the vertex default highp, in
+        // Fragmented mediump - Mali (Exynos 9611) on this falls when linking, Adreno forgives. The apparent mediump in both.
         private const val INTRO_VERTEX = """
             uniform mat4 uSTMatrix;
             uniform mediump float uT;

@@ -14,8 +14,8 @@ import com.yegorkapomidorka.headswap.AppLog
 import com.yegorkapomidorka.headswap.aa.DesktopMedia
 
 /**
- * Плеер телефона для MUSIC=0/1 от ГУ в режиме рабочего стола. С MEDIA_CONTENT_CONTROL (даёт активация) - играющие
- * сессии напрямую; без него - медиаклавиши в текущую медиасессию. Названия треков не логируются.
+ * Phone player for MUSIC=0/1 from head unit in desktop mode. With MEDIA_CONTENT_CONTROL (gives activation) - players
+ * sessions directly; without it - media keys to the current media session. Track names are not logged.
  */
 internal class DesktopMediaControl(context: Context) : DesktopMedia {
     private val app = context.applicationContext

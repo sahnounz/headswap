@@ -1,30 +1,30 @@
 package com.yegorkapomidorka.headswap
 
 /**
- * Подгонка roadName (NAVI_NEXT_TURN_INFO, поле 3) под приборку Honda (ГУ CarLife 1.1.0, STATISTIC_INFO channel 2077xxxx/2083xxxx,
- * HU_INFO пустой). Формулы найдены тестами на машине:
- * - S = длина строки в байтах UTF-8 до первого NUL; ГУ считает эти байты за UTF-16, поэтому видны только
- *   первые floor(S/2)-1 символов. При S >= 32 текст пустой или мусор, при S <= 31 работает.
- * - Кириллица и прочее не-ASCII рисуется полноширинной (2 клетки), ASCII - 1 клетка. Если видимая часть шире
- *   ~24 клеток, приборка отбрасывает строку целиком (остаётся прежний текст); 24 проходит, 26 и больше - нет.
- * - Хвостовые пробелы работают как паддинг (NUL не годится): «Мира» + 2 пробела показывается как «Мира».
+ * Fitting roadName (NAVI_NEXT_TURN_INFO, field 3) under instrument cluster Honda (head unit CarLife 1.1.0, STATISTIC_INFO channel 2077xxxx/2083xxxx,
+ * HU_INFO empty). Formulas found by car tests:
+ * - S = string length in bytes of UTF-8 to the first NUL; head unit counts these bytes as UTF-16, so only visible
+ *   first floor(S/2)-1 characters. With S >= 32 text is empty or garbage, with S <= 31 works.
+ * - Cyrillic and other non-ASCII drawn full-width (2 cells), ASCII - 1 cell. If the visible part is wider
+ *   ~24 cells, instrument cluster discards the whole line (the previous text remains); 24 passes, 26 and no more.
+ * - Tail spaces work like padding (NUL is not suitable): "World" + 2 space shown as "World".
  *
- * Поэтому берём самый длинный префикс, у которого ширина <= [MAX_CELLS], символов <= [MAX_CHARS] и
- * max(байты, 2*символы+2) <= [MAX_BYTES], и добиваем пробелами до S = max(байты, 2*символы+2): тогда видимы все символы префикса.
+ * Therefore, we take the longest prefix, which has a width <= [MAX_CELLS], characters <= [MAX_CHARS] and
+ * max(Bytes, 2*symbols+2) <= [MAX_BYTES]and we'll get the gaps to S = max(Bytes, 2*symbols+2): then all prefix symbols are visible.
  */
 object HondaClusterRoad {
-    /** Максимум клеток видимой части: шире приборка строку отбрасывает целиком. */
+    /** Maximum cells visible part: wider instrument cluster line casts entirely. */
     const val MAX_CELLS = 24
 
-    /** Максимум видимых символов: при S = 2c+2 и S <= 31 выходит c <= 14. */
+    /** Maximum visible characters: S = 2c+2 and S <= 31 comes out c <= 14. */
     const val MAX_CHARS = 14
 
-    /** Максимум S (байт строки до NUL): с 32 текст пустой или мусор. */
+    /** Maximum S (byte of string up to NUL): with 32 text blank or garbage. */
     const val MAX_BYTES = 31
 
     private const val ASCII_LIMIT = 0x80
     private const val WIDE_CELLS = 2
-    private const val UTF16_OVERHEAD = 2        // видно floor(S/2)-1 символов, значит S >= 2c+2
+    private const val UTF16_OVERHEAD = 2        // can be seen floor(S/2)-1 characters, so S >= 2c+2
     private const val DIRECTION_PREFIX = "В сторону "
 
     fun fit(s: String): String {
@@ -57,7 +57,7 @@ object HondaClusterRoad {
         return head + " ".repeat(padTo - headBytes)
     }
 
-    /** Пробельные символы - в обычный пробел, управляющие и форматные (U+00AD и т.п.) - выбросить, пробелы схлопнуть, trim. */
+    /** Space symbols - in the usual space, control and format (U+00AD, etc.) - throw out, pop-up spaces, trim. */
     private fun normalize(s: String): String {
         val sb = StringBuilder(s.length)
         var i = 0

@@ -11,5 +11,5 @@ local.properties
 *.p12
 captures/
 
-# ключи и сертификат head unit AA не публикуем: кладутся локально (см. README)
+# keys and certificate head unit AA do not publish: put locally (see README)
 app/src/main/assets/aa/

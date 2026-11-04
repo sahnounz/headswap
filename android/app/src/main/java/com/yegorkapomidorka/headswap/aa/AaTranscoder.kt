@@ -14,33 +14,33 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * AA H.264 -> MediaCodec-декодер (вывод на Surface) -> Surface входа энкодера AVC Baseline -> CarLife.
- * Нулевое копирование через Surface. Энкодер живёт от start() до stop() (вся CarLife-сессия) и сам
- * повторяет последний кадр раз в 100 мс на статичной картинке (KEY_REPEAT_PREVIOUS_FRAME_AFTER, как
- * MD Baidu: core/screen/video/Recorder.java:1364), поэтому ГУ не остаётся без кадров. Декодер создаётся
- * лениво на первом IDR AA и пересоздаётся при новом SPS или resetDecoder().
+ * AA H.264 -> MediaCodec-decoder (Surface output) -> Surface input encoder AVC Baseline -> CarLife.
+ * Zero copying via Surface. encoder lives from start() to stop() (all CarLife-session) and itself
+ * repeats the last frame times in 100 ms on a static picture (KEY_REPEAT_PREVIOUS_FRAME_AFTER, as
+ * MD Baidu: core/screen/video/Recorder.java:1364), so head unit is not left without frame. decoder
+ * lazy on the first IDR AA and re-created with the new SPS or resetDecoder().
  *
- * feedFrame/feedConfig/resetDecoder не блокируют вызывающую нить (нить AA под монитором моста): кладут в
- * [FeedQueue], а createDecoder, dequeueInputBuffer и queueInputBuffer выполняет нить aa-trans-feed.
- * Очередь на [FeedQueue.DEFAULT_MAX_FRAMES] кадров (~0,5 с при 30 fps: пока создаётся декодер, 80-300 мс, кадры копятся, а не
- * теряются); при переполнении кадры теряются до следующего IDR, мост получает onNeedAaKeyFrame.
- * Колбэки [out] не зовутся под lock. "nofeedthread" в tuning - старый синхронный путь на нити вызывающего.
+ * feedFrame/feedConfig/resetDecoder do not block caller thread (thread AA under the bridge monitor): put in
+ * [FeedQueue], and createDecoder, dequeueInputBuffer and queueInputBuffer performs thread aa-trans-feed.
+ * The queue at [FeedQueue.DEFAULT_MAX_FRAMES] frame (~0,5 at 30 fps: while creating decoder, 80-300 ms, frame They are hoarding, not
+ * lost); when overflowing frame lost until the next IDR, the bridge gets onNeedAaKeyFrame.
+ * [out] is not named under lock. "nofeedthread" in tuning - old synchronous path on thread caller.
  */
 class AaTranscoder(
     private val width: Int,
     private val height: Int,
-    /** Начальная целевая частота: KEY_FRAME_RATE энкодера и гейт GL-реле; дальше меняется через [setTargetFps]. */
+    /** Initial target frequency: KEY_FRAME_RATE encoder and gate GL-rele; then changes via [setTargetFps]. */
     private val fps: Int,
     private val bitrate: Int,
     private val out: TranscodeOutput,
     private val log: (String) -> Unit = { AppLog.i(it, false) },
-    /** Эксперименты: "vbr", "repeat=NNN" (мкс), "norealtime", "nolowlat", "nobase", "nofeedthread". */
+    /** Experiments: "vbr", "repeat=NNN" ( microseconds ), "norealtime", "nolowlat", "nobase", "nofeedthread". */
     private val tuning: String = "",
-    /** Размер кадра AA на входе (подсказка декодеру) и вырезаемая из него часть; по умолчанию вход = выход, без кропа. */
+    /** Size frame AA at the input (tip decoder) and cut from it; default input = output, without crop. */
     private val srcWidth: Int = width,
     private val srcHeight: Int = height,
     private val crop: VideoCrop = VideoCrop.NONE,
-    /** Энкодер как у Baidu (MediaFormatUtils :41-60): Baseline, level 256 (AVCLevel3), VBR, I-frame 1 с, повтор кадра 100 мс; fps и битрейт задаёт вызывающий. */
+    /** Match Baidu encoder settings (MediaFormatUtils :41-60): Baseline, level 256 (AVCLevel3), VBR, I-frame interval one second, repeated frame every 100 ms; the caller selects fps and bitrate. */
     private val baidu: Boolean = false,
     /** Virtual display -> GL -> one encoder. No decoder or compressed-input thread is created. */
     private val directSurface: Boolean = false,
@@ -54,7 +54,7 @@ class AaTranscoder(
     private var lastGated = 0L
     @Volatile private var target = fps
     @Volatile private var curBitrate = bitrate
-    private var bitrateMode = -1                       // режим, с которым сконфигурирован энкодер (-1 = не задан/неизвестен)
+    private var bitrateMode = -1                       // mode with which encoder is configured (-1 = not specified/unknown)
     @Volatile private var bitrateFailed = false
     private var encThread: Thread? = null
     @Volatile private var running = false
@@ -66,24 +66,24 @@ class AaTranscoder(
     private var decoder: Dec? = null
     private var sps: ByteArray? = null
     private var pps: ByteArray? = null
-    private var decoderCfg: ByteArray? = null          // SPS+PPS, с которыми создан текущий декодер
+    private var decoderCfg: ByteArray? = null          // SPS+PPS, with which the current decoder was created
     private var cfgStale = false
     private var needIdr = true
 
-    // нить кормления: вся работа с декодером уезжает с нити AA сюда
+    // thread feeding: all work with decoder leaves with thread AA here
     private val threaded = !directSurface && !tuning.contains("nofeedthread")
     private val queue = FeedQueue()
     private var feedThread: Thread? = null
 
-    /** Итог обработки кадра под lock; колбэки [out] зовёт вызывающий код уже после выхода из lock. */
+    /** frame processing result under lock; [out] call caller code after exiting lock. */
     private sealed class Outcome {
         object None : Outcome()
-        object Skip : Outcome()                      // кадр пропущен, колбэк не нужен
+        object Skip : Outcome()                      // frame is missing, Colback is not needed
         object NeedIdr : Outcome()
         class Error(val msg: String) : Outcome()
     }
 
-    // статистика окна
+    // Statistics window
     private val inTimes = ConcurrentHashMap<Long, Long>()
     private val winIn = AtomicLong()
     private val winDecoded = AtomicLong()
@@ -109,7 +109,7 @@ class AaTranscoder(
         encoderName = c.name
         var configured = false
         var lastErr: Exception? = null
-        // Baidu-формат: сначала с level 256, при отказе без него (с записью в лог), дальше обычная лесенка
+        // Baidu-format: first with level 256, when failing without it (with log entry), then ordinary ladder
         val levels = if (baidu) listOf(BAIDU_WITH_LEVEL, BAIDU_NO_LEVEL, 0, 1, 2) else listOf(0, 1, 2)
         for ((attempt, level) in levels.withIndex()) {
             try {
@@ -141,7 +141,7 @@ class AaTranscoder(
             inSurface = c.createInputSurface()
             c.start()
         } catch (e: Exception) {
-            // кодек и Surface ещё не в полях: stop() их не увидит, аппаратный энкодер освобождаем здесь
+            // codec and Surface are not yet in the fields: stop() will not see them, hardware encoder free here
             try {
                 inSurface?.release()
             } catch (_: Exception) {
@@ -154,14 +154,14 @@ class AaTranscoder(
         }
         surface = inSurface
         encoder = c
-        // режим битрейта: CBR/VBR принимают PARAMETER_KEY_VIDEO_BITRATE на лету, CQ - нет; на уровне 2 режим не задавался
+        // bitrate: mode CBR/VBR take PARAMETER_KEY_VIDEO_BITRATE on the fly, CQ - no; at the level of 2 mode was not set
         bitrateMode = try {
             c.inputFormat.getInteger(MediaFormat.KEY_BITRATE_MODE)
         } catch (_: Exception) {
             -1
         }
         if (directSurface || !tuning.contains("nogl")) {
-            // декодер -> GL-реле -> Surface энкодера: реле перерисовывает последний кадр на статике (>= 10 fps)
+            // decoder -> GL-relay -> Surface encoder: relay redraws latest frame on static ( >= 10 fps)
             try {
                 relay = GlRelay(surface!!, width, height, REDRAW_IDLE_MS, log, srcWidth, srcHeight, crop, target, limitHighFps = directSurface).also { it.start() }
             } catch (e: Exception) {
@@ -194,7 +194,7 @@ class AaTranscoder(
 
     override val targetFps: Int get() = target
 
-    /** Целевая частота на лету: только гейт GL-реле, кодек не пересоздаётся (KEY_FRAME_RATE остаётся начальным). */
+    /** Target frequency on the fly: only GL-rele gate, codec is not re-created (KEY_FRAME_RATE remains initial). */
     override fun setTargetFps(fps: Int) {
         if (directSurface && fps > maxOf(capabilityFps, target)) DesktopEncoderSupport.requireSupported(
             checkNotNull(encoder) { "Энкодер рабочего стола ещё не создан" }.codecInfo, width, height, fps, curBitrate)
@@ -207,7 +207,7 @@ class AaTranscoder(
 
     override val currentBitrate: Int get() = curBitrate
 
-    /** Битрейт на лету через setParameters (без пересоздания). CQ или исключение кодека: один раз в лог, дальше не пробуем. */
+    /** bitrate on the fly via setParameters (without recreating). CQ or codec exception: once in the log, no further try. */
     override fun setBitrate(bps: Int) {
         if (bitrateFailed || bps == curBitrate) return
         val c = encoder ?: return
@@ -231,7 +231,7 @@ class AaTranscoder(
         f.setInteger(MediaFormat.KEY_BIT_RATE, bitrate)
         f.setInteger(MediaFormat.KEY_FRAME_RATE, fps)
         f.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
-        // как у Baidu (Recorder.java:1364, MediaFormatUtils.java:48): на статичном экране кадр повторяется раз в 100 мс
+        // as in Baidu (Recorder.java:1364, MediaFormatUtils.java:48): on the static screen frame repeats once in 100 ms
         val repeat = Regex("""repeat=(\d+)""").find(tuning)?.groupValues?.get(1)?.toLong() ?: REPEAT_AFTER_US
         f.setLong(MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER, repeat)
         if (level == BAIDU_WITH_LEVEL || level == BAIDU_NO_LEVEL) {
@@ -245,8 +245,8 @@ class AaTranscoder(
         }
         if (level <= 1 && !tuning.contains("nobase")) {
             f.setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline)
-            // VBR: на растворении логотипа AA в карты CBR c2.qti выдавал P-кадры до 129 КБ (~4x к исходнику AA, ~850 КБ за 0,3 с)
-            // и ГУ рисовало полосы; VBR на том же потоке держит пики до ~40 КБ при той же картинке (transcode_test, 12.10.2026)
+            // VBR: during the AA-logo-to-map transition, CBR c2.qti emitted P-frames up to 129 KB, about 4× the original AA size, or 850 KB in 0.3 seconds.
+            // and head unit painted strips; VBR on the same stream holds peaks up to ~ 40 KB in the same image (transcode_test, 12.10.2026)
             f.setInteger(
                 MediaFormat.KEY_BITRATE_MODE,
                 if (tuning.contains("cbr")) MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR else MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR
@@ -260,9 +260,9 @@ class AaTranscoder(
         return f
     }
 
-    // ---------------- вход AA ----------------
+    // --------------- AA input ------------
 
-    /** Не блокирует: в режиме нити кладёт в очередь, разбор SPS/PPS делает нить кормления. */
+    /** Does not block: in the thread mode, the SPS/PPS parsing makes the thread feeding. */
     override fun feedConfig(annexB: ByteArray) {
         if (directSurface) return
         if (threaded) queue.post(FeedItem.Config(annexB)) else processConfig(annexB)
@@ -275,13 +275,13 @@ class AaTranscoder(
             val changed = sps?.contentEquals(s) != true || pps?.contentEquals(p) != true
             sps = s
             pps = p
-            if (changed && decoder != null) cfgStale = true     // декодер пересоздастся на следующем IDR
+            if (changed && decoder != null) cfgStale = true     // decoder will be re-released on the next IDR
         }
     }
 
     /**
-     * Не блокирует (O(1)): в режиме нити кладёт в очередь. Очередь полна -> кадр теряется, пока не придёт IDR,
-     * мост получает onNeedAaKeyFrame один раз на эпизод. Колбэк зовётся на нити вызывающего, не под lock.
+     * Does not block (O(1)): in thread mode puts in line. Queue full -> frame is lost until IDR arrives,
+     * bridge gets onNeedAaKeyFrame once per episode. Kolback is called on thread caller, not under lock.
      */
     override fun feedFrame(annexB: ByteArray, ptsUs: Long) {
         if (directSurface) return
@@ -305,7 +305,7 @@ class AaTranscoder(
         }
     }
 
-    /** Колбэки по итогу обработки; только вне lock. */
+    /** Kolbacks by processing result; only outside lock. */
     private fun report(o: Outcome) {
         when (o) {
             Outcome.NeedIdr -> out.onNeedAaKeyFrame()
@@ -314,7 +314,7 @@ class AaTranscoder(
         }
     }
 
-    /** Кормит декодер одним кадром (создаёт его на IDR). Под lock, колбэков [out] не зовёт - итог возвращает. */
+    /** Feed decoder one frame (creates it on IDR). Under lock, [out] calls - the result returns. */
     private fun processFrame(f: FeedItem.Frame): Outcome = synchronized(lock) {
         val annexB = f.annexB
         val ptsUs = f.ptsUs
@@ -322,7 +322,7 @@ class AaTranscoder(
         if (decoder == null || (cfgStale && idr)) {
             if (!idr) {
                 winDrop.incrementAndGet()
-                return Outcome.Skip                  // декодеру нужен IDR для старта
+                return Outcome.Skip                  // decoder needs IDR to start
             }
             val created = createDecoder(annexB)
             if (created !== Outcome.None) return created
@@ -338,7 +338,7 @@ class AaTranscoder(
             return Outcome.Error("декодер: dequeueInputBuffer: ${e.message}")
         }
         if (idx < 0) {
-            // декодер не успевает: кадр потерян, дальше P нельзя - ждём IDR от AA
+            // decoder fails: frame is lost, then P can not be - we are waiting for IDR from AA
             winDrop.incrementAndGet()
             needIdr = true
             return Outcome.NeedIdr
@@ -346,14 +346,14 @@ class AaTranscoder(
         val buf = d.codec.getInputBuffer(idx)
         if (buf == null || buf.capacity() < annexB.size) {
             d.codec.queueInputBuffer(idx, 0, 0, ptsUs, 0)
-            // кадр потерян, как и без входного буфера: P после него декодер испортит - ждём IDR от AA
+            // frame is lost, as well as without an input buffer: P after it decoder will spoil - waiting for IDR from AA
             winDrop.incrementAndGet()
             needIdr = true
             return Outcome.NeedIdr
         }
         buf.clear()
         buf.put(annexB)
-        inTimes[ptsUs] = f.atNs                      // от прихода из AA: ожидание в очереди кормления входит в задержку декодера
+        inTimes[ptsUs] = f.atNs                      // from coming from AA: waiting in line feeding enters into delay decoder
         if (inTimes.size > 256) inTimes.keys.take(128).forEach { inTimes.remove(it) }
         try {
             d.codec.queueInputBuffer(idx, 0, annexB.size, ptsUs, 0)
@@ -364,13 +364,13 @@ class AaTranscoder(
         }
     }
 
-    /** Нить кормления: берёт из очереди кадры и команды, всё с декодером делает здесь. */
+    /** thread feeding: takes out the queue of frame and command, everything with decoder does here. */
     private fun feedLoop() {
         try {
             while (true) {
                 val item = queue.take(500) ?: if (running) continue else break
                 if (item is FeedItem.Stop) break
-                if (!running) continue               // остановка: декодер уже не трогаем, выходим по Stop или таймауту
+                if (!running) continue               // stop: decoder no longer touch, go on Stop or timeout
                 try {
                     when (item) {
                         is FeedItem.Frame -> report(processFrame(item))
@@ -383,12 +383,12 @@ class AaTranscoder(
                 }
             }
         } finally {
-            // любой выход (Stop, таймаут после running=false, необработанное исключение): декодер освобождает владевшая им нить
+            // any output (Stop, timeout after running=false, unprocessed exception): decoder releases the thread that owned it
             synchronized(lock) { releaseDecoderLocked() }
         }
     }
 
-    /** Создаёт декодер по SPS/PPS (из CODEC_CONFIG или из самого IDR). Под lock. None = создан. */
+    /** Creates decoder by SPS/PPS (from CODEC_CONFIG or from IDR itself). Under lock. None = created. */
     private fun createDecoder(idrFrame: ByteArray): Outcome {
         releaseDecoderLocked()
         var s = sps
@@ -415,7 +415,7 @@ class AaTranscoder(
                 try {
                     c.configure(f, surf, null, 0)
                 } catch (e: Exception) {
-                    // без low-latency/priority (не все декодеры принимают)
+                    // without low-latency/priority (not all decoder accept)
                     c.reset()
                     val f2 = MediaFormat.createVideoFormat(MIME, srcWidth, srcHeight)
                     f2.setByteBuffer("csd-0", ByteBuffer.wrap(s))
@@ -424,7 +424,7 @@ class AaTranscoder(
                 }
                 c.start()
             } catch (e: Exception) {
-                // декодер ещё не в поле decoder: releaseDecoderLocked() его не освободит
+                // decoder is not yet in the field decoder: releaseDecoderLocked() it will not free
                 try {
                     c.release()
                 } catch (_: Exception) {
@@ -472,7 +472,7 @@ class AaTranscoder(
         }
     }
 
-    /** Не блокирует: в режиме нити команда встаёт в очередь после уже принятых кадров, те до сброса и обработаются. */
+    /** Does not block: in thread mode, command queues after the already adopted frame, those up to reset and are processed. */
     override fun resetDecoder() {
         if (directSurface) return
         if (threaded) queue.post(FeedItem.Reset) else processReset()
@@ -507,7 +507,7 @@ class AaTranscoder(
         inTimes.clear()
     }
 
-    // ---------------- выход энкодера ----------------
+    // -------------- encoder output ------------
 
     private fun encodeLoop(c: MediaCodec) {
         val info = MediaCodec.BufferInfo()
@@ -630,11 +630,11 @@ class AaTranscoder(
         const val MIME = "video/avc"
         const val REPEAT_AFTER_US = 100_000L
 
-        /** Попытки configure в Baidu-формате: с KEY_LEVEL=AVCLevel3 (256) и без него. */
+        /** configure attempts in Baidu- format: with and without KEY_LEVEL=AVCLevel3 (256). */
         private const val BAIDU_WITH_LEVEL = -2
         private const val BAIDU_NO_LEVEL = -1
 
-        /** Реле перерисовывает последний кадр, если новых нет столько мс (как repeat-previous-frame-after у Baidu). */
+        /** Relay redraws the last frame if there are no new ones as many ms (like repeat-previous-frame-after in Baidu). */
         const val REDRAW_IDLE_MS = 100L
     }
 }

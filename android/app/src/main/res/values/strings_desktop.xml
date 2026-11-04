@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- BridgeService, режим Headswap Desktop -->
+    <!-- BridgeService, mode Headswap Desktop -->
     <string name="desk_notif_title" translatable="false">Headswap Desktop</string>
     <string name="desk_not_activated">Headswap Desktop is not activated: open Settings > Mode and tap Activate</string>
     <string name="desk_cert_na">not required (desktop)</string>

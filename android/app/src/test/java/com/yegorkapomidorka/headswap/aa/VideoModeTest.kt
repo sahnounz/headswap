@@ -36,7 +36,7 @@ class VideoModeTest {
             assertEquals(m.name, r.w, m.outW)
             assertEquals(m.name, r.h, m.outH)
             assertEquals(m.name, r.bitrate, m.bitrate)
-            // выход CarLife = кадр AA без margin-ов (WIDE_976 - исключение: область 1920x836 масштабируется в 2240x976)
+            // CarLife = frame AA output without margin-s (WIDE_976 is an exception: the 1920x836 area scales to 2240x976)
             if (m != VideoMode.WIDE_976) {
                 assertEquals(m.name, m.aaW - m.marginW, m.outW)
                 assertEquals(m.name, m.aaH - m.marginH, m.outH)
@@ -48,7 +48,7 @@ class VideoModeTest {
     @Test
     fun r1024() {
         val m = VideoMode.R1024
-        // из кадра AA 1280x720 вырезается центр 1024x600, масштаба нет: тач 1:1 с клампом в область
+        // of frame AA 1280x720 cut center of 1024x600, no scale: touch 1:1 with a klump to the area
         assertEquals(1023 to 599, m.mapTouch(1100, 700))
         assertEquals(57 to 301, m.mapTouch(57, 301))
         assertEquals(128f / 1280f, m.crop.u0, 1e-6f)
@@ -56,7 +56,7 @@ class VideoModeTest {
         assertEquals(60f / 720f, m.crop.v0, 1e-6f)
         assertEquals(660f / 720f, m.crop.v1, 1e-6f)
         assertTrue(m.needsTranscode)
-        assertEquals(m, m.effective(transcode = false))         // 1:1 с полями: SPS-кроп в passthrough
+        assertEquals(m, m.effective(transcode = false))         // 1:1 with fields: SPS-crop to passthrough
         assertEquals(m, m.effective(transcode = true))
         assertEquals("1024×600", m.outLabel)
         assertEquals(VideoMode.R1024, VideoMode.parse("R1024"))
@@ -111,16 +111,16 @@ class VideoModeTest {
         val w = VideoMode.WIDE
         assertEquals(640 to 0, w.mapTouch(640, 0))
         assertEquals(640 to 479, w.mapTouch(640, 479))
-        assertEquals(38 to 441, w.mapTouch(38, 441))         // кнопка сетки на Desay G6S
+        assertEquals(38 to 441, w.mapTouch(38, 441))         // button mesh on Desay G6S
         assertEquals(1279 to 240, w.mapTouch(1279, 240))
-        // за пределами кадра ГУ - clamp в область интерфейса 1280x480
+        // outside frame head unit - clamp in the interface area of 1280x480
         assertEquals(0 to 0, w.mapTouch(-5, -300))
         assertEquals(1279 to 479, w.mapTouch(2000, 900))
         assertEquals(1919 to 719, VideoMode.WIDE_HD.mapTouch(2000, 900))
         assertEquals(57 to 661, VideoMode.WIDE_HD.mapTouch(57, 661))
         assertEquals(180f / 1080f, VideoMode.WIDE_HD.crop.v0, 1e-6f)
         assertEquals(900f / 1080f, VideoMode.WIDE_HD.crop.v1, 1e-6f)
-        // h521: поля внизу (SPS-кроп), а перекодирование принудительное - транскодер режет верхние 720 строк (v вверх)
+        // h521: fields at bottom (SPS-crop) and transcoding forced - transcoder cuts top 720 lines (v up)
         val bottom = VideoMode.WIDE_HD.cropFor(marginsAtBottom = true)
         assertEquals(360f / 1080f, bottom.v0, 1e-6f)
         assertEquals(1f, bottom.v1, 1e-6f)
@@ -149,7 +149,7 @@ class VideoModeTest {
 
     @Test
     fun portrait() {
-        // те же поля, что считает своё разрешение: пресет и CustomVideoMode дают одну геометрию
+        // the same fields that count their resolution: preset and CustomVideoMode give one geometry
         for (m in listOf(VideoMode.PORTRAIT_960, VideoMode.PORTRAIT_1152)) {
             val c = CustomVideoMode(m.outW, m.outH)
             assertEquals(m.name, c.aaResolution, m.aaResolution)
@@ -193,14 +193,14 @@ class VideoModeTest {
         assertEquals(1f, k.crop.u1, 1e-6f)
         assertTrue(k.needsTranscode)
         assertEquals(VideoMode.WIDE_836, k.effective(transcode = false))
-        // рабочая область AA 1920x836 масштабируется в кадр ГУ 2240x976: тач пересчитывается и клампится в область
+        // AA 1920x836 working area scaled to frame head unit 2240x976: touch recalculated and flagged into the area
         assertEquals(1919 to 835, k.mapTouch(3000, 2000))
         assertEquals(960 to 418, k.mapTouch(1120, 488))
         assertEquals(0 to 0, k.mapTouch(0, 0))
         assertEquals(1919 to 835, k.mapTouch(2239, 975))
         assertEquals("2240×976", k.outLabel)
         assertEquals(VideoMode.WIDE_976, VideoMode.parse("WIDE_976"))
-        // убранный режим из старых prefs - режим по умолчанию
+        // removed mode from old prefs - default mode
         assertEquals(VideoMode.DEFAULT, VideoMode.parse("R1440"))
     }
 
@@ -209,7 +209,7 @@ class VideoModeTest {
         val wide = hex(M.serviceDiscoveryResponse(VideoMode.WIDE.sdOptions(fullAudio = false)).payload)
         // VideoConfiguration: res=2 fps=2 margin_w=0 margin_h=240 (20 f0 01) density 160 par 10000 codec 3
         assertTrue(wide, wide.contains("08021002180020f00128a00140904e5003"))
-        // touchscreen остаётся 1280x720 (поле 2: 1280 = 80 0a, 720 = d0 05)
+        // touchscreen remains 1280x720 (2 field: 1280 = 80 0a, 720 = d0 05)
         assertTrue(wide, wide.contains("1206" + "08800a" + "10d005"))
     }
 
@@ -234,7 +234,7 @@ class VideoModeTest {
         val core = AaBridgeCore({ _, _ -> })
         val peer = FakePeer()
         core.peer = peer
-        core.onCarlifeTouch(0, 640, 0)                       // по умолчанию R720: 1:1
+        core.onCarlifeTouch(0, 640, 0)                       // Default R720: 1:1
         core.videoMode = VideoMode.WIDE
         core.onCarlifeTouch(0, 640, 0)
         core.onCarlifeTouch(2, 640, 479)
@@ -262,7 +262,7 @@ class VideoModeTest {
             assertEquals(m.name, m.density, m.sdOptions(false).density)
             assertEquals(m.name, m.density, m.sdOptions(false, AaDensity.AUTO).density)
         }
-        // авто = прежний SDR байт в байт
+        // auto = former SDR bytes per byte
         assertEquals(hex(M.serviceDiscoveryResponse(VideoMode.R720.sdOptions(false)).payload),
             hex(M.serviceDiscoveryResponse(VideoMode.R720.sdOptions(false, AaDensity.AUTO)).payload))
     }
@@ -273,9 +273,9 @@ class VideoModeTest {
             val auto = m.sdOptions(true)
             val o = m.sdOptions(true, 200)
             assertEquals(m.name, 200, o.density)
-            assertEquals(m.name, auto.copy(density = 200), o)      // разрешение, margin-ы, звук - как в авто
+            assertEquals(m.name, auto.copy(density = 200), o)      // resolution, margin-y, sound - as in a car
         }
-        // R720 с 200: VideoConfiguration ... density 200 (c8 01) вместо 160 (a0 01)
+        // R720 with 200: VideoConfiguration ... density 200 (c8 01) instead of 160 (a0 01)
         val r720 = hex(M.serviceDiscoveryResponse(VideoMode.R720.sdOptions(false, 200)).payload)
         assertTrue(r720, r720.contains("0802100218002000" + "28c801"))
         val r800 = hex(M.serviceDiscoveryResponse(VideoMode.R800.sdOptions(false, 100)).payload)
@@ -284,7 +284,7 @@ class VideoModeTest {
 
     @Test
     fun densityOverrideDoesNotTouchCropOrTouch() {
-        // кроп и тач - свойства режима, override в них не участвует; проверяем на ядре моста с override
+        // crop and touch - properties of the mode, override does not participate in them; check on the core of the bridge with override
         for (m in VideoMode.values()) {
             val crop = m.crop
             val touch = listOf(0 to 0, m.outW / 2 to m.outH / 2, m.outW - 1 to m.outH - 1).map { (x, y) -> m.mapTouch(x, y) }
@@ -316,16 +316,16 @@ class VideoModeTest {
         assertEquals(listOf(100, 120, 140, 160, 180, 200, 220, 240, 260, 280), AaDensity.VALUES)
         assertEquals(AaDensity.AUTO, AaDensity.parse(0))
         assertEquals(200, AaDensity.parse(200))
-        assertEquals(AaDensity.AUTO, AaDensity.parse(210))      // вне сетки
-        assertEquals(AaDensity.AUTO, AaDensity.parse(320))      // вне диапазона
+        assertEquals(AaDensity.AUTO, AaDensity.parse(210))      // Out of Grid
+        assertEquals(AaDensity.AUTO, AaDensity.parse(320))      // out of range
         assertEquals(AaDensity.AUTO, AaDensity.parse(80))
-        // из авто - соседнее значение от density режима
+        // from car - nearby value from density mode
         assertEquals(180, AaDensity.step(AaDensity.AUTO, 160, up = true))
         assertEquals(140, AaDensity.step(AaDensity.AUTO, 160, up = false))
         assertEquals(100, AaDensity.step(AaDensity.AUTO, 120, up = false))
-        assertEquals(280, AaDensity.step(AaDensity.AUTO, 320, up = false))      // авто выше максимума сетки
+        assertEquals(280, AaDensity.step(AaDensity.AUTO, 320, up = false))      // Cars above the maximum grid
         assertEquals(AaDensity.AUTO, AaDensity.step(AaDensity.AUTO, 320, up = true))
-        // на краях стоим
+        // on the edges we stand
         assertEquals(280, AaDensity.step(280, 160, up = true))
         assertEquals(100, AaDensity.step(100, 160, up = false))
         assertEquals(220, AaDensity.step(200, 160, up = true))

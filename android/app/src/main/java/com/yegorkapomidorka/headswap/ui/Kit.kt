@@ -20,7 +20,7 @@ import android.widget.TextView
 import com.yegorkapomidorka.headswap.AppTheme
 import com.yegorkapomidorka.headswap.R
 
-/** Мелкий набор помощников для сборки View в коде: размеры в dp, цвета из ресурсов (светлая/тёмная палитра), Golos Text. */
+/** Small set of assistants for assembling View in code: sizes in dp, colors from resources (light / dark palette), Golos Text. */
 
 const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
 const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
@@ -45,7 +45,7 @@ fun Context.oval(fill: Int): GradientDrawable = GradientDrawable().apply {
     setColor(fill)
 }
 
-/** Фон с эффектом нажатия; radiusDp задаёт и скругление маски. */
+/** The background with the effect of pressing; radiusDp sets the rounding of the mask. */
 fun Context.rippleBg(content: Drawable?, radiusDp: Number): RippleDrawable {
     val mask = GradientDrawable().apply {
         setColor(Color.BLACK)
@@ -113,12 +113,12 @@ fun Context.divider(): View = View(this).apply {
     layoutParams = LinearLayout.LayoutParams(MATCH, dp(1))
 }
 
-/** Заголовок группы настроек (14sp, акцентный). */
+/** header group settings (14sp, accent). */
 fun Context.sectionTitle(s: String): TextView = text(s, 14f, 600, clr(R.color.acc)).apply {
     layoutParams = LinearLayout.LayoutParams(WRAP, WRAP).margins(this@sectionTitle, 8, 12, 8, 4)
 }
 
-/** Белая карточка со скруглением. */
+/** White card with rounding. */
 fun Context.card(radiusDp: Number = 20, fill: Int = clr(R.color.surf)): LinearLayout = vbox().apply {
     background = shape(fill, radiusDp)
     clipToOutline = true
@@ -133,7 +133,7 @@ fun Context.styledSwitch(): Switch = Switch(this).apply {
     isFocusable = false
 }
 
-/** Строка-переключатель: заголовок, подпись, Switch справа; нажатие на всю строку. */
+/** Line-switch: header, signature, Switch at right; click on the entire line. */
 class ToggleRow(
     ctx: Context,
     title: String,
@@ -165,7 +165,7 @@ class ToggleRow(
     }
 }
 
-/** Строка с радио-кнопкой: выбранная подсвечена pric. */
+/** Line with radio button: selected highlighted by pric. */
 class RadioRow(val ctx: Context, title: String, sub: String, val onPick: () -> Unit) {
     private val radio = RadioButton(ctx).apply {
         buttonTintList = ctx.getColorStateList(AppTheme.res(R.color.radio_tint))
@@ -173,7 +173,7 @@ class RadioRow(val ctx: Context, title: String, sub: String, val onPick: () -> U
         isFocusable = false
     }
     private val titleView = ctx.text(title, 17f, 500)
-    /** Пустой подзаголовок скрыт: иначе пустая строка сдвигает заголовок вверх (выбор языка). */
+    /** The empty subtitle is hidden: otherwise the empty string shifts header up (select language). */
     private val subView = ctx.text(sub, 14f, 400, ctx.clr(R.color.on2)).apply {
         visibility = if (sub.isBlank()) View.GONE else View.VISIBLE
     }
@@ -203,23 +203,23 @@ class RadioRow(val ctx: Context, title: String, sub: String, val onPick: () -> U
     }
 }
 
-/** Основная кнопка: pill 64dp, заливка pri. */
+/** Main button: pill 64dp, filling pri. */
 fun Context.primaryButton(label: String, iconRes: Int = 0, heightDp: Int = 64, sp: Float = 18f): LinearLayout =
     pill(label, iconRes, heightDp, sp, clr(R.color.pri), clr(R.color.onpri), 0)
 
-/** Кнопка с контуром. */
+/** Button with contour. */
 fun Context.outlineButton(label: String, iconRes: Int = 0, heightDp: Int = 64, sp: Float = 18f): LinearLayout =
     pill(label, iconRes, heightDp, sp, 0, clr(R.color.on), clr(R.color.line))
 
-/** Тональная кнопка (surf2). */
+/** Tone button (surf2). */
 fun Context.tonalButton(label: String, heightDp: Int = 52, sp: Float = 15f): LinearLayout =
     pill(label, 0, heightDp, sp, clr(R.color.surf2), clr(R.color.on), 0)
 
-/** Тональная кнопка-контейнер (pric/onpric): вторая по важности кнопка под основной. */
+/** Tonal button-container (pric/onpric): the second most important button under the main. */
 fun Context.containerButton(label: String, heightDp: Int = 56, sp: Float = 17f): LinearLayout =
     pill(label, 0, heightDp, sp, clr(R.color.pric), clr(R.color.onpric), 0)
 
-/** Текстовая кнопка (акцент). */
+/** Text button (accent). */
 fun Context.linkButton(label: String, heightDp: Int = 48, sp: Float = 16f): LinearLayout =
     pill(label, 0, heightDp, sp, 0, clr(R.color.acc), 0)
 
@@ -238,7 +238,7 @@ private fun Context.pill(label: String, iconRes: Int, heightDp: Int, sp: Float, 
         layoutParams = LinearLayout.LayoutParams(MATCH, dp(heightDp))
     }
 
-/** Круглая кнопка-иконка 48dp (шапка). */
+/** Round icon button 48dp (cap). */
 fun Context.iconButton(res: Int, tint: Int, desc: String): FrameLayout = FrameLayout(this).apply {
     layoutParams = LinearLayout.LayoutParams(dp(48), dp(48))
     background = rippleBg(null, 24)

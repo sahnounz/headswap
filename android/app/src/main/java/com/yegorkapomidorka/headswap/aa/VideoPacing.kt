@@ -1,22 +1,22 @@
 package com.yegorkapomidorka.headswap.aa
 
-/** Срез видео-очереди CarLife для статистики моста (CarlifeLink.videoStats). */
+/** CarLife video queue for bridge statistics (CarlifeLink.videoStats). */
 class LinkVideoStats(
-    /** Скорость слива очереди в USB, байт/с (0 = ещё не измерена). */
+    /** Queue drain rate in USB, byte/s (0 = not yet measured). */
     val drainBytesPerSec: Double,
-    /** Байты видео в очереди / скорость слива, мс. */
+    /** Bytes of video in line / drain speed, ms. */
     val backlogMs: Long,
     val queueFrames: Int,
     val queueBytes: Long,
 )
 
 /**
- * Скорость слива видео-очереди в USB: байты видеокадров за время записи (write+flush) в окнах ~1 с, сглаживание EWMA.
- * Время берём по записи ВСЕХ пакетов (звук и команды делят канал с видео), байты - только видео: получается
- * реальная пропускная способность канала для видео при текущем миксе. Пишет одна нить (writer), читают любые.
+ * Video queue drain speed in USB: bytes of video frames during recording (write+flushin the windows.1 c, smoothing EWMA.
+ * Time is taken by recording ALL packages (sound and command share a channel with video), bytes - only video: it turns out
+ * real channel bandwidth for video in the current mix. Writes one thread (writer), read any.
  */
 class DrainMeter(private val windowMs: Long = WINDOW_MS) {
-    /** Байт/с, 0 = пока не измерено. */
+    /** Byte/s, 0 = not yet measured. */
     @Volatile var bytesPerSec = 0.0
         private set
 
@@ -42,33 +42,33 @@ class DrainMeter(private val windowMs: Long = WINDOW_MS) {
     private companion object {
         const val WINDOW_MS = 1000L
         const val ALPHA = 0.5
-        const val MIN_BUSY_NS = 50_000_000L     // в окне почти не писали: оценка шумная, прежнюю не трогаем
+        const val MIN_BUSY_NS = 50_000_000L     // in the window almost did not write: assessment noisy, the former do not touch
         const val NEVER = Long.MIN_VALUE
     }
 }
 
-/** Предел видео-очереди CarLife и пересчёт её длины во время. Чистые функции. */
+/** Limit video queue CarLife and recalculate its length during. Pure features. */
 object VideoQueueLimit {
     const val MAX_FRAMES = 30
     const val MAX_BACKLOG_MS = 500L
 
-    /** Пока слив не измерен. */
+    /** Until the plum is measured. */
     const val UNMEASURED_MAX_BYTES = 512 * 1024L
 
-    /** Нижняя граница лимита по байтам: при очень медленном сливе один IDR не должен считаться переполнением сам по себе. */
+    /** Lower limit on bytes: With a very slow drain, one IDR should not be considered overflowing on its own. */
     const val MIN_BYTES = 64 * 1024L
 
-    /** Сколько после переполнения оно учитывается как давление на битрейт и каким бэклогом (см. [policyBacklogMs]). */
+    /** How much after overflow it counts as pressure on the bitrate and what backlog (see [policyBacklogMs]). */
     const val OVERFLOW_HOLD_MS = 1500L
     const val OVERFLOW_BACKLOG_MS = 1000.0
 
-    /** Бэклог очереди в мс; 0, пока слив не измерен. */
+    /** Queue backlog in ms; 0 until drain is measured. */
     fun backlogMs(queueBytes: Long, drainBytesPerSec: Double): Long =
         if (drainBytesPerSec > 0) (queueBytes * 1000 / drainBytesPerSec).toLong() else 0L
 
     /**
-     * Очередь переполнена: уже стоящих в ней видеокадров больше 30 или их байт больше ~500 мс слива. Новый кадр в счёт
-     * не идёт: в пустую очередь всегда принимается любой кадр (IDR на 160 КБ), иначе ГУ не получил бы ни одного.
+     * The queue is full: there are more video frames already standing in it 30 or their bytes more ~ 500 ms plum. New frame in the account
+     * does not go: in an empty queue is always accepted any frame (IDR on 160 KB), otherwise head unit would not have received any.
      */
     fun overflow(queueFrames: Int, queueBytes: Long, drainBytesPerSec: Double): Boolean {
         if (queueFrames > MAX_FRAMES) return true
@@ -77,19 +77,19 @@ object VideoQueueLimit {
     }
 
     /**
-     * Бэклог для политики битрейта. Сам предел очереди срезает бэклог (кадры при переполнении не попадают в очередь,
-     * бэклог пилит от нуля до IDR), и EWMA такой пилы не дотягивает до 300 мс. Поэтому недавнее переполнение
-     * ([sinceOverflowMs] < [OVERFLOW_HOLD_MS]) считается бэклогом не меньше [OVERFLOW_BACKLOG_MS].
+     * Backlog for bitrate. policy The very limit of queue cuts backlog (frame when overflowing do not get in line,
+     * backlog saws from zero to IDR), and EWMA such saw does not reach 300 ms.
+     * ([sinceOverflowMs] < [OVERFLOW_HOLD_MS]) is considered a backlog of at least [OVERFLOW_BACKLOG_MS].
      */
     fun policyBacklogMs(realMs: Long, sinceOverflowMs: Long): Double =
         if (sinceOverflowMs in 0 until OVERFLOW_HOLD_MS) maxOf(realMs.toDouble(), OVERFLOW_BACKLOG_MS) else realMs.toDouble()
 }
 
-/** Ограничитель запросов IDR у энкодера при переполнении очереди: не чаще раза в [minIntervalMs]. */
+/** IDR request limiter for encoder when queue overflows: no more than once in [minIntervalMs]. */
 class IdrThrottle(private val minIntervalMs: Long = MIN_INTERVAL_MS) {
     private var lastMs = NEVER
 
-    /** true = запрос можно слать (время запоминается); false = ждём уже запрошенный или ближайший естественный IDR. */
+    /** true = request can be sent (time is remembered); false = waiting for already requested or nearest natural IDR. */
     fun tryRequest(nowMs: Long): Boolean {
         if (lastMs != NEVER && nowMs - lastMs < minIntervalMs) return false
         lastMs = nowMs

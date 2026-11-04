@@ -1,4 +1,4 @@
-"""Тесты дайджеста на синтетическом мини-логе: python -X utf8 -m unittest tools/test_logdigest.py"""
+"""Digest tests on synthetic mini-log: python -X utf8 -m unittest tools/test_logdigest.py"""
 import os
 import sys
 import tempfile
@@ -121,7 +121,7 @@ class DigestTest(unittest.TestCase):
         self.assertEqual(ep["counts"]["EIO"], 2)
         self.assertEqual(ep["counts"]["USB_ACCESSORY_DETACHED"], 1)
         self.assertEqual(ep["counts"]["BYEBYE_REQUEST"], 1)
-        # первый EOF: config=0, data=0, 500 мс после VIDEO MEDIA_START; второй: data=1 - не флаг
+        # first EOF: config=0, data=0, 500 ms after VIDEO MEDIA_START; second: data=1 is not a flag
         self.assertEqual(ep["no_gms_flags"], 1)
         self.assertIn("через 500 мс после MEDIA_START VIDEO(2)", "\n".join(ep["clusters"]))
 
@@ -140,8 +140,8 @@ class DigestTest(unittest.TestCase):
 
         au = r["audio"]
         self.assertEqual(au["channels_opened"], {"AUDIO_MEDIA(6)": 1, "MIC(7)": 1})
-        self.assertEqual(au["media_start"], None)  # MEDIA_PLAYBACK не считается
-        self.assertEqual(au["mic_request_aa"], 1)  # NAVIGATION(10) MIC_REQUEST не микрофон
+        self.assertEqual(au["media_start"], None)  # MEDIA_PLAYBACK is not considered
+        self.assertEqual(au["mic_request_aa"], 1)  # NAVIGATION(10) MIC_REQUEST not microphone
 
         n = r["navi"]
         self.assertEqual((n["subscribe_0x18043"], n["start_0x18045"]), (1, 1))

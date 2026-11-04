@@ -27,8 +27,8 @@ import com.yegorkapomidorka.headswap.aa.BridgeMode
 import com.yegorkapomidorka.headswap.update.Updater
 
 /**
- * Главный экран «Готов к поездке» (Main.dc.html): шесть состояний, этапы, кнопки; сверху плашка обновления.
- * В режиме «Свой лаунчер» тот же скелет с другими этапами, текстами и кнопками (DesktopHomeLogic).
+ * The main screen "Ready for a trip" (Main.dc.html): six states, stages, buttons; on top of the update board.
+ * In the "launcher" mode, the same skeleton with other stages, texts and buttons (DesktopHomeLogic).
  */
 class HomeScreen(host: MainActivity) : Screen(host) {
     private val root = ctx.vbox()
@@ -42,7 +42,7 @@ class HomeScreen(host: MainActivity) : Screen(host) {
     private var lastState: HomeState? = null
     private var lastDesk: DesktopHomeState? = null
     private var desktopMode = false
-    /** Плашка «Свой лаунчер» справа от названия; видна только в режиме DESKTOP. */
+    /** Cover «Your launcher» to the right of the name; visible only in DESKTOP. mode */
     private val modeChip: TextView = ctx.text(ctx.getString(R.string.bm_own_launcher), 12f, 600, ctx.clr(R.color.on2)).apply {
         background = ctx.shape(ctx.clr(R.color.surf2), 8)
         pad(ctx, 8, 3, 8, 3)
@@ -92,12 +92,12 @@ class HomeScreen(host: MainActivity) : Screen(host) {
         lastDesk = null
         updKey = null
         syncMode()
-        // открыли экран: проверяем сервер ГУ короткой сессией (в режиме «Свой лаунчер» порт 5277 не нужен)
+        // open the screen: check the server head unit in a short session (in the mode "Your launcher" port 5277 is not needed)
         if (!desktopMode) AaServerCheck.wantAuto()
         tick()
     }
 
-    /** Режим, который реально применяется (на Android ниже 13 «Свой лаунчер» - это Android Auto); плашка в шапке по нему. */
+    /** The mode that really applies (on the Android below the 13 "Your launcher" is the Android Auto); a cap cap on it. */
     private fun syncMode() {
         desktopMode = BridgeMode.effective(AaPrefs(ctx).bridgeMode, Build.VERSION.SDK_INT) == BridgeMode.DESKTOP
         modeChip.visibility = if (desktopMode) View.VISIBLE else View.GONE
@@ -107,10 +107,10 @@ class HomeScreen(host: MainActivity) : Screen(host) {
         activation?.onPermissionResult()
     }
 
-    /** Строка беспровода в карточке статуса: только когда режим включён и USB-сессии нет. */
+    /** Wireless line in the status card: only when mode is enabled and USB-session is not. */
     private fun wirelessLine(): String? {
         val w = CarLifeState.wireless
-        // во время беспроводной сессии строка повторяла бы подзаголовок; после обрыва нужна («жду машину снова»)
+        // during a wireless session, the line would repeat the subtitle; after the break, you need ("I'm waiting for the machine again")
         if (CarLifeState.wirelessSession) return null
         return if (w != null) ctx.getString(R.string.home_wireless, w) else null
     }
@@ -137,7 +137,7 @@ class HomeScreen(host: MainActivity) : Screen(host) {
         lastState = st
         val wlSame = wl == lastWireless
         lastWireless = wl
-        // меняется только обратный отсчёт: обновляем его, не пересобирая экран
+        // only the countdown changes: we update it without reassembling the screen
         if (wlSame && prev != null && st.copy(graceLeftS = prev.graceLeftS) == prev && st.phase == Phase.RECONNECTING) {
             updateGrace(st)
             return
@@ -145,7 +145,7 @@ class HomeScreen(host: MainActivity) : Screen(host) {
         render(st)
     }
 
-    /** Плашка «Доступна версия X»: не во время подключения к машине; крестик прячет её до следующей версии. */
+    /** X cover: not while connected to the machine; the cross hides it until the next version. */
     private fun refreshUpdate() {
         val c = ctx
         val rel = if (CarLifeState.running) null else Updater.banner(c)
@@ -202,7 +202,7 @@ class HomeScreen(host: MainActivity) : Screen(host) {
         renderStages(st.stages)
 
         footer.removeAllViews()
-        // сервер ГУ включает пользователь сам: и первый запуск, и после обрыва кнопка ведёт в настройки Android Auto
+        // head unit server includes the user himself: and the first start, and after the break button leads to Android Auto settings
         if (st.primary != null) {
             footer.addView(c.primaryButton(c.getString(R.string.action_open_aa), R.drawable.ic_open).apply { setOnClickListener { Actions.startServerFromUi(c) } })
         }
@@ -210,10 +210,10 @@ class HomeScreen(host: MainActivity) : Screen(host) {
             footer.addView(c.outlineButton(c.getString(R.string.home_btn_open_aa), R.drawable.ic_open).apply { setOnClickListener { Actions.openAaSettings(c) } })
         }
         if (st.logLink) {
-            // «Отправить лог» живёт внутри самодиагностики: на главном одна понятная вторая кнопка
+            // “Send log” lives inside self-diagnosis: the main thing is one clear second button
             footer.addView(c.tonalButton(c.getString(R.string.diag_home_btn)).apply { setOnClickListener { host.showDiag() } })
         }
-        // настройки AA нужны не только для сервера ГУ: кнопка внизу в любом состоянии, если её уже нет (основная ведёт туда же)
+        // AA settings are needed not only for the head unit: server button at the bottom in any state, if it is no longer there (the main one leads there too)
         if (st.primary == null && st.outline != OutlineAction.OPEN_AA) {
             footer.addView(c.outlineButton(c.getString(R.string.home_btn_open_aa), R.drawable.ic_open).apply { setOnClickListener { Actions.openAaSettings(c) } })
         }
@@ -227,7 +227,7 @@ class HomeScreen(host: MainActivity) : Screen(host) {
         renderDesktop(st)
     }
 
-    /** «Свой лаунчер»: герой-карточка и этапы те же, что у Android Auto, кнопки внизу свои. */
+    /** “Your launcher”: the hero card and stages are the same as the Android Auto, the buttons at the bottom are your own. */
     private fun renderDesktop(st: DesktopHomeState) {
         val c = ctx
         onHide()
@@ -245,13 +245,13 @@ class HomeScreen(host: MainActivity) : Screen(host) {
         }
     }
 
-    /** Тот же поток, что у шага ACTIVATE онбординга и блока в «Режиме»: PhoneActivationBlock без показа (embedded), кнопка здесь. */
+    /** The same thread as the ACTIVATE onboarding step and block in "Mode": PhoneActivationBlock without showing (embedded), button here. */
     private fun activate() {
         val block = activation ?: PhoneActivationBlock(host, embedded = true).also { activation = it }
         block.activateNow()
     }
 
-    /** Герой-карточка: тон, значок в кружке, заголовок в одну строку, подзаголовок и необязательная строка [note]. */
+    /** Hero card: tone, icon in a mug, header in one line, subtitle and optional line [note]. */
     private fun renderHero(tone: Tone, icon: HeroIcon, title: String, sub: String, note: String?) {
         val c = ctx
         val night = c.isNight
@@ -274,7 +274,7 @@ class HomeScreen(host: MainActivity) : Screen(host) {
             HeroIcon.ALERT -> R.drawable.ic_alert
             HeroIcon.KEY -> R.drawable.ic_key
         }
-        // слева значок в кружке, справа заголовок в одну строку; подзаголовок ниже на всю ширину
+        // left icon in the circle, right header in one line; subtitle is lower on the whole width
         heroBox.addView(c.hbox(12).apply {
             addView(FrameLayout(c).apply {
                 background = c.oval(c.clr(fgRes))
@@ -299,7 +299,7 @@ class HomeScreen(host: MainActivity) : Screen(host) {
         for ((label, sm) in stages) stagesBox.addView(stageRow(label.get(c), sm.first, sm.second.get(c)), c.lpDp(MATCH, 52))
     }
 
-    /** Как запустить сервер ГУ: три пронумерованных пункта на плашке surf (Main.dc.html, isOff). */
+    /** How to run head unit: server three numbered items on the surf (Main.dc.html, isOff) plate. */
     private fun chain(): View {
         val c = ctx
         val box = c.vbox().apply {
@@ -327,7 +327,7 @@ class HomeScreen(host: MainActivity) : Screen(host) {
         return box
     }
 
-    /** Строка ресурса с <b>: жирное рисуем шрифтом приложения (Golos 700), а не синтетическим BOLD. */
+    /** Resource line with <b>: bold draw application font (Golos 700) and not synthetic BOLD. */
     private fun boldText(res: Int): CharSequence {
         val c = ctx
         val out = SpannableString(c.getText(res))

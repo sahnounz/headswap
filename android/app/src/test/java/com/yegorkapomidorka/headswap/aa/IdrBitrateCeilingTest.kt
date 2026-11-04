@@ -22,7 +22,7 @@ class IdrBitrateCeilingTest {
         assertEquals(2_688_000, c.onKeyFrame(big))
         assertEquals(1_881_600, c.onKeyFrame(big))
         assertEquals(1_317_120, c.onKeyFrame(big))
-        assertEquals(1_000_000, c.onKeyFrame(big))              // пол
+        assertEquals(1_000_000, c.onKeyFrame(big))              // gender
         assertNull(c.onKeyFrame(big))
         assertEquals(1_000_000, c.current)
     }
@@ -43,7 +43,7 @@ class IdrBitrateCeilingTest {
         assertEquals(2_488_416, c.onKeyFrame(small))
         var last = c.current
         repeat(60) { c.onKeyFrame(small).let { v -> if (v != null) last = v } }
-        assertEquals(max, last)                                 // выше максимума не поднимается
+        assertEquals(max, last)                                 // Above the maximum does not rise
         assertEquals(max, c.current)
     }
 
@@ -51,7 +51,7 @@ class IdrBitrateCeilingTest {
     fun midSizeIdrBreaksCalmStreak() {
         c.onKeyFrame(big)
         repeat(4) { c.onKeyFrame(small) }
-        assertNull(c.onKeyFrame(200 * 1024))                    // между 150 и 300 КБ: серия обнуляется
+        assertNull(c.onKeyFrame(200 * 1024))                    // between 150 and 300 KB: series reset
         repeat(4) { assertNull(c.onKeyFrame(small)) }
         assertEquals(2_688_000 * 115 / 100, c.onKeyFrame(small))
     }

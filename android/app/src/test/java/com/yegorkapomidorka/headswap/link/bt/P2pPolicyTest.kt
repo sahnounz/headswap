@@ -10,7 +10,7 @@ class P2pPolicyTest {
         assertEquals(P2pOnTarget.START, P2pPolicy.onTarget(active = false, joined = false))
     }
 
-    /** h126: попытка не вошла (BUSY), ГУ переподключила BT и прислала TARGET_INFO снова - начинаем заново, а не «уже вхожу». */
+    /** h126: failed to enter (BUSY), head unit reconnected BT and sent TARGET_INFO again - start over, not "I'm already entering". */
     @Test
     fun newTargetRestartsStuckAttempt() {
         assertEquals(P2pOnTarget.RESTART, P2pPolicy.onTarget(active = true, joined = false))
@@ -21,7 +21,7 @@ class P2pPolicyTest {
         assertEquals(P2pOnTarget.SKIP, P2pPolicy.onTarget(active = true, joined = true))
     }
 
-    /** h211: rejoin спрашивает TARGET_INFO раз в 5-10 с; тот же ответ не рвёт свежую попытку, протухшую или с другими реквизитами - рвёт. */
+    /** h211: rejoin asks TARGET_INFO times in 5-10 with; the same answer does not tear a fresh try, faded or with other props - rips. */
     @Test
     fun sameTargetKeepsFreshAttempt() {
         assertEquals(P2pOnTarget.SKIP, P2pPolicy.onTarget(active = true, joined = false, same = true, ageMs = 9_000L, freshMs = 30_000L))
@@ -38,7 +38,7 @@ class P2pPolicyTest {
         assertEquals(false, a.sameAs(P2pTarget("CarLife-x", "DIRECT-ab", "12345678", null)))
     }
 
-    /** h211: после распада группы при живом BT просим TARGET_INFO сами - сначала быстро, потом раз в 10 с, потом хватит. */
+    /** h211: after the collapse of the group when alive BT ask TARGET_INFO themselves - first quickly, then once in 10 s, then enough. */
     @Test
     fun rejoinBackoff() {
         assertEquals(2_000L, P2pPolicy.rejoinDelayMs(0))
@@ -48,7 +48,7 @@ class P2pPolicyTest {
         assertEquals(null, P2pPolicy.rejoinDelayMs(P2pPolicy.REJOIN_ATTEMPTS))
     }
 
-    /** h211/h185: четыре запроса (~27 с) без входа, первая 30-секундная попытка кончилась - на шаге 4 (~37 с) рвём RFCOMM. */
+    /** h211/h185: four requests ( ~ 27 (c) Without entrance, first 30-second attempt ended - on the step 4 (~37 (c) Ripe RFCOMM. */
     @Test
     fun rejoinDropsBtAfterFirstFailedJoin() {
         assertEquals(false, P2pPolicy.rejoinDropBt(0))

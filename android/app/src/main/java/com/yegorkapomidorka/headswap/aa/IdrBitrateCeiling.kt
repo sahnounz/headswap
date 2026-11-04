@@ -5,11 +5,11 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * Битрейт энкодера по размеру ключевых кадров (Hyundai Tucson, Mobis CCNC, h242): на карте с движением IDR от
- * c2.qti.avc.encoder (VBR, 3,84 Мбит/с) рос каждую секунду 200 -> 712 КБ, и после ~600 КБ ГУ уходила в цикл
- * «повтор VIDEO_ENCODER_START -> EIO». IDR больше [limitBytes] - битрейт ×[downFactor] (не ниже [minBps]), и так на
- * каждый такой IDR; [calmCount] IDR подряд меньше [calmBytes] - обратно ×[upFactor] (не выше [maxBps]).
- * Чистая логика: кодек не трогает. Зовётся с нитей энкодеров (транскодер и заглушка), поэтому синхронизирована.
+ * bitrate encoder by size key frame (Hyundai Tucson, Mobis CCNC, h242): on the map with movement IDR from
+ * c2.qti.avc.encoder (VBR, 3,84 Mbit/s) grew every second 200 -> 712 KB, and after ~ 600 KB head unit Goes to Cycle
+ * «repeat» VIDEO_ENCODER_START -> EIO». IDR more [limitBytes] - bitrate ×[downFactor] (not below) [minBps]and so on.
+ * each such IDR; [calmCount] IDR less in a row [calmBytes] - back ×[upFactor] (not higher) [maxBps]).
+ * Pure logic: the codec does not touch. It is called with thread encoder (transcoder and stub), so it is synchronized.
  */
 class IdrBitrateCeiling(
     private val maxBps: Int,
@@ -20,17 +20,17 @@ class IdrBitrateCeiling(
     private val downFactor: Double = DOWN_FACTOR,
     private val upFactor: Double = UP_FACTOR,
 ) {
-    /** Текущий целевой битрейт, бит/с. */
+    /** Current target bitrate, bit/s. */
     @Volatile var current = maxBps
         private set
 
     private var calm = 0
 
-    /** IDR выше лимита, а битрейт уже на полу: сколько таких подряд (для одной строки лога, не на каждый кадр). */
+    /** IDR is above the limit, and bitrate is already on the floor: how many of these are in a row (for one line of log, not for every frame). */
     var stuckAtFloor = 0
         private set
 
-    /** Очередной IDR размером [size] байт. Возвращает новый битрейт, если он изменился, иначе null. */
+    /** Another IDR Size [size] byte. Returns new bitrateIf it has changed, otherwise null. */
     @Synchronized
     fun onKeyFrame(size: Int): Int? {
         if (size > limitBytes) {

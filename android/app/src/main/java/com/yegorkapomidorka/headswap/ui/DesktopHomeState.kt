@@ -12,10 +12,10 @@ import com.yegorkapomidorka.headswap.dex.DexState
 import com.yegorkapomidorka.headswap.dex.PhoneActivationState
 import java.util.Locale
 
-/** Главный экран в режиме «Свой лаунчер»: тот же скелет, что у Android Auto (HomeState), но свои этапы, тексты и кнопки. */
+/** The main screen in the mode of "Your launcher": the same skeleton as that of Android Auto (HomeState), but its stages, texts and buttons. */
 enum class DesktopPhase { ACTIVATE, WAITING, RECOVERING, ERROR, WORKING }
 
-/** Кнопки внизу экрана, сверху вниз. */
+/** Buttons at the bottom of the screen, top to bottom. */
 enum class DesktopButton { ACTIVATE, STOP, DIAG }
 
 data class DesktopHomeState(
@@ -29,24 +29,24 @@ data class DesktopHomeState(
 )
 
 class DesktopInputs(
-    /** Активация READY: без неё рабочий стол не стартует. */
+    /** Activating READY: without it will not start the desktop. */
     val activationReady: Boolean,
-    /** Ключ adb уже принят телефоном: повторной активации код не нужен. */
+    /** The adb key is already accepted by the phone: no reactivation code is needed. */
     val paired: Boolean,
-    /** Сервис моста работает (CarLifeState.running). */
+    /** The bridge service works (CarLifeState.running). */
     val bridgeRunning: Boolean,
-    /** Рабочий стол на виртуальном дисплее запущен (DexState.running). */
+    /** The desktop on the virtual display is running (DexState.running). */
     val desktopRunning: Boolean,
-    /** DexState.status сейчас - строка восстановления (desk_recovering). */
+    /** DexState.status is now - recovery string (desk_recovering). */
     val recovering: Boolean,
     val status: String,
     val error: String?,
     val wireless: Boolean = false,
-    /** Размер видео текущей сессии («1280×720»). */
+    /** The video size of the current session ("1280×720"). */
     val videoRes: String = "1280×720",
-    /** Подпись выбранного лаунчера на экране машины. */
+    /** The signature of the selected launcher on the machine screen. */
     val desktopName: String = "Headswap",
-    /** Звук идёт по каналу CarLife (захват работает и в нём не тишина); иначе - Bluetooth магнитолы. */
+    /** The sound is on the CarLife channel (the capture works and there is no silence in it); otherwise - Bluetooth magnetols. */
     val usbAudio: Boolean = false,
 )
 
@@ -61,7 +61,7 @@ object DesktopHomeLogic {
     private val CARLIFE_WIFI = UiText.raw("CarLife 2.0 · Wi-Fi")
     private val ACTIVE = UiText.res(R.string.home_desk_st_active)
 
-    /** Порядок проверки: активация, ошибка, восстановление, работает, ждём. */
+    /** Check order: activation, error, recovery, working, waiting. */
     fun compute(i: DesktopInputs): DesktopHomeState = when {
         !i.activationReady -> state(
             DesktopPhase.ACTIVATE, Tone.PRI, HeroIcon.KEY, UiText.res(R.string.home_desk_title_activate),
@@ -72,7 +72,7 @@ object DesktopHomeLogic {
             ),
             listOf(DesktopButton.ACTIVATE),
         )
-        // настоящее восстановление error сбрасывает (BridgeService), а оборванное оставляет и его, и строку «(1/2)…»: тогда это ошибка
+        // true error resets (BridgeService), and the broken one leaves both it and the line "(1/2)...": then this is an error
         i.error != null -> state(
             DesktopPhase.ERROR, Tone.ERR, HeroIcon.ALERT, UiText.res(R.string.home_desk_title_error), UiText.raw(i.error),
             listOf(
@@ -80,7 +80,7 @@ object DesktopHomeLogic {
                 if (i.bridgeRunning) StageState.DONE to (if (i.wireless) CARLIFE_WIFI else CARLIFE) else StageState.PEND to NONE,
                 StageState.ERR to UiText.res(R.string.home_desk_st_error), StageState.PEND to NONE, StageState.PEND to NONE,
             ),
-            // «Остановить» только пока сессия жива
+            // “Stop” only while the session is alive
             if (i.bridgeRunning) listOf(DesktopButton.DIAG, DesktopButton.STOP) else listOf(DesktopButton.DIAG),
         )
         i.recovering && i.bridgeRunning -> state(
@@ -104,7 +104,7 @@ object DesktopHomeLogic {
             ),
             listOf(DesktopButton.STOP),
         )
-        // сервис уже поднят (кабель есть), рабочий стол ещё стартует: не просим кабель, который уже воткнут
+        // the service is already up (the cable is there), the desktop is still starting: do not ask for a cable that has already been plugged
         i.bridgeRunning -> state(
             DesktopPhase.WAITING, Tone.PRI, HeroIcon.PLUG, UiText.res(R.string.home_title_connecting),
             UiText.res(R.string.home_desk_sub_starting),
@@ -130,12 +130,12 @@ object DesktopHomeLogic {
     ) = DesktopHomeState(phase, tone, icon, title, sub, LABELS.zip(stages), buttons)
 }
 
-/** Сборка DesktopInputs из DexState / CarLifeState / DelegatedDesktopAccess; вызывается с главной нити. */
+/** DesktopInputs assembly from DexState/CarLifeState/DelegatedDesktopAccess; called with main thread. */
 object DesktopHomeStatus {
-    /** Строки desk_recovering всех языков: сервис моста пишет статус в своей локали, экран может быть в другой. */
+    /** desk_recovering lines of all languages: the bridge service writes the status in its locale, the screen can be in another. */
     private var recoveringTexts: Set<String>? = null
 
-    /** Подпись лаунчера по сохранённому «пакет/класс»; PackageManager не дёргаем на каждый тик. */
+    /** launcher signature by saved "package/class"; PackageManager does not pull on every tick. */
     private var labelFor: Pair<String, String>? = null
 
     fun inputs(ctx: Context): DesktopInputs {

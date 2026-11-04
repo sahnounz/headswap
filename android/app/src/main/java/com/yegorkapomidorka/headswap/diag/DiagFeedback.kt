@@ -4,8 +4,8 @@ import android.content.Context
 import com.yegorkapomidorka.headswap.AppLog
 
 /**
- * Отметки «Помогло / Не помогло» под советами диагноза. Хранятся на телефоне (id причины -> «helped|not_helped|время мс»)
- * и пишутся строкой в лог приложения: с отправленным логом разработчик видит, какие советы работают.
+ * "Helped / Did not help" marks under the advice of diagnosis. Stored on the phone (id reasons -> "helped|not_helped|ms time")
+ * and written in a line in the application log: with the sent log, the developer sees what tips work.
  */
 object DiagFeedback {
     private const val PREFS = "diag_feedback"

@@ -24,16 +24,16 @@ class CarLogicTest {
     fun debounceFiresOnlyAfterDelay() {
         var now = 1_000L
         val d = AutoOffDebounce(10_000L) { now }
-        assertFalse(d.fire())      // не взведён
+        assertFalse(d.fire())      // not raised
         d.arm()
         assertTrue(d.pending)
         now += 9_999L
         assertFalse(d.fire())
-        assertTrue(d.pending)      // рано: остаётся взведённым
+        assertTrue(d.pending)      // Early: Remains elevated
         now += 1L
         assertTrue(d.fire())
         assertFalse(d.pending)
-        assertFalse(d.fire())      // срабатывает один раз
+        assertFalse(d.fire())      // works once
     }
 
     @Test
@@ -42,7 +42,7 @@ class CarLogicTest {
         val d = AutoOffDebounce(10_000L) { now }
         d.arm()
         now += 5_000L
-        d.cancel()                 // пришёл ACL_CONNECTED
+        d.cancel()                 // ACL_CONNECTED
         now += 60_000L
         assertFalse(d.fire())
         assertFalse(d.pending)
@@ -50,13 +50,13 @@ class CarLogicTest {
 
     @Test
     fun debounceBurstRearmsFromLastDisconnect() {
-        // всплески ACL у ГУ: каждый новый DISCONNECTED сдвигает срок
+        // ACL head unit: every new DISCONNECTED shifts the deadline
         var now = 0L
         val d = AutoOffDebounce(10_000L) { now }
         d.arm()
         now += 7_000L
         d.arm()
-        now += 7_000L              // 14 с от первого, 7 с от второго
+        now += 7_000L              // 14 from the first, 7 from the second
         assertFalse(d.fire())
         now += 3_000L
         assertTrue(d.fire())
@@ -74,7 +74,7 @@ class CarLogicTest {
         assertEquals(false, m.tryAcquire())
     }
 
-    /** Все условия выполнены; тесты по одному ломают по условию. */
+    /** All conditions are met; tests break one by one. */
     private fun request(
         carWifiSet: Boolean = true,
         waiting: Boolean = true,
@@ -100,24 +100,24 @@ class CarLogicTest {
 
     @Test
     fun carNetDelayZeroOnlyRightAfterCarWasOnline() {
-        assertEquals(CAR_NET_DELAY_MS, CarNetPolicy.delayMs(null))              // машины не было: ждём её в сети телефона
+        assertEquals(CAR_NET_DELAY_MS, CarNetPolicy.delayMs(null))              // There was no car: we are waiting for her on the phone network
         assertEquals(0L, CarNetPolicy.delayMs(0))
-        assertEquals(0L, CarNetPolicy.delayMs(11_000))                         // выдернули кабель, AA grace 8 с
+        assertEquals(0L, CarNetPolicy.delayMs(11_000))                         // pulled cable, AA grace 8 with
         assertEquals(CAR_NET_DELAY_MS, CarNetPolicy.delayMs(CAR_RECENT_MS))
-        assertEquals(CAR_NET_DELAY_MS, CarNetPolicy.delayMs(-1))              // часы назад: как не было
+        assertEquals(CAR_NET_DELAY_MS, CarNetPolicy.delayMs(-1))              // Hours ago: It wasn't
     }
 
     @Test
     fun carNetDelayZeroWhenCarConnectedByBluetooth() {
-        assertEquals(0L, CarNetPolicy.delayMs(null, carBtNear = true))         // холодный старт, машина по BT рядом
+        assertEquals(0L, CarNetPolicy.delayMs(null, carBtNear = true))         // cold start, machine by BT near
         assertEquals(0L, CarNetPolicy.delayMs(CAR_RECENT_MS * 10, carBtNear = true))
         assertEquals(CAR_NET_DELAY_MS, CarNetPolicy.delayMs(null, carBtNear = false))
-        assertEquals(0L, CarNetPolicy.delayMs(null, carNetProven = true))      // ГУ уже приходила через свою сеть
+        assertEquals(0L, CarNetPolicy.delayMs(null, carNetProven = true))      // head unit has already arrived through its network
         assertEquals("wpa2", CarSecPolicy.first(null, hasPass = true))
         assertEquals("wpa3", CarSecPolicy.first("wpa3", hasPass = true))
         assertEquals("open", CarSecPolicy.first("wpa2", hasPass = false))
-        assertTrue(CarSecPolicy.retryWpa3(null, "wpa2", hasPass = true))         // защита ещё не известна: пробуем WPA3
-        assertFalse(CarSecPolicy.retryWpa3("wpa2", "wpa2", hasPass = true))     // WPA2 уже удавался: машины просто нет в эфире
+        assertTrue(CarSecPolicy.retryWpa3(null, "wpa2", hasPass = true))         // protection not yet known: try WPA3
+        assertFalse(CarSecPolicy.retryWpa3("wpa2", "wpa2", hasPass = true))     // WPA2 has already succeeded: the car is simply not on the air
         assertFalse(CarSecPolicy.retryWpa3(null, "wpa3", hasPass = true))
         assertEquals(CAR_NET_DELAY_MS, CarNetPolicy.delayMs(CAR_RECENT_MS, carNetProven = false))
     }
@@ -172,7 +172,7 @@ class CarLogicTest {
         assertFalse(CarNetPolicy.shouldRelease(CarNetEvent.SESSION_END))
     }
 
-    /** Все условия выполнены; тесты по одному ломают по условию. */
+    /** All conditions are met; tests break one by one. */
     private fun btHint(
         waiting: Boolean = true,
         session: Boolean = false,

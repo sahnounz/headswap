@@ -3,8 +3,8 @@ package com.yegorkapomidorka.headswap.aa
 import com.yegorkapomidorka.headswap.R
 
 /**
- * Настройка «Частота кадров»: Авто (как просит ГУ в VIDEO_ENCODER_INIT) или фиксированная; по умолчанию Авто.
- * Читается один раз на подключение (SessionConfig), в passthrough не действует.
+ * "Frequency frame" setting: Auto (as requested by head unit in VIDEO_ENCODER_INIT) or fixed; default Auto.
+ * It is read once per connection (SessionConfig), passthrough is not valid.
  */
 enum class FpsSetting(val titleRes: Int, val subRes: Int, val fixed: Int?) {
     AUTO(R.string.fps_auto_title, R.string.fps_auto_sub, null),
@@ -15,28 +15,28 @@ enum class FpsSetting(val titleRes: Int, val subRes: Int, val fixed: Int?) {
     companion object {
         val DEFAULT = AUTO
 
-        /** По имени из prefs; неизвестное/пустое = по умолчанию. */
+        /** By name from prefs; unknown/empty = by default. */
         fun parse(key: String?): FpsSetting = values().firstOrNull { it.name == key } ?: DEFAULT
     }
 }
 
 /**
- * Гейт кадров перед энкодером: по таймстемпам решает, отдавать ли кадр. Энкодер с Surface-входом кодирует
- * каждый swap, поэтому KEY_FRAME_RATE частоту не ограничивает - её режет только этот гейт.
- * По умолчанию цель >= 30 (или <= 0) пропускает всё; прямой Surface рабочего стола задаёт limitHighFps=true.
- * Для AA: вход AA быстрее 30 не бывает, а допуск по таймстемпам на 30/30 терял бы кадры
- * от джиттера входа. Ниже 30 - сетка слотов: слот каждые period, кадр берётся за полпериода до слота и позже.
- * Вызывается с одной нити (GL-реле); targetFps можно менять с любой.
+ * frame gate before encoder: at timestamps decides whether to give frame. encoder with Surface- input encodes
+ * each swap, so KEY_FRAME_RATE frequency does not limit - it is cut only by this gate.
+ * By default, the target >= 30 (or <= 0) misses everything; the Surface desktop line is set by limitHighFps=true.
+ * For AA:, AA input is faster than 30 does not happen, and timestep tolerance on 30/30 would lose frame
+ * from jitter login. Below 30 is a grid of slots: the slot every period, frame is taken half a period before the slot and later.
+ * Called with one thread (GL-relay); targetFps can be changed with any.
  */
 class FrameGate(initialFps: Int, private val limitHighFps: Boolean = false) {
     @Volatile var targetFps: Int = initialFps
     private var nextNs = NONE
 
-    /** true = кадр отдать, false = пропустить. */
+    /** true = frame give away, false = skip. */
     fun shouldEmit(nowNs: Long): Boolean {
         val fps = targetFps
         if (fps <= 0 || (!limitHighFps && fps >= PASS_ALL_FPS)) {
-            nextNs = NONE           // при переключении на меньшую цель сетка начнётся заново
+            nextNs = NONE           // when switching to a smaller target, the grid will start again
             return true
         }
         val period = 1_000_000_000L / fps
@@ -49,14 +49,14 @@ class FrameGate(initialFps: Int, private val limitHighFps: Boolean = false) {
         val tolerance = if (limitHighFps) minOf(1_000_000L, period / 2) else period / 2
         if (nowNs < nextNs - tolerance) return false
         nextNs += period
-        if (nowNs - nextNs > period) nextNs = nowNs + period     // отстали больше чем на период (вход медленнее цели): сетка заново
+        if (nowNs - nextNs > period) nextNs = nowNs + period     // lag more than a period (entry slower than target): grid re-
         return true
     }
 
-    /** Период целевой частоты в нс (0 = без ограничения). */
+    /** The target frequency period in ns (0 = no limit). */
     fun periodNs(): Long = targetFps.let { if (it <= 0) 0L else 1_000_000_000L / it }
 
-    /** Новая AA-сессия: первый кадр отдаётся сразу. */
+    /** New AA-session: the first frame is given immediately. */
     fun reset() {
         nextNs = NONE
     }

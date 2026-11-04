@@ -11,12 +11,12 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
 /**
- * AA H.264 -> MediaCodec без Surface -> YUV в память. Кадры идут в декодер в исходном виде (до правки frame_num).
- * Потерянный кадр (очередь полна, ошибка кодека) ломает опорную картинку, поэтому после потери до следующего IDR от AA
- * ничего не подаётся и не отдаётся. Картинка нужна кодированного размера: строки за кропом SPS тоже опорные, а декодер
- * (Qualcomm, AA 1920x1080 = 1088 строк с кропом 8) отдаёт только видимые. Поэтому декодер получает SPS без кропа, и в
- * CODEC_CONFIG, и внутри IDR от AA. Не вышло скопировать кадр целиком - вставка невозможна: мосту один раз
- * [RefPictureSink.onRefUnavailable], декодер останавливается.
+ * AA H.264 -> MediaCodec without Surface -> YUV in memory. frame go to decoder in its original form (before editing frame_num).
+ * The lost frame (the queue is full, the codec error) breaks the reference picture, so after losing to the next IDR from AA
+ * nothing is served or given. The picture needs coded size: lines for crop SPS are also reference, and decoder
+ * (Qualcomm, AA 1920x1080 = 1088 lines with crop 8) gives only visible. Therefore, decoder gets SPS without crop, and in
+ * CODEC_CONFIG, and inside IDR from AA. It did not work to copy frame whole - insert is impossible: bridge once
+ * [RefPictureSink.onRefUnavailable], decoder stops.
  */
 class RefDecoder(private val sink: RefPictureSink, private val log: (String) -> Unit) : RefPictureDecoder {
     private sealed class Item {
@@ -28,7 +28,7 @@ class RefDecoder(private val sink: RefPictureSink, private val log: (String) -> 
     private val queue = LinkedBlockingQueue<Item>(QUEUE)
     @Volatile private var running = true
 
-    // только нить декодера
+    // only thread decoder
     private var codec: MediaCodec? = null
     private var codecCfg: ByteArray? = null
     private var sps: ByteArray? = null
@@ -41,7 +41,7 @@ class RefDecoder(private val sink: RefPictureSink, private val log: (String) -> 
     private var formatLogged = false
 
     init {
-        Thread({ loop() }, "aa-ref-dec").start()      // после полей: нить читает их сразу
+        Thread({ loop() }, "aa-ref-dec").start()      // after fields: thread reads them right away
     }
 
     override fun feedConfig(annexB: ByteArray) {
@@ -59,7 +59,7 @@ class RefDecoder(private val sink: RefPictureSink, private val log: (String) -> 
         queue.offer(Item.Stop)
     }
 
-    /** С чужой нити: очередь чистится, нить декодера увидит Lost и будет ждать IDR. */
+    /** With the alien thread: queue cleaned, thread decoder will see Lost and will wait for IDR. */
     private fun lose(why: String) {
         queue.clear()
         queue.offer(Item.Frame(LOST, -1))
@@ -111,8 +111,8 @@ class RefDecoder(private val sink: RefPictureSink, private val log: (String) -> 
             needIdr = false
         }
         val c = codec ?: return
-        // Декодер иногда замирает на десятки-сотни мс (realme h588). Сброс до IDR от AA - это до минуты без своего IDR,
-        // поэтому ждём буфер, разгружая выход; кадры AA тем временем копятся в очереди
+        // decoder sometimes freezes at tens to hundreds of ms (realme h588). reset to IDR from AA is up to a minute without its IDR,
+        // so wait for the buffer, unloading the output; frame AA meanwhile accumulate in line
         val t0 = System.nanoTime()
         var idx = c.dequeueInputBuffer(INPUT_WAIT_US)
         while (idx < 0 && running && System.nanoTime() - t0 < INPUT_GIVEUP_NS) {
@@ -138,7 +138,7 @@ class RefDecoder(private val sink: RefPictureSink, private val log: (String) -> 
         c.queueInputBuffer(idx, 0, data.size, f.seq, 0)
     }
 
-    /** SPS в кадре или конфиге - без кропа (P-кадры AA SPS не несут). Не разобрался - как есть: копия кадра тогда не выйдет. */
+    /** SPS in frame or config - without crop (P-frame AA SPS do not carry). Did not understand - as is: a copy of frame will not work then. */
     private fun uncropped(au: ByteArray): ByteArray = SpsCrop.mapSps(AnnexB.normalize(au)) { sps ->
         try {
             SpsCrop.uncrop(sps)
@@ -166,8 +166,8 @@ class RefDecoder(private val sink: RefPictureSink, private val log: (String) -> 
             f.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
             f.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 1024 * 1024)
             if (Build.VERSION.SDK_INT >= 30) f.setInteger(MediaFormat.KEY_LOW_LATENCY, 1)
-            // Qualcomm без них держит последний кадр до следующего входа (realme h588): на статичном экране AA молчит, картинки нет.
-            // Чужой декодер незнакомые ключи пропускает
+            // Qualcomm without them keeps the last frame until the next entry (realme h588): on the static screen AA is silent, there are no pictures.
+            // Alien decoder Unknown Keys Skips
             for (k in QTI_LOW_LATENCY) f.setInteger(k, 1)
             val c = MediaCodec.createDecoderByType(MIME)
             try {
@@ -217,7 +217,7 @@ class RefDecoder(private val sink: RefPictureSink, private val log: (String) -> 
         }
     }
 
-    /** Image YUV_420_888 -> I420 кодированного размера; null - в буфере меньше строк, чем в кодированном кадре. */
+    /** Image YUV_420_888 -> I420 encoded size; null - less lines in buffer than in coded frame. */
     private fun copy(img: Image): IdrSplice.Picture? {
         val p = pic?.takeIf { it.width == codedW && it.height == codedH }
             ?: IdrSplice.Picture(codedW, codedH, ByteArray(codedW * codedH), ByteArray(codedW * codedH / 4), ByteArray(codedW * codedH / 4)).also { pic = it }
@@ -227,7 +227,7 @@ class RefDecoder(private val sink: RefPictureSink, private val log: (String) -> 
             copyPlane(pl[1], codedW / 2, codedH / 2, p.u) &&
             copyPlane(pl[2], codedW / 2, codedH / 2, p.v)
         if (!ok) {
-            // вставка до конца AA-сессии невозможна: мост перестаёт ждать картинки, декодер больше не нужен
+            // inserting until the end of the AA-session is impossible: the bridge ceases to wait for pictures, decoder is no longer needed
             failed = true
             running = false
             sink.onRefUnavailable("вывод декодера ${img.width}x${img.height} (format ${img.format}) не покрывает кодированный кадр ${codedW}x$codedH")
@@ -275,7 +275,7 @@ class RefDecoder(private val sink: RefPictureSink, private val log: (String) -> 
         private val QTI_LOW_LATENCY = listOf("vendor.qti-ext-dec-low-latency.enable", "vendor.qti-ext-dec-picture-order.enable")
         private const val QUEUE = 120
         private const val INPUT_WAIT_US = 50_000L
-        private const val INPUT_GIVEUP_NS = 2_000_000_000L   // дольше - очередь (120 кадров, ~4 с) всё равно переполнится
+        private const val INPUT_GIVEUP_NS = 2_000_000_000L   // The Longer Line ( )120 frame, ~4 (c) Will still be full
         private const val INPUT_SLOW_LOG_MS = 200L
         private val LOST = ByteArray(0)
     }

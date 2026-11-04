@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
-/** Ручная проба сервера ГУ на фейковом транспорте, пассивные счётчики отказов, классификация и настоящая проба по loopback. */
+/** Manual test of head unit server on fake transport, passive failure meters, classification and real test according to loopback. */
 class AaServerCheckTest {
     private class FakeProbe(private val result: ProbeResult = ProbeResult.ALIVE) : ServerProbe {
         val calls = AtomicInteger()
@@ -50,7 +50,7 @@ class AaServerCheckTest {
         }
     }
 
-    // --- ручная проба ---
+    // --- manual sample ---
 
     @Test
     fun manualProbeRunsOnceAndReportsResult() {
@@ -137,7 +137,7 @@ class AaServerCheckTest {
         assertTrue(c.awaitIdle(5000))
     }
 
-    // --- пассивные счётчики отказов ---
+    // --- passive failure counters ---
 
     @Test
     fun refusedStreakCountsFromFirstRefusal() {
@@ -229,7 +229,7 @@ class AaServerCheckTest {
         f.onRefused()
         assertTrue(f.refusedFresh)
         assertTrue(f.needsStart())
-        // окно переживает reset() цикла коннектора
+        // window experiences reset() loop connector
         val g = ServerFailures { clock.get() }
         g.onEstablished()
         g.onSessionEnded()
@@ -239,7 +239,7 @@ class AaServerCheckTest {
         assertFalse(g.refusedFresh)
     }
 
-    // --- классификация итога настоящей пробы ---
+    // --- classification of the result of this test ---
 
     @Test
     fun classifyConnectFailures() {
@@ -262,7 +262,7 @@ class AaServerCheckTest {
         assertEquals(ProbeResult.ERROR, c.classify(null, true, false, "TLS handshake не прошёл: SSLHandshakeException"))
     }
 
-    // --- настоящая AapSession против фейкового "телефона" по loopback (как AapSessionTest) ---
+    // --- real AapSession against fake "phone" by loopback (as AapSessionTest) ---
 
     private val creds by lazy { AapCerts.load(TestAssets.opener, "jvc") }
 
@@ -287,11 +287,11 @@ class AaServerCheckTest {
             assertTrue(accepted.await(5, TimeUnit.SECONDS))
             phone.join(10_000)
             assertFalse("скрипт телефона завис", phone.isAlive)
-            // скрипт no_video проверяет: SDR получил ответ, затем пришёл именно ByeBye, и только потом EOF
+            // no_video script checks: SDR got the answer, then came exactly ByeBye, and only then EOF
             assertNull("ошибка телефона: ${phone.error}\n" + logs.joinToString("\n"), phone.error)
             assertTrue("HU не закрыл сокет штатно (EOF)", phone.sawEof && !phone.reset)
             assertTrue(logs.any { it.contains("SRVCHECK сессия: connected=true established=true закрытие чистое=true") })
-            // строки сессии пробы не должны совпасть с маркерами моста в LogDiag ("AA TCP подключено" и т.п.)
+            // the sample session lines must not match the bridge markers in LogDiag ("AA TCP connected", etc.)
             assertTrue(logs.any { it.contains("SRVCHECK | aa TCP подключено") })
             assertFalse(logs.any { it.contains("AA TCP подключено") || it.contains("AA сессия установлена") })
         }

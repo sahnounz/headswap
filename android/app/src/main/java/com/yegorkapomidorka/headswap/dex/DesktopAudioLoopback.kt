@@ -8,11 +8,11 @@ import android.media.AudioRecord
 import java.lang.reflect.InvocationTargetException
 
 /**
- * Loopback AudioMix для медиа: системный AudioPolicy (SystemApi, через reflection - главный процесс запущен
- * `am instrument --no-hidden-api-checks`), право MODIFY_AUDIO_ROUTING из активации --audio.
- * Голый REMOTE_SUBMIX проигрывает маршрутизации по устройствам: при A2DP (Vezel «Honda HFT») медиа уходит
- * в Bluetooth, а захват читает нули. Микс же перехватывает поток раньше выбора устройства, телефон и BT молчат.
- * Политику система снимает сама, если процесс умрёт, - звук телефона не застрянет в мёртвом submix.
+ * Loopback AudioMix for media: system AudioPolicy (SystemApi, via reflection - main process running)
+ * `am instrument --no-hidden-api-checks`), right MODIFY_AUDIO_ROUTING of activation --audio.
+ * Naked REMOTE_SUBMIX loses routing by devices: with A2DP (Vezel "Honda HFT") media leaves
+ * in Bluetooth, and the capture reads zeros. The mix intercepts the stream before choosing the device, the phone and BT are silent.
+ * The policy system removes itself if the process dies - the phone sound will not get stuck in the dead submix.
  */
 internal class DesktopAudioLoopback private constructor(
     private val audio: AudioManager, private val policy: Any, val record: AudioRecord,
@@ -24,10 +24,10 @@ internal class DesktopAudioLoopback private constructor(
 
     companion object {
         private const val RULE_MATCH_ATTRIBUTE_USAGE = 1 // AudioMixingRule.RULE_MATCH_ATTRIBUTE_USAGE
-        private const val ROUTE_FLAG_LOOP_BACK = 2       // AudioMix.ROUTE_FLAG_LOOP_BACK, без RENDER: на телефоне тишина
+        private const val ROUTE_FLAG_LOOP_BACK = 2       // AudioMix.ROUTE_FLAG_LOOP_BACK, without RENDER: on the phone silence
         private val USAGES = intArrayOf(AudioAttributes.USAGE_MEDIA, AudioAttributes.USAGE_GAME, AudioAttributes.USAGE_UNKNOWN)
 
-        /** Канальная маска выходная: createAudioRecordSink сам переводит её во входную. */
+        /** Channel mask output: createAudioRecordSink itself translates it into the input. */
         fun open(context: Context, sampleRate: Int): DesktopAudioLoopback = unwrap {
             val format = AudioFormat.Builder().setSampleRate(sampleRate).setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT).build()

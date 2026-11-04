@@ -1,9 +1,9 @@
 package com.yegorkapomidorka.headswap.aa
 
 /**
- * Таблицы CAVLC H.264: coeff_token (9-5, индекс 4 * TotalCoeff + TrailingOnes; строки nC 0-1, 2-3, 4-7, 8+ и nC = -1
- * для chroma DC 4:2:0), total_zeros (9-7, 9-8; строка TotalCoeff - 1) и run_before (9-10; строка min(zerosLeft, 7) - 1).
- * Длины в битах и коды. Сгенерированы из таблиц libavcodec и проверены на префиксность; свой IDR со сжатием (IdrIntra).
+ * Tables CAVLC H.264: coeff_token (9-5, 4*TotalCoeff+TrailingOnes; rows nC 0-1, 2-3, 4-7, 8+ and nC = -1
+ * For chroma DC 4:2:0), total_zeros (9-7, 9-8; line TotalCoeff - 1) and run_before (9-10; line min(zerosLeft, 7) - 1).
+ * Bit lengths and codes. Generated from libavcodec tables and checked for prefix; its IDR with compression (IdrIntra).
  */
 internal object CavlcTables {
     val COEFF_LEN = arrayOf(

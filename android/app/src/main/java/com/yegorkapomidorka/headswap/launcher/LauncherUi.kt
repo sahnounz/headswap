@@ -57,7 +57,7 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** px экрана ГУ -> dp/sp в одном месте: остальной код живёт в px из [LauncherSpec]. */
+/** px screen head unit -> dp/sp in one place: the rest of the code lives in px of [LauncherSpec]. */
 class LauncherMetrics(val spec: LauncherSpec, private val density: Density) {
     fun dp(px: Int): Dp = with(density) { px.toDp() }
     fun sp(px: Int): TextUnit = with(density) { px.toSp() }
@@ -66,13 +66,13 @@ class LauncherMetrics(val spec: LauncherSpec, private val density: Density) {
 val LocalMetrics = staticCompositionLocalOf<LauncherMetrics> { error("LauncherMetrics not provided") }
 val LocalAccent = staticCompositionLocalOf { Pal.GOLD }
 
-/** Шрифты макета: Golos Text и JetBrains Mono (OFL, вариативные, уже лежат в res/font для интерфейса телефона). */
+/** Layout fonts: Golos Text and JetBrains Mono (OFL, variable, already lie in res/font for phone interface). */
 object LauncherFonts {
     private val cache = java.util.concurrent.ConcurrentHashMap<Int, FontFamily>()
 
     /**
-     * Семейство под один вес: Compose у вариативного шрифта из ресурсов не выставляет wght (всё рисовалось 400),
-     * поэтому берём font-family XML (golos.xml / jetbrains_mono.xml с fontVariationSettings) и выбираем вес системой.
+     * Single-weight family: Compose in variable font from resources does not display wght (all was drawn by 400),
+     * so take font-family XML (golos.xml / jetbrains_mono.xml with fontVariationSettings) and choose the weight system.
      */
     fun family(ctx: android.content.Context, mono: Boolean, weight: FontWeight): FontFamily {
         val key = (if (mono) 10_000 else 0) + weight.weight
@@ -85,21 +85,21 @@ object LauncherFonts {
     }
 }
 
-/** Палитра темы лаунчера: THEMES из Teyes.dc.html и Settings.dc.html. Обложка музыки и чип плееров тёмные в обеих. */
+/** The launcher: THEMES theme palette from Teyes.dc.html and Settings.dc.html. cover music and chip players are dark in both. */
 class LauncherPalette(
     val light: Boolean,
-    /** Фон 118deg: стопы градиента и альфа левого и правого золотого свечения. */
+    /** Background 118deg: foot gradient and alpha left and right golden glow. */
     val bgStops: List<Pair<Float, Color>>, val glowLeft: Float, val glowRight: Float,
     val fg: Color, val fg2: Color, val fg3: Color,
     val surf: Color, val btn2: Color, val pressed: Color,
-    /** Кнопки вариантов и трек выключенного переключателя в настройках (в тёмной на .02 тише кнопок главного). */
+    /** Option buttons and switch off track in settings (in the dark on .02 quieter main buttons). */
     val btnSet: Color,
-    /** Часы, лого и активный «Назад» на рейке: в светлой приглушены, чёрный выбивается. */
+    /** Clock, logo and active "Back" on the rail: in the light muffled, black is knocked out. */
     val railFg: Color,
     val missed: Color, val backOff: Color, val tagBg: Color, val mapBg: Color,
-    /** Сплошной фон под двойным кольцом выбранной иконки и под окнами поверх экрана. */
+    /** Solid background under the double ring of the selected icon and under the windows on top of the screen. */
     val bgSolid: Color,
-    /** Подложка миниатюр «Карта на главном». */
+    /** Miniature substrate "Map on the main". */
     val mini: Color,
 )
 
@@ -119,7 +119,7 @@ object Palettes {
         light = true,
         bgStops = listOf(0f to Color(0xFFFBF7EC), 0.5f to Color(0xFFF4EDDB), 1f to Color(0xFFEDE3CB)),
         glowLeft = 0.30f, glowRight = 0.18f,
-        // основной текст #463D2E и на главном, и в настройках (решение Егора 03.11)
+        // main text # 463D2E on both main and settings (Yegor 03.11 solution)
         fg = Color(0xFF463D2E), fg2 = Color(0xFF5C5340), fg3 = Color(0xFF6E6450),
         surf = BROWN.copy(alpha = 0.08f), btn2 = BROWN.copy(alpha = 0.12f), pressed = BROWN.copy(alpha = 0.20f),
         btnSet = BROWN.copy(alpha = 0.12f), railFg = Color(0xFF5C5340),
@@ -136,10 +136,10 @@ object Pal {
     val GREEN = Color(0xFF22C55E)
     val ON_GREEN = Color(0xFF06230F)
     val RED = Color(0xFFE03A3A)
-    /** Белый на обложке, на зелёной и красной кнопках - в обеих темах. */
+    /** White on the cover, on the green and red buttons - in both themes. */
     val WHITE = Color(0xFFFFFFFF)
 
-    // цвета темы: из текущей палитры
+    // theme colors: from the current palette
     val TEXT: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.fg
     val SEC: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.fg3
     val SEC2: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.fg2
@@ -149,14 +149,14 @@ object Pal {
     val MISSED: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.missed
     val RAIL: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.railFg
 
-    /** Тёмный или светлый текст на акценте: порог яркости как в макете. */
+    /** Dark or light text on the accent: the threshold of brightness as in the layout. */
     fun onAccent(c: Color): Color {
         val lum = 0.299 * c.red * 255 + 0.587 * c.green * 255 + 0.114 * c.blue * 255
         return if (lum > 140) ON_GOLD else WHITE
     }
 }
 
-/** Фон под углом 118deg и золотое свечение слева и справа по палитре темы. Статичный. */
+/** Background at an angle of 118deg and golden glow on the left and right of the theme palette. Static. */
 fun Modifier.launcherBackground(pal: LauncherPalette): Modifier = drawBehind {
     val w = size.width
     val h = size.height
@@ -176,13 +176,13 @@ fun Modifier.launcherBackground(pal: LauncherPalette): Modifier = drawBehind {
                 radius = rx, center = Offset.Zero)
         }
     }
-    // два приглушённых свечения по бокам: ellipse 26% 70% at 0% 55% и 22% 70% at 100% 55%
+    // two muted glows on the sides: ellipse 26% 70% at 0% 55% and 22% 70% at 100% 55%
     val gold = Color(0xFFD4AF37)
     glowAt(0f, h * 0.55f, w * 0.26f, h * 0.70f, gold.copy(alpha = pal.glowLeft))
     glowAt(w, h * 0.55f, w * 0.22f, h * 0.70f, gold.copy(alpha = pal.glowRight))
 }
 
-/** Иконки из макета (viewBox 24x24); пути в SVG-синтаксисе, рисуем без библиотеки иконок. */
+/** Icons from the layout (viewBox 24x24); paths in SVG-syntax, draw without icon library. */
 object Ico {
     private fun circle(cx: Int, cy: Int, r: Int) = "M${cx - r} ${cy}a$r $r 0 1 0 ${2 * r} 0 $r $r 0 1 0 ${-2 * r} 0"
     val GEAR = listOf(circle(12, 12, 3), "M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z")
@@ -198,43 +198,43 @@ object Ico {
     val VOLUME = listOf("M11 5 6 9H2v6h4l5 4z", "M15.5 8.5a5 5 0 0 1 0 7")
     val PHONE = listOf("M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2")
     val CONTACT = listOf(circle(12, 8, 4), "M4 21a8 8 0 0 1 16 0")
-    /** Входящий в компактной карточке «Телефон»: трубка с волнами. */
+    /** Included in the compact card "Phone": a tube with waves. */
     val PHONE_RING = PHONE + listOf("M15 3a6 6 0 0 1 6 6", "M15 7a2 2 0 0 1 2 2")
-    /** «Открыть запрос на телефоне»: силуэт телефона. */
+    /** "Open a request on the phone": silhouette of the phone. */
     val DEVICE = listOf(roundRectPath(6.5f, 2.5f, 11f, 19f, 2.5f), "M11 18.5h2")
     val MIC_OFF = listOf("M9 9v2a3 3 0 0 0 5 2.2", "M15 9.3V5a3 3 0 0 0-5.7-1.3", "M19 11a7 7 0 0 1-1.2 3.9",
         "M5 11a7 7 0 0 0 11.6 5.3", "M12 18v3", "m3 3 18 18")
     val MIC = listOf("M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z", "M19 11a7 7 0 0 1-14 0", "M12 18v3")
     val PLUS = listOf("M12 5v14", "M5 12h14")
     val CHEV_L = listOf("M15 5 8 12l7 7")
-    /** Шеврон «Назад» на рейке (v2): шире и ниже обычной стрелки страниц. */
+    /** Chevron "Back" on the rail (v2): wider and lower than the usual arrow pages. */
     val CHEV_BACK = listOf("M15 6 7 12l8 6")
     val CHEV_R = listOf("m9 5 7 7-7 7")
     val CLOSE = listOf("M6 6l12 12", "M18 6 6 18")
     val MUSIC = listOf("M9 18V5l12-2v13", circle(6, 18, 3), circle(18, 16, 3))
     val HOME = listOf("m3 11 9-8 9 8", "M5 10v10h14V10")
     val CHECK = listOf("m5 12 5 5 9-10")
-    /** Разделы настроек: «Главный экран» (раскладка) и «Система» (экран ГУ). */
+    /** Settings sections: "Home screen" (layout) and "System" (screen head unit). */
     val LAYOUT = listOf(roundRectPath(3f, 4f, 18f, 16f, 2f), "M8 4v16", "M8 14h13")
     val SCREEN = listOf(roundRectPath(2f, 5f, 20f, 13f, 2f), "M8 21h8")
-    /** Панель навигации чужого лаунчера, как три кнопки Android: контурные треугольник, круг и квадрат со скруглением. */
+    /** The navigation panel of the alien launcher is like three buttons of Android: contour triangle, circle and square with rounding. */
     val NAV_BACK = listOf("M17 4 6 12l11 8z")
     val NAV_HOME = listOf(circle(12, 12, 8))
     val NAV_RECENTS = listOf(roundRectPath(5f, 5f, 14f, 14f, 3f))
-    /** «Последний» во втором слоте плеера. */
+    /** "Last" in the second player slot. */
     val REPEAT = listOf("M20 11a8 8 0 0 0-14.5-4.5L4 8", "M4 3v5h5", "M4 13a8 8 0 0 0 14.5 4.5L20 16", "M20 21v-5h-5")
 }
 
-/** Прямоугольник со скруглением в SVG-синтаксисе (rect rx из макета рисуется как path). */
+/** The rectangle with a rounding in SVG-syntax (rect rx from the layout is drawn as path). */
 fun roundRectPath(x: Float, y: Float, w: Float, h: Float, r: Float): String =
     "M${x + r} ${y}h${w - 2 * r}a$r $r 0 0 1 $r $r v${h - 2 * r}a$r $r 0 0 1 ${-r} $r h${-(w - 2 * r)}a$r $r 0 0 1 ${-r} ${-r} v${-(h - 2 * r)}a$r $r 0 0 1 $r ${-r}z"
 
-/** Путь иконки со своим стилем: заливка, обводка (толщина в единицах viewBox) и прозрачность. */
+/** The path of the icon with its own style: pouring, wrapping (thickness in viewBox units) and transparency. */
 class VPath(val d: String, val fill: Boolean = false, val strokeW: Float? = null, val alpha: Float = 1f)
 
-/** Иконки с разными стилями путей и своим viewBox: логотип Headswap, столбики сигнала, значок YouTube Music. */
+/** Icons with different path styles and its viewBox: logo Headswap, signal bars, icon YouTube Music. */
 object VIco {
-    /** Логотип Headswap из Calls.dc.html / Teyes.dc.html: две дуговые стрелки и прямоугольник, viewBox 48. */
+    /** Headswap logo from Calls.dc.html/Teyes.dc.html: two arc arrows and rectangle, viewBox 48. */
     val LOGO_VIEWPORT = 48f
     val LOGO = listOf(
         VPath("M9.51 20.12A15 15 0 0 1 35.49 14.36", strokeW = 4.4f),
@@ -244,19 +244,19 @@ object VIco {
         VPath("M18.4 20h11.2A2.4 2.4 0 0 1 32 22.4v4.7a2.4 2.4 0 0 1-2.4 2.4H18.4A2.4 2.4 0 0 1 16 27.1v-4.7A2.4 2.4 0 0 1 18.4 20z", fill = true),
     )
 
-    /** Четыре столбика сигнала (viewBox 24): первые [level] залиты, остальные бледные (.35). */
+    /** Four columns of signal (viewBox 24): the first [level] is poured, the rest are pale (.35). */
     fun signal(level: Int): List<VPath> = listOf(
         roundRectPath(2f, 16f, 4f, 5f, 1f), roundRectPath(7.5f, 12f, 4f, 9f, 1f),
         roundRectPath(13f, 8f, 4f, 13f, 1f), roundRectPath(18.5f, 3f, 4f, 18f, 1f),
     ).mapIndexed { i, d -> VPath(d, fill = true, alpha = if (i < level) 1f else 0.35f) }
 
-    /** Раздел «Вид»: круг, закрашенный наполовину. */
+    /** Section "View": a circle, painted in half. */
     val HALF_CIRCLE = listOf(
         VPath("M3 12a9 9 0 1 0 18 0 9 9 0 1 0-18 0", strokeW = 2f),
         VPath("M12 3a9 9 0 0 0 0 18z", fill = true, strokeW = 2f),
     )
 
-    /** YouTube Music на чипе плееров: круг с треугольником. */
+    /** YouTube Music on the chip of players: a circle with a triangle. */
     val YT_MUSIC = listOf(
         VPath("M2.5 12a9.5 9.5 0 1 0 19 0 9.5 9.5 0 1 0-19 0", strokeW = 2.2f),
         VPath("M10 8.5v7l6-3.5z", fill = true, strokeW = 2.2f),
@@ -297,8 +297,8 @@ fun SvgIcon(paths: List<String>, sizePx: Int, color: Color, modifier: Modifier =
 }
 
 /**
- * Кнопка под тач ГУ: нажатое состояние сразу на DOWN, действие на UP, долгий тап считается по времени
- * между DOWN и UP ([PressLogic]), сдвиг пальца отмену не вызывает (clickable с touch slop тут не подходит).
+ * Button under touch head unit: pressed state directly on DOWN, action on UP, long tap count by time
+ * between DOWN and UP ([PressLogic]The finger shift does not cause cancellation (clickable C touch slop It doesn't fit here).
  */
 @Composable
 fun Pressable(
@@ -324,12 +324,12 @@ fun Pressable(
             }
             .pointerInput(Unit) {
                 awaitEachGesture {
-                    // потреблённый DOWN - чужой (вложенная кнопка уже забрала касание)
+                    // consumed DOWN - foreign (the button has already taken away the touch)
                     val down = awaitFirstDown()
                     if (!on.value) return@awaitEachGesture
                     down.consume()
                     pressed = true
-                    // анимация нажатия стартует по DOWN: UP с ГУ приходит на 200-500 мс позже
+                    // DOWN: UP with head unit coming to 200-500 ms later
                     press.value?.invoke()
                     var up: PointerInputChange? = null
                     while (true) {
@@ -348,7 +348,7 @@ fun Pressable(
     )
 }
 
-/** Круглая кнопка цели касания T. */
+/** Round Touch Target Button T. */
 @Composable
 fun RoundButton(
     sizePx: Int, description: String, onTap: () -> Unit, modifier: Modifier = Modifier,
@@ -385,7 +385,7 @@ fun Txt(
     )
 }
 
-/** Содержимое карточек всегда слева направо, даже при зеркальной раскладке правого руля. */
+/** The content of the cards is always from left to right, even with a mirror layout of the right wheel. */
 @Composable
 fun Ltr(content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr, content = content)

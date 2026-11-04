@@ -7,9 +7,9 @@ import org.junit.Test
 class CarPresetTest {
     @Test
     fun presetsApplyAsWritten() {
-        // режим с кропом без перекодирования молча стал бы 1280×720: такой пресет «изменён вручную» сразу после выбора
+        // mode with crop without transcoding silently would be 1280×720: such a preset "changed manually" immediately after selection
         for (p in CarPreset.values()) {
-            // VW Tiguan L Pro: WIDE_976 масштабирует область, SPS-кропом не режется; в прямом пробросе это WIDE_836, до 2240×976 растягивает ГУ (h529)
+            // VW Tiguan L Pro: WIDE_976 Scale the area, SPS-crop It is not cut; it is straight passthrough this WIDE_836, before 2240×976 Stretching head unit (h529)
             val expected = if (p == CarPreset.VW_TIGUAN_L_PRO) VideoMode.WIDE_836 else p.settings.videoMode
             assertEquals(p.name, expected, p.settings.videoMode.effective(p.settings.transcode))
             assertEquals(p.name, p.settings.aaDensity, AaDensity.parse(p.settings.aaDensity))
@@ -32,8 +32,8 @@ class CarPresetTest {
     @Test
     fun allPresetsDirectPassthroughAutoFps() {
         for (p in CarPreset.values()) {
-            if (p == CarPreset.HYUNDAI_ELANTRA_7) continue      // CN7: проброс моргает (h638), перекодирование 1280×480 / 15
-            // Tucson NX4c: вертикальный кадр проверен только с перекодированием (h670)
+            if (p == CarPreset.HYUNDAI_ELANTRA_7) continue      // CN7: passthrough blinks (h638), transcoding 1280×480 / 15
+            // Tucson NX4c: vertical frame verified only with transcoding (h670)
             assertEquals(p.name, p == CarPreset.HYUNDAI_TUCSON_NX4C, p.settings.transcode)
             assertEquals(p.name, FpsSetting.AUTO, p.settings.fps)
         }

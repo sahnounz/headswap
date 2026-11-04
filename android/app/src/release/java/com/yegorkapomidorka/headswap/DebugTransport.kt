@@ -3,7 +3,7 @@ package com.yegorkapomidorka.headswap
 import android.content.Intent
 import android.os.ParcelFileDescriptor
 
-/** В release TCP-транспорта нет: мост работает только с USB-аксессуаром. */
+/** B release TCP-no transport: the bridge works only with USB-accessory. */
 object DebugTransport {
     fun port(intent: Intent?): Int? = null
 

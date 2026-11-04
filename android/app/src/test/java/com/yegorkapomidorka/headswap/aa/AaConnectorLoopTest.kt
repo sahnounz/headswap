@@ -8,7 +8,7 @@ import java.net.InetAddress
 import java.net.ServerSocket
 import java.util.concurrent.CopyOnWriteArrayList
 
-/** Цикл коннектора: повтор при недоступном сервере ГУ и растущие паузы после голых EOF (h224). */
+/** Connector cycle: Repetition with unreachable head unit server and growing pauses after naked EOF (h224). */
 class AaConnectorLoopTest {
     private val events = CopyOnWriteArrayList<String>()
     private val logs = CopyOnWriteArrayList<String>()
@@ -65,7 +65,7 @@ class AaConnectorLoopTest {
 
     @Test
     fun bareEofKeepsReconnectingWithGrowingPauses() {
-        // «сервер» принимает и сразу закрывает: connect+EOF без сессии (h224). Счётчик растёт, переподключение идёт.
+        // "server" accepts and immediately closes: connect+EOF without a session (h224). The counter grows, the reconnection goes.
         val server = ServerSocket(0, 5, InetAddress.getByName("127.0.0.1"))
         server.use {
             Thread {

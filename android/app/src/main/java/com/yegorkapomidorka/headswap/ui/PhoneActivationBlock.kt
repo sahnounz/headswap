@@ -21,27 +21,27 @@ import com.yegorkapomidorka.headswap.dex.PhoneActivationPolicy
 import com.yegorkapomidorka.headswap.dex.PhoneActivationState
 
 /**
- * «Активация с телефона» в разделе «Режим»: статус попытки, кнопка, ручной ввод портов и кода. Сама работа идёт в
- * PhoneActivationService (приложение при активации перезапускается), здесь только запуск и показ.
+ * "Activation from the phone" in the "Mode" section: try status, button, manual input of ports and code. The work itself goes to
+ * PhoneActivationService (the application is restarted when activated), here only start and display.
  */
 class PhoneActivationBlock(
     private val host: MainActivity,
-    /** Пункты для несопряжённого телефона; null - pa_step_1..3 из «Режима». */
+    /** Points for uncoated phone; null - pa_step_1..3 from "Mode". */
     private val unpairedSteps: List<String>? = null,
     private val hintRes: Int = R.string.pa_hint,
     /**
-     * Шаг онбординга: заголовок ([titleView]) ставит экран на место заголовка шагов, кнопки «Активировать», «Отмена» и
-     * «Ввести порт и код вручную» тоже на экране (внизу, как у остальных шагов), в блоке остаются статус, макет, пункты и поля ручного ввода.
+     * Step onboarding: header ([titleView]Put the screen in place. header steps, buttons "Activate", "Cancel" and
+     * “Enter port and code manually” is also on the screen (below, as with the other steps), in the block there are status, layout, points and manual input fields.
      */
     private val embedded: Boolean = false,
 ) {
     private val c = host
     private val state = PhoneActivationState(c)
     val view: LinearLayout = c.vbox(8)
-    /** «Активируйте Headswap», после активации - зелёное «Активировано». */
+    /** "Activate Headswap", after activation - green "Activated". */
     private val title: TextView
     val titleView: TextView get() = title
-    /** Ход попытки и ошибки; пусто, когда всё сказал заголовок. */
+    /** The progress of the attempt and the errors; empty when all said header. */
     private val status: TextView
     private val steps: LinearLayout
     private var stepsPaired: Boolean? = null
@@ -54,17 +54,17 @@ class PhoneActivationBlock(
     private val code: EditText
     private val connectPort: EditText
     private var awaitingPermission = false
-    /** Доступ активирован и попытка не идёт: заголовок стал зелёным «Активировано». Обновляется в [refresh]. */
+    /** Access activated and no attempt: header green "Activated". Updated to [refresh]. */
     var ready = false
         private set
-    /** Подпись основной кнопки: «Активировать» или «Активировать снова». Обновляется в [refresh]. */
+    /** Signature of the main button: "Activate" or "Activate again". Updated in [refresh]. */
     var activateLabel: String = c.getString(R.string.pa_button)
         private set
-    /** Номер попытки, для которой журнал уже запрошен в этой сессии экрана: тик идёт каждые 500 мс. */
+    /** The number of the attempt for which the journal is already requested in this screen session: tick goes every 500 ms. */
     private var collected: String? = null
 
     init {
-        // та же раскладка, что у шагов онбординга (StepParts): заголовок, ход попытки, макет экрана, нумерованный список, пояснение, кнопки
+        // same layout as onboarding steps (StepParts): header, try progress, screen layout, numbered list, explanation, buttons
         title = c.text(c.getString(R.string.pa_title), 24f, 600).apply { letterSpacing = -0.01f; lineHeight = c.dp(30) }
         if (!embedded) view.addView(title, lp(MATCH, WRAP).margins(c, 8, 12, 8, 0))
         status = c.text("", 16f, 600).also { view.addView(it, lp(WRAP, WRAP).margins(c, if (embedded) 0 else 8, 0, 8, 8)) }
@@ -100,7 +100,7 @@ class PhoneActivationBlock(
         refresh()
     }
 
-    /** Из тика экрана (500 мс) и onShow: все проверки дешёвые. */
+    /** From the screen tick (500 ms) and onShow: all checks are cheap. */
     fun refresh() {
         val live = PhoneActivation.status
         val access = DelegatedDesktopAccess.status(c)
@@ -112,7 +112,7 @@ class PhoneActivationBlock(
                 c.getString(R.string.pa_s_failed, live.detail ?: c.getString(live.reason?.messageRes ?: AdbReason.INTERNAL.messageRes)) to R.color.warn
             else -> attempt(access, state)
         }
-        // заголовок и статус в одном: «Активировано» встаёт на место призыва, отдельная строка - только ход попытки и ошибки
+        // header and status in one: "Activated" takes the place of the call, a separate line - only the progress of the attempt and errors
         ready = !busy && access == DelegatedDesktopAccess.Status.READY
         title.text = c.getString(if (ready) R.string.bm_act_on else R.string.pa_title)
         title.setTextColor(c.clr(if (ready) R.color.ok else R.color.on))
@@ -121,7 +121,7 @@ class PhoneActivationBlock(
         status.setTextColor(c.clr(color))
         status.visibility = if (plain) View.GONE else View.VISIBLE
         if (stepsPaired != paired) {
-            // сопряжённому телефону код не нужен: шаги 2 и 3 заменяет одна строка
+            // Related phone code is not needed: 2 and 3 steps replace one line
             stepsPaired = paired
             steps.removeAllViews()
             val items = if (paired) listOf(c.getString(R.string.pa_step_paired))
@@ -137,7 +137,7 @@ class PhoneActivationBlock(
         forget.visibility = if (paired && !busy) View.VISIBLE else View.GONE
     }
 
-    /** Итог последней попытки после перезапуска приложения: показываем по состоянию доступа, а не по сообщению. */
+    /** The result of the last attempt after restarting the application: show by access status, not by message. */
     private fun attempt(access: DelegatedDesktopAccess.Status, state: PhoneActivationState): Pair<String, Int> {
         val nonce = state.nonce
         if (nonce != null) {
@@ -146,7 +146,7 @@ class PhoneActivationBlock(
                 PhoneActivationPolicy.Progress.PENDING ->
                     return c.getString(R.string.pa_s_pending) to R.color.warn
                 PhoneActivationPolicy.Progress.EXPIRED -> {
-                    // Перезапуск мог прервать чтение журнала: просим один раз, дальше показываем что есть.
+                    // The restart could interrupt the reading of the magazine: we ask once, then show what is there.
                     if (!state.failureChecked && collected != nonce) {
                         collected = nonce
                         PhoneActivation.collectFailure(c)
@@ -174,17 +174,17 @@ class PhoneActivationBlock(
         else -> R.string.pa_s_searching
     }
 
-    // --- запуск ---
+    // --- start ---
 
     private fun missingPermissions(): List<String> = buildList {
         if (Build.VERSION.SDK_INT >= 33 && c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
             add(Manifest.permission.POST_NOTIFICATIONS)
-        // Android 17: без разрешения mDNS-поиск портов режется молча, сам loopback к adbd его не требует
+        // Android 17: without the permission of mDNS-, the search for ports is cut silently, loopback itself does not require adbd
         if (Build.VERSION.SDK_INT >= 37 && c.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED)
             add(Manifest.permission.ACCESS_LOCAL_NETWORK)
     }
 
-    /** Кнопки шага онбординга: те же действия, что у кнопок блока. */
+    /** The onboarding: step buttons are the same actions as the block buttons. */
     fun activateNow() = onActivate()
 
     fun cancelNow() = PhoneActivation.cancel(c)
@@ -205,7 +205,7 @@ class PhoneActivationBlock(
         begin()
     }
 
-    /** Результат системного запроса: отказ не блокирует, у человека остаётся ручной ввод. */
+    /** System request result: the failure does not block, the person has manual input. */
     fun onPermissionResult() {
         if (!awaitingPermission) return
         awaitingPermission = false
@@ -214,8 +214,8 @@ class PhoneActivationBlock(
 
     private fun begin() {
         val needsCode = !state.paired
-        // Android сам гасит «Отладку по Wi-Fi» при смене сети и перезагрузке: сопряжённый телефон тогда стучится в
-        // старый порт и за секунду падает с REFUSED (лог 2026-11-03) - ведём на экран отладки и говорим, что включить
+        // Android itself extinguishes the "Debugging on Wi-Fi" when changing the network and rebooting: the conjugated phone then knocks in
+        // old port and falls from REFUSED (2026-11-03 log) in a second - we lead to the debug screen and say what to include
         if (!needsCode && Settings.Global.getInt(c.contentResolver, ADB_WIFI_ENABLED, 1) == 0) {
             status.text = c.getString(R.string.pa_need_wifi_debug)
             status.setTextColor(c.clr(R.color.warn))
@@ -228,12 +228,12 @@ class PhoneActivationBlock(
             status.text = c.getString(R.string.pa_need_notif)
             status.setTextColor(c.clr(R.color.warn))
             manualBox.visibility = View.VISIBLE
-            // блок без показа (кнопка на главном экране): статус никто не увидит, говорим всплывающей строкой
+            // block without showing (button on the main screen): status no one will see, say pop-up line
             if (!view.isAttachedToWindow) Toast.makeText(c, R.string.pa_need_notif, Toast.LENGTH_LONG).show()
             return
         }
         PhoneActivation.start(c)
-        // код сопряжения вводят в уведомлении над системным окном: ведём человека на экран отладки
+        // pairing code is entered in the notification above the system window: we lead a person to the debug screen
         if (needsCode) runCatching { c.startActivity(PhoneActivation.developerSettingsIntent()) }
         refresh()
     }
@@ -257,10 +257,10 @@ class PhoneActivationBlock(
     }
 
     private companion object {
-        /** Уведомления (ввод кода) и локальная сеть (mDNS-поиск портов) перед активацией; 38-41 заняты в SettingsSectionScreen и CarPairing. */
+        /** Notifications (code input) and local area network (mDNS- port search) before activation; 38-41 are occupied in SettingsSectionScreen and CarPairing. */
         const val REQ_PHONE_ACTIVATION = 42
 
-        /** Settings.Global.ADB_WIFI_ENABLED - скрытая константа, читать её приложению можно. */
+        /** Settings.Global.ADB_WIFI_ENABLED is a hidden constant, you can read its application. */
         const val ADB_WIFI_ENABLED = "adb_wifi_enabled"
     }
 

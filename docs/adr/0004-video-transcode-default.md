@@ -1,44 +1,44 @@
-# 0004. Видео по умолчанию: перекодирование 1280x720 / 15 fps, проброс как исключение
+# 0004. Default video: transcoding 1280x720 / 15 fps, passthrough as exception
 
-- Статус: заменено 0018
-- Дата: 2026-10-20 (PR #91), уточнения 2026-10-28 (#116) и 2026-10-30 (#120)
-- Источники: PR #91, #116, #120, кейс h319, `aa/AaSettings.kt:51`, `aa/VideoMode.kt:162`, `aa/FpsSetting.kt:15`, `aa/CarPreset.kt`
+- Status: replaced by 0018
+- Date: 2026-10-20 (PR #91), clarifications 2026-10-28 (#116) and 2026-10-30 (#120)
+- Sources: PR #91, #116, #120, case h319, `aa/AaSettings.kt:51`, `aa/VideoMode.kt:162`, `aa/FpsSetting.kt:15`, `aa/CarPreset.kt`
 
-## Контекст
+## Context
 
-Без повтора кадра ГУ рвёт USB на статичной картинке. Многие ГУ (Honda Civic, Pioneer, Hyundai CN7) не держат 1080p/30.
-В прямом пробросе Honda после камеры заднего хода показывает чёрный экран (0005).
+Without repeating frame head unit disconnects USB on a static picture. Many head unit (Honda Civic, Pioneer, Hyundai CN7Do not hold 1080p/30.
+In the direct passthrough, Honda shows a black screen (0005) after the reversing camera.
 
-## Решение
+## Decision
 
-Ядро: перекодируем в 1280x720, кадр повторяется каждые 100 мс. Значения по умолчанию в коде:
+Core: transcode to 1280x720, frame repeats every 100 ms. Default values in code:
 `transcode = true` (`AaSettings.kt:51`), `VideoMode.DEFAULT = R720` (`VideoMode.kt:162`), `FpsSetting.DEFAULT = FPS15`
-(`FpsSetting.kt:15`). История:
+(`FpsSetting.kt:15`). History:
 
-1. PR #91 (20.10): перекодирование и 15 fps по умолчанию для всех машин и пресетов «Мой автомобиль»; fps 15 вместо «Авто».
-   Поводом был h319: причина оказалась в настройках, не в коде.
-2. PR #116 (28.10): при выключенном перекодировании — проброс со своим IDR (0005); принудительное перекодирование
-   по воздуху убрано.
-3. PR #120 (30.10): SPS-кроп в пробросе всегда включён; в пресетах проброс сейчас только у Corolla Cross
-   (`CarPreset.kt:57`, `transcode = false`). SPS-кроп подтверждён на Vezel, VW BT 1420, Tucson/Mobis, Corolla Cross,
+1. PR #91 (20.10): transcoding and 15 fps by default for all machines and presets "My car"; fps 15 Instead of the car.
+   The reason was h319: the reason was in the settings, not in the code.
+2. PR #116 (28.10): when switched off transcoding - passthrough with his IDR (0005); forced transcoding
+   by wireless connection removed.
+3. PR #120 (30.10): SPS-crop in passthrough always included; in presets passthrough Now only at Corolla Cross
+   (`CarPreset.kt:57`, `transcode = false`). SPS-crop confirmed on Vezel, VW BT 1420, Tucson/Mobis, Corolla Cross,
    Mazda G6S.
 
-## Альтернативы
+## Alternatives
 
-- Принудительное перекодирование по воздуху — убрано в #116.
-- Режим 4:3 для h319 — не понадобился, хватило настроек.
+- Forced transcoding using wireless connection - removed in # 116.
+- 4:3 mode for h319 - did not need, enough settings.
 
-## Последствия
+## Consequences
 
-- Проброс включается пресетом или пользователем и требует рабочего своего IDR.
-- Пресеты не должны дублировать особенности, которые мост определяет сам (CN7, VW ID).
-- 15 fps выбраны из-за слабых ГУ: дали всем, чтобы они не захлёбывались. Цена — сильные ГУ получают меньше, чем могут;
-  первыми пострадали владельцы Honda CR-V. Лечится переключением на 30 fps или «Авто» в настройках. Если жалоб на
-  «дёрганое видео» станет много — кандидат на пресет или флаг ГУ с 30 fps.
+- passthrough is enabled by preset or user and requires working its IDR.
+- Presets should not duplicate the features that the bridge determines itself (CN7, VW ID).
+- 15 fps selected because of the weak head unit: gave everyone so that they do not get overwhelmed. Price - strong head unit receive less than they can;
+  first affected owners Honda CR-V. Treated by switching to 30 fps or "Auto" in the settings. If you complain about
+  “tight video” will be a lot - candidate for the preset or flag head unit with 30 fps.
 
-## Что меняется в 3.0
+## What changes in 3.0
 
-В бете 3.0 всех принудительно переключают на прямой проброс: он становится режимом по умолчанию, а частота кадров
-в нём не регулируется (её задаёт AA). Перекодирование включается вручную; при включении fps берётся из прежнего
-выбора пользователя, а если выбора не было — 15. Проблема CR-V с 15 fps при этом уходит сама.
-Когда 3.0 выйдет в релиз, эту запись пометить «заменено» и завести новую про проброс по умолчанию (почему перешли).
+In the 3.0 beta, everyone is forced to switch to the passthrough: straight line, it becomes the default mode, and the frame frequency
+it is not adjustable (it is specified by AA). transcoding is turned on manually; when you turn on fps, it is taken from the previous
+the user's choice, and if there was no choice - 15. The problem of CR-V with 15 fps at the same time leaves itself.
+When 3.0 comes out, mark this entry as "replaced" and start a new one about passthrough by default (why moved).

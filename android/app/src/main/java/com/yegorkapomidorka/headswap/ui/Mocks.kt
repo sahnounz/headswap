@@ -13,9 +13,9 @@ import android.widget.LinearLayout
 import com.yegorkapomidorka.headswap.R
 
 /**
- * Иллюстрации-схемы для шагов онбординга: «что где нажать» (Onboarding.dc.html). Только рисунок, ничего не нажимается.
- * Цвета из темы приложения; синий системного UI Android (переключатели, галочки) - литералами, как в макете.
- * «Размытие» - полупрозрачные полоски цвета line, на API 31+ ещё и RenderEffect.
+ * Illustrations-schemes for steps onboarding: "what to press" (Onboarding.dc.html). Only the picture, nothing is pressed.
+ * Colors from the application theme; blue system UI Android (switches, ticks) - in literals, as in the layout.
+ * "Erase" - translucent strips of color line, on API 31+ and RenderEffect.
  */
 object Mocks {
     private val SYS_BLUE = Color.parseColor("#3B7BEA")
@@ -51,20 +51,20 @@ object Mocks {
         StepId.MIC -> ctx.vbox(10).apply { addView(ctx.micDialog(), lp(MATCH, WRAP)) }
         StepId.BLUETOOTH -> ctx.vbox(8).apply { ctx.bluetoothRows().forEach { addView(it, lp(MATCH, WRAP)) } }
         StepId.LOCATION -> ctx.vbox(8).apply { ctx.locationRows().forEach { addView(it, lp(MATCH, WRAP)) } }
-        /** Шаг выбора машины рисует свой список (OnboardingScreen.renderCar), схемы нет. */
+        /** The machine selection step draws its own list (OnboardingScreen.renderCar), there is no scheme. */
         StepId.CAR -> ctx.vbox()
         StepId.FIRST -> ctx.vbox(10).apply { addView(ctx.usbDialog(), lp(MATCH, WRAP)) }
-        /** Шаг выбора режима рисует свои карточки (OnboardingScreen.renderMode), схемы нет. */
+        /** The mode selection step draws its cards (OnboardingScreen.renderMode), there is no scheme. */
         StepId.MODE -> ctx.vbox()
         StepId.DEVMODE -> aboutPhone(ctx)
         StepId.ACTIVATE -> developerOptions(ctx)
     }
 
-    // --- окна Android Auto ---
+    // --- windows Android Auto ---
 
     /**
-     * Окно настроек Android Auto: шапка, размытые строки и подсвеченная строка с нужным пунктом;
-     * справа стрелка «пролистайте вниз» на всю высоту окна. chrome = стрелка назад и ⋮; compact = низкая строка и две полоски.
+     * Settings window Android Auto: cap, blurred lines and highlighted line with the desired item;
+     * right arrow "swipe down" to the full height of the window. chrome = arrow back and ⋮ ; compact = low string and two stripes.
      */
     private fun Context.aaWindow(title: String, row: String, chrome: Boolean, tap: Boolean, check: Boolean, compact: Boolean): View {
         val c = this
@@ -128,7 +128,7 @@ object Mocks {
         }
     }
 
-    /** Стрелка прокрутки вниз: шток затухает сверху (прозрачный -> акцент), внизу наконечник. */
+    /** Scroll down arrow: the stem fades from above (transparent -> accent), at the bottom of the tip. */
     private fun Context.scrollArrow(): View {
         val acc = clr(R.color.acc)
         return FrameLayout(this).apply {
@@ -145,7 +145,7 @@ object Mocks {
         }
     }
 
-    /** Окно Android Auto с выпадающим меню ⋮ из четырёх пунктов; нужный подсвечен и помечен рукой. */
+    /** The Android Auto window with a drop-down menu ⋮ of four items; the desired is highlighted and hand-marked. */
     private fun Context.menuWindow(): View {
         val c = this
         val back = vbox().apply {
@@ -200,9 +200,9 @@ object Mocks {
         }
     }
 
-    // --- системные окна ---
+    // --- system windows ---
 
-    /** Шторка с уведомлением Headswap (шаг уведомлений). */
+    /** Curtain with notification Headswap (notification step). */
     private fun Context.shade(): View {
         val c = this
         return vbox(8).apply {
@@ -251,7 +251,7 @@ object Mocks {
         }
     }
 
-    /** Сведения о приложении: «Контроль активности: Нет ограничений» с синей галочкой. */
+    /** Application information: "Activity Control: No Limits" with blue checkmark. */
     private fun Context.activityControl(): View {
         val c = this
         return vbox(6).apply {
@@ -274,7 +274,7 @@ object Mocks {
         }
     }
 
-    /** Список «Автозапуск» Xiaomi с включённым Headswap (только на Xiaomi). */
+    /** List of Xiaomi autoruns with Headswap included (only on Xiaomi). */
     private fun Context.autostartList(): View {
         val c = this
         return card(16).apply {
@@ -298,7 +298,7 @@ object Mocks {
         }
     }
 
-    /** Запрос разрешения на микрофон: кнопка «При использовании приложения» обведена. */
+    /** Request for microphone permission: the button "When using the application" is bypassed. */
     private fun Context.micDialog(): View {
         val c = this
         return vbox(8).apply {
@@ -341,7 +341,7 @@ object Mocks {
         }
     }
 
-    /** Системное окно Bluetooth: переключатель, подключённая магнитола, размытая строка. */
+    /** System window Bluetooth: switch, magnetola connected, blurry line. */
     private fun Context.bluetoothRows(): List<View> {
         val c = this
         val toggle = hbox().apply {
@@ -382,7 +382,7 @@ object Mocks {
         return listOf(toggle, headUnit, ghost)
     }
 
-    /** Системное окно геолокации: переключатель «Включить геолокацию» обведён, ниже размытые строки. */
+    /** System Geolocation Window: The Enable Geolocation switch is circled, below are blurred lines. */
     private fun Context.locationRows(): List<View> {
         val c = this
         val toggle = hbox(12).apply {
@@ -413,7 +413,7 @@ object Mocks {
         return listOf(toggle, ghosts)
     }
 
-    /** Запрос «Открыть Headswap для USB-аксессуара»: галочка «По умолчанию» и ОК. */
+    /** Query “Open Headswap for USB-accessories”: checkbox “Default” and OK. */
     private fun Context.usbDialog(): View {
         val c = this
         return vbox(14).apply {
@@ -454,8 +454,8 @@ object Mocks {
     }
 
     /**
-     * Экран «Для разработчиков» для шага активации в «Режиме»: заголовок, обведённая строка «Отладка по Wi-Fi»
-     * с включённым переключателем, под ней «Подключить устройство с кодом сопряжения» и размытая строка.
+     * Screen "For developers" for activation step in "Mode": header, circled line "Debugging by Wi-Fi"
+     * with the switch on, under it "Connect the device with the pairing code" and a blurred string.
      */
     fun developerOptions(ctx: Context): View = ctx.developerRows().let { rows ->
         ctx.vbox(8).apply { rows.forEach { addView(it, lp(MATCH, WRAP)) } }
@@ -488,8 +488,8 @@ object Mocks {
     }
 
     /**
-     * Экран «О телефоне» для шага режима разработчика: обведённая строка «Номер сборки» с подписью для Xiaomi,
-     * рукой и меткой ×7; выше и ниже размытые строки.
+     * Screen "About the phone" for developer mode step: circled line "Assembly number" with signature for Xiaomi,
+     * hand and label ×7; above and below blurry lines.
      */
     fun aboutPhone(ctx: Context): View = ctx.aboutRows().let { rows ->
         ctx.vbox(8).apply { rows.forEach { addView(it, lp(MATCH, WRAP)) } }
@@ -522,16 +522,16 @@ object Mocks {
         return listOf(title, ghost(62), build, ghost(48))
     }
 
-    // --- кирпичики ---
+    // --- bricks ---
 
-    /** Полоска-«строка текста» шириной pct процентов (размытие рисуется полупрозрачной полоской цвета line). */
+    /** The strip is a “line of text” with a width of pct percent (the blur is drawn by a translucent stripe of color line). */
     private fun Context.bar(pct: Int, heightDp: Int = 10): View = hbox().apply {
         weightSum = 100f
         addView(View(this@bar).apply { background = shape(clr(R.color.line), heightDp / 2) }, LinearLayout.LayoutParams(0, dp(heightDp), pct.toFloat()))
         addView(View(this@bar), LinearLayout.LayoutParams(0, dp(heightDp), (100 - pct).toFloat()))
     }
 
-    /** Полупрозрачность и, на API 31+, настоящее размытие. */
+    /** Translucent and, at API 31+, real blurring. */
     private fun <T : View> T.blurred(alphaValue: Float, blurDp: Float): T = apply {
         alpha = alphaValue
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -545,7 +545,7 @@ object Mocks {
         pad(this@badge, 12, vPadDp, 12, vPadDp)
     }
 
-    /** Включённый переключатель системного UI Android (синий, как в макете). */
+    /** Included switch system UI Android (blue, as in the layout). */
     private fun Context.sysSwitch(): View = FrameLayout(this).apply {
         background = shape(SYS_BLUE, 14)
         addView(
